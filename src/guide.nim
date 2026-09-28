@@ -1,27 +1,27 @@
-# /Users/eek/Development/agora/src/guide.nim
+# /Users/eek/Development/garden/src/guide.nim
 # Manages installable/uninstallable demarcated documentation blocks in AGENTS.md
-# for the Agora Multi-Agent Swarm Orchestration Engine.
+# for the Garden Multi-Agent Swarm Orchestration Engine.
 
 import std/[os, strutils]
 
 const
   GuideVersion* = "v1.0"
-  BeginMarker* = "<!-- BEGIN AGORA GUIDE [" & GuideVersion & "] -->"
-  EndMarker* = "<!-- END AGORA GUIDE -->"
-  MarkerPrefix* = "<!-- BEGIN AGORA GUIDE"
+  BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
+  EndMarker* = "<!-- END GARDEN GUIDE -->"
+  MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN AGORA GUIDE [v1.0] -->
-<!-- DO NOT EDIT DIRECTLY: Managed by `agora guide install` -->
+<!-- BEGIN GARDEN GUIDE [v1.0] -->
+<!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
-## Agora Multi-Agent Swarm & Ceremony Guide
+## Garden Multi-Agent Swarm & Ceremony Guide
 
-Agora directs high-level methodology, persona deliberations, and synchronized task execution on top of Locu (transport) and Braid (workspace integrator).
+Garden directs high-level methodology, persona deliberations, and synchronized task execution on top of Rhizo (transport) and Vine (workspace integrator).
 
 ### 0. Self-Bootstrapping Prerequisite
-This project requires `locu`, `braid`, and `agora`. If missing, install via npm:
+This project requires `rhizo`, `vine`, and `garden`. If missing, install via npm:
 ```bash
-npm install -g @axiomantic/locu @axiomantic/braid @axiomantic/agora
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
 ```
 
 ### 1. Invariants & Epistemic Protocol
@@ -34,16 +34,16 @@ npm install -g @axiomantic/locu @axiomantic/braid @axiomantic/agora
 
 ### 2. Fleet Lifecycle & Multiplexer Discipline
 * **Tmux Multiplexing**:
-  All swarm workers run inside managed tmux panes created via `agora launch` or `scripts/launch_tmux_swarm.sh`. Never detach unmanaged background processes with `&` or redirect output.
+  All swarm workers run inside managed tmux panes created via `garden launch` or `scripts/launch_tmux_swarm.sh`. Never detach unmanaged background processes with `&` or redirect output.
 * **Continuous Listening**:
-  Workers must keep their Locu listener active (`locu listen <agent>`) with zero-timeout infinite wait to prevent token thrashing.
+  Workers must keep their Rhizo listener active (`rhizo listen <agent>`) with zero-timeout infinite wait to prevent token thrashing.
 
 ### 3. The Two-Key Gate & Strand Weaving
 Never weave a strand into the canonical trunk without passing both keys:
 * **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
 * **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
-* **Weave**: `braid weave && locu ack queue:<project>:tasks <task_id>`
-<!-- END AGORA GUIDE -->
+* **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
+<!-- END GARDEN GUIDE -->
 """
 
 type
@@ -85,7 +85,7 @@ proc installGuide*(targetPath: string): tuple[success: bool, message: string] =
       let initialContent = "# AGENTS.md — Multi-Agent Coordination Guide\n\n" & CanonicalGuideContent.strip() & "\n"
       writeFile(tmpPath, initialContent)
       moveFile(tmpPath, targetPath)
-      return (true, "Created " & targetPath & " and installed Agora Guide [" & GuideVersion & "].")
+      return (true, "Created " & targetPath & " and installed Garden Guide [" & GuideVersion & "].")
 
     let content = readFile(targetPath)
 
@@ -112,18 +112,18 @@ proc installGuide*(targetPath: string): tuple[success: bool, message: string] =
 
       writeFile(tmpPath, newLines.join("\n") & "\n")
       moveFile(tmpPath, targetPath)
-      return (true, "Updated Agora Guide to [" & GuideVersion & "] in " & targetPath & ".")
+      return (true, "Updated Garden Guide to [" & GuideVersion & "] in " & targetPath & ".")
 
     else:
       # Append block cleanly
       var newContent = content.strip() & "\n\n" & CanonicalGuideContent.strip() & "\n"
       writeFile(tmpPath, newContent)
       moveFile(tmpPath, targetPath)
-      return (true, "Appended Agora Guide [" & GuideVersion & "] to " & targetPath & ".")
+      return (true, "Appended Garden Guide [" & GuideVersion & "] to " & targetPath & ".")
   except CatchableError as e:
     if fileExists(tmpPath):
       try: removeFile(tmpPath) except CatchableError: discard
-    return (false, "Error installing Agora Guide into " & targetPath & ": " & e.msg)
+    return (false, "Error installing Garden Guide into " & targetPath & ": " & e.msg)
 
 proc uninstallGuide*(targetPath: string): tuple[success: bool, message: string] =
   let status = checkGuide(targetPath)
@@ -132,7 +132,7 @@ proc uninstallGuide*(targetPath: string): tuple[success: bool, message: string] 
   of gsFileMissing:
     return (false, "Target file does not exist: " & targetPath)
   of gsNotFound:
-    return (true, "Agora Guide is not present in " & targetPath & " (nothing to remove).")
+    return (true, "Garden Guide is not present in " & targetPath & " (nothing to remove).")
   of gsMalformed:
     return (false, "Error: Malformed markers detected in " & targetPath & " (unbalanced begin/end markers). Refusing to modify file.")
   of gsInstalled:
@@ -163,8 +163,8 @@ proc uninstallGuide*(targetPath: string): tuple[success: bool, message: string] 
 
       writeFile(tmpPath, cleanOutput)
       moveFile(tmpPath, targetPath)
-      return (true, "Uninstalled Agora Guide from " & targetPath & ".")
+      return (true, "Uninstalled Garden Guide from " & targetPath & ".")
     except CatchableError as e:
       if fileExists(tmpPath):
         try: removeFile(tmpPath) except CatchableError: discard
-      return (false, "Error removing Agora Guide from " & targetPath & ": " & e.msg)
+      return (false, "Error removing Garden Guide from " & targetPath & ": " & e.msg)

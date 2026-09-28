@@ -1,7 +1,7 @@
 {
-  "name": "@axiomantic/agora",
+  "name": "@axiomantic/garden",
   "version": "0.1.0",
-  "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Locu & Braid",
+  "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 0"
@@ -12,14 +12,15 @@
     "orchestration",
     "tmux",
     "dialectics",
-    "locu",
-    "braid",
+    "rhizo",
+    "vine",
+    "garden",
     "swarm"
   ],
   "author": "Axiomantic",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/axiomantic/agora.git"
+    "url": "git+https://github.com/axiomantic/garden.git"
   }
 }

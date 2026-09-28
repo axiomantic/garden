@@ -1,33 +1,33 @@
-# /Users/eek/Development/agora/src/agora.nim
-# The Agora Multi-Agent Swarm Orchestration Engine CLI.
+# /Users/eek/Development/garden/src/garden.nim
+# The Garden Multi-Agent Swarm Orchestration Engine CLI.
 
 import std/[os, osproc, strutils, json, parseopt]
 import guide
 
 const
-  AgoraVersion = "0.1.0"
-  DefaultConfigFileName = "agora.toml"
+  GardenVersion = "0.1.0"
+  DefaultConfigFileName = "garden.toml"
 
 proc printHelp() =
   echo """
-Agora: Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies
-Version: """ & AgoraVersion & """
+Garden: Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies
+Version: """ & GardenVersion & """
 
 Usage:
-  agora <subcommand> [arguments...] [options...]
+  garden <subcommand> [arguments...] [options...]
 
 Subcommands:
-  init [dir]               Initialize Agora configuration and install guides
+  init [dir]               Initialize Garden configuration and install guides
   launch [options]         Provision tmux worker swarm and launch terminal viewer
-  status [options]         Unified cluster telemetry (tmux, Locu heartbeats, Braid strands)
-  guide <action> [path]    Manage Agora Coordination Guide (install, check, uninstall)
+  status [options]         Unified cluster telemetry (tmux, Rhizo heartbeats, Vine strands)
+  guide <action> [path]    Manage Garden Coordination Guide (install, check, uninstall)
   teardown [options]       Gracefully close swarm agents and terminate tmux session
-  version, -v, --version   Print Agora version and exit
+  version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
 
 Options for 'launch':
-  --session-name <name>    Custom tmux session name (default: agora-<project>)
-  --swarm-file <file>      Path to agora-swarm.json manifest
+  --session-name <name>    Custom tmux session name (default: garden-<project>)
+  --swarm-file <file>      Path to garden-swarm.json manifest
   --terminal-app <app>     Terminal viewer app: Ghostty | Terminal | iTerm | none
   --force                  Kill existing session if running
 
@@ -37,13 +37,15 @@ Options for 'status':
 
 Options for 'teardown':
   --session-name <name>    Specific tmux session to terminate
-  --swarm-file <file>      Path to agora-swarm.json to close mapped agents
+  --swarm-file <file>      Path to garden-swarm.json to close mapped agents
 """
 
 proc findProjectRoot(startDir: string = getCurrentDir()): string =
   var dir = startDir
   while dir.len > 0:
-    if fileExists(dir / "agora.toml") or fileExists(dir / "agora-swarm.json") or dirExists(dir / ".git"):
+    if fileExists(dir / "garden.toml") or fileExists(dir / "agora.toml") or
+       fileExists(dir / "garden-swarm.json") or fileExists(dir / "agora-swarm.json") or
+       dirExists(dir / ".git"):
       return dir
     let parent = dir.parentDir()
     if parent == dir:
@@ -58,32 +60,32 @@ proc doInit(targetDir: string, force: bool): int =
   let configFile = root / DefaultConfigFileName
 
   if fileExists(configFile) and not force:
-    echo "[agora] Config file already exists: " & configFile & " (use --force to overwrite)"
+    echo "[garden] Config file already exists: " & configFile & " (use --force to overwrite)"
   else:
     let configContent = """[project]
 name = """" & projName & """"
 preferred_terminal = "auto" # Ghostty, Terminal, iTerm, none
 
 [swarm]
-session_prefix = "agora"
+session_prefix = "garden"
 default_triad = ["architect", "auditor", "implementer"]
 """
     writeFile(configFile, configContent)
-    echo "[agora] Created " & configFile
+    echo "[garden] Created " & configFile
 
   # Create directories
   createDir(root / "docs" / "addenda")
-  echo "[agora] Verified docs/addenda/ directory"
+  echo "[garden] Verified docs/addenda/ directory"
 
-  # Install Agora Guide into AGENTS.md
+  # Install Garden Guide into AGENTS.md
   let agentsPath = root / "AGENTS.md"
   let (ok, msg) = installGuide(agentsPath)
   if ok:
-    echo "[agora] " & msg
+    echo "[garden] " & msg
   else:
-    stderr.writeLine("[agora] " & msg)
+    stderr.writeLine("[garden] " & msg)
 
-  echo "[agora] Initialization complete for " & root
+  echo "[garden] Initialization complete for " & root
   return 0
 
 proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, terminalApp: string, force: bool): int =
@@ -99,7 +101,7 @@ proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, termin
       scriptPath = exeDir.parentDir() / "scripts" / "launch_tmux_swarm.sh"
 
   if not fileExists(scriptPath):
-    stderr.writeLine("[agora] Error: launch_tmux_swarm.sh not found.")
+    stderr.writeLine("[garden] Error: launch_tmux_swarm.sh not found.")
     return 1
 
   var cmd = quoteShell(scriptPath) & " --project-dir " & quoteShell(root)
@@ -107,6 +109,8 @@ proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, termin
     cmd &= " --session-name " & quoteShell(sessionName)
   if swarmFile.len > 0:
     cmd &= " --swarm-file " & quoteShell(swarmFile)
+  elif fileExists(root / "garden-swarm.json"):
+    cmd &= " --swarm-file " & quoteShell(root / "garden-swarm.json")
   elif fileExists(root / "agora-swarm.json"):
     cmd &= " --swarm-file " & quoteShell(root / "agora-swarm.json")
   if terminalApp.len > 0:
@@ -120,20 +124,29 @@ proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, termin
 proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
   let root = findProjectRoot()
   let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
-  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "agora-" & projBase
+  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
 
   var statusObj = newJObject()
   statusObj["project"] = %root
   statusObj["session_name"] = %sessionName
 
   # 1. Query tmux
-  let (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
+  var (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
+  var activeSession = sessionName
+  if tmuxCode != 0:
+    # Try legacy prefix agora-
+    let legacySession = "agora-" & projBase
+    let (legOut, legCode) = execCmdEx("tmux has-session -t " & quoteShell(legacySession))
+    if legCode == 0:
+      activeSession = legacySession
+      tmuxCode = 0
+
   let tmuxActive = (tmuxCode == 0)
   statusObj["tmux_active"] = %tmuxActive
 
   var tmuxWindows: seq[JsonNode] = @[]
   if tmuxActive:
-    let (wOut, _) = execCmdEx("tmux list-windows -t " & quoteShell(sessionName) & " -F '#{window_index}:#{window_name}:#{pane_current_command}'")
+    let (wOut, _) = execCmdEx("tmux list-windows -t " & quoteShell(activeSession) & " -F '#{window_index}:#{window_name}:#{pane_current_command}'")
     for line in wOut.strip().splitLines():
       if line.len == 0: continue
       let parts = line.split(":", 2)
@@ -145,33 +158,33 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
         tmuxWindows.add(wObj)
   statusObj["windows"] = %tmuxWindows
 
-  # 2. Query Locu heartbeats via 'locu who --json'
-  let (locuOut, locuCode) = execCmdEx("locu who --json")
-  if locuCode == 0 and locuOut.strip().startsWith("{"):
+  # 2. Query Rhizo heartbeats via 'rhizo who --json' (fallback to 'locu who --json')
+  var (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json 2>/dev/null || locu who --json")
+  if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
     try:
-      let locuJson = parseJson(locuOut.strip())
-      statusObj["locu"] = locuJson
+      let rhizoJson = parseJson(rhizoOut.strip())
+      statusObj["rhizo"] = rhizoJson
     except CatchableError:
-      statusObj["locu"] = newJNull()
+      statusObj["rhizo"] = newJNull()
   else:
-    statusObj["locu"] = newJNull()
+    statusObj["rhizo"] = newJNull()
 
-  # 3. Query Braid active strands via 'braid list'
-  let (braidOut, braidCode) = execCmdEx("braid list")
-  if braidCode == 0 and braidOut.strip().startsWith("{"):
+  # 3. Query Vine active strands via 'vine list' (fallback to 'braid list')
+  var (vineOut, vineCode) = execCmdEx("vine list 2>/dev/null || braid list")
+  if vineCode == 0 and vineOut.strip().startsWith("{"):
     try:
-      let braidJson = parseJson(braidOut.strip())
-      statusObj["braid_strands"] = braidJson
+      let vineJson = parseJson(vineOut.strip())
+      statusObj["vine_strands"] = vineJson
     except CatchableError:
-      statusObj["braid_strands"] = newJNull()
+      statusObj["vine_strands"] = newJNull()
   else:
-    statusObj["braid_strands"] = newJNull()
+    statusObj["vine_strands"] = newJNull()
 
   if jsonOutput:
     echo pretty(statusObj)
   else:
     echo "=========================================================="
-    echo "  Agora Swarm Telemetry: " & sessionName
+    echo "  Garden Swarm Telemetry: " & activeSession
     echo "=========================================================="
     echo "Project: " & root
     echo "Tmux Active: " & (if tmuxActive: "YES (" & $tmuxWindows.len & " windows)" else: "NO")
@@ -180,18 +193,18 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
       for w in tmuxWindows:
         echo "  [" & w["index"].getStr() & "] " & w["name"].getStr() & " (" & w["command"].getStr() & ")"
     
-    if not statusObj["locu"].isNil and statusObj["locu"].kind == JObject and statusObj["locu"].hasKey("agents"):
-      let agents = statusObj["locu"]["agents"]
-      echo "\nLocu Agents Online (" & $agents.len & "):"
+    if not statusObj["rhizo"].isNil and statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents"):
+      let agents = statusObj["rhizo"]["agents"]
+      echo "\nRhizo Agents Online (" & $agents.len & "):"
       for a in agents:
         let aname = if a.hasKey("name"): a["name"].getStr() else: "unknown"
         let astate = if a.hasKey("state"): a["state"].getStr() else: "active"
         let atags = if a.hasKey("tags"): a["tags"].getStr() else: ""
         echo "  @" & aname & " [" & astate & "] tags: " & atags
 
-    if not statusObj["braid_strands"].isNil and statusObj["braid_strands"].kind == JObject and statusObj["braid_strands"].hasKey("strands"):
-      let strands = statusObj["braid_strands"]["strands"]
-      echo "\nActive Braid Strands (" & $strands.len & "):"
+    if not statusObj["vine_strands"].isNil and statusObj["vine_strands"].kind == JObject and statusObj["vine_strands"].hasKey("strands"):
+      let strands = statusObj["vine_strands"]["strands"]
+      echo "\nActive Vine Strands (" & $strands.len & "):"
       for s in strands:
         let tid = if s.hasKey("task_id"): s["task_id"].getStr() else: ""
         let branch = if s.hasKey("branch"): s["branch"].getStr() else: ""
@@ -203,12 +216,15 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
 proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
   let root = findProjectRoot()
   let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
-  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "agora-" & projBase
+  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
 
   # 1. Gracefully close registered agents in Redis
   var swarmFile = swarmFileParam
-  if swarmFile.len == 0 and fileExists(root / "agora-swarm.json"):
-    swarmFile = root / "agora-swarm.json"
+  if swarmFile.len == 0:
+    if fileExists(root / "garden-swarm.json"):
+      swarmFile = root / "garden-swarm.json"
+    elif fileExists(root / "agora-swarm.json"):
+      swarmFile = root / "agora-swarm.json"
 
   if swarmFile.len > 0 and fileExists(swarmFile):
     try:
@@ -217,22 +233,30 @@ proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
         for w in sJson["workers"]:
           if w.hasKey("name"):
             let wname = w["name"].getStr()
-            echo "[agora] Closing agent @" & wname & " in Redis..."
-            discard execCmdEx("locu close " & quoteShell(wname))
+            echo "[garden] Closing agent @" & wname & " in Redis..."
+            discard execCmdEx("rhizo close " & quoteShell(wname) & " 2>/dev/null || locu close " & quoteShell(wname))
     except CatchableError: discard
 
   # 2. Terminate tmux session
-  let (hasOut, hasCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
+  var targetSession = sessionName
+  var (hasOut, hasCode) = execCmdEx("tmux has-session -t " & quoteShell(targetSession))
+  if hasCode != 0:
+    let legacySession = "agora-" & projBase
+    let (_, legCode) = execCmdEx("tmux has-session -t " & quoteShell(legacySession))
+    if legCode == 0:
+      targetSession = legacySession
+      hasCode = 0
+
   if hasCode == 0:
-    echo "[agora] Terminating tmux session: " & sessionName
-    let (kOut, kCode) = execCmdEx("tmux kill-session -t " & quoteShell(sessionName))
+    echo "[garden] Terminating tmux session: " & targetSession
+    let (kOut, kCode) = execCmdEx("tmux kill-session -t " & quoteShell(targetSession))
     if kCode == 0:
-      echo "[agora] Swarm session terminated successfully."
+      echo "[garden] Swarm session terminated successfully."
     else:
-      stderr.writeLine("[agora] Error terminating tmux session: " & kOut)
+      stderr.writeLine("[garden] Error terminating tmux session: " & kOut)
       return kCode
   else:
-    echo "[agora] No active tmux session found for: " & sessionName
+    echo "[garden] No active tmux session found for: " & sessionName
 
   return 0
 
@@ -249,7 +273,7 @@ proc main() =
     printHelp()
     quit(0)
   of "version", "-v", "--version":
-    echo "agora v" & AgoraVersion
+    echo "garden v" & GardenVersion
     quit(0)
   of "init":
     var targetDir = ""
@@ -309,7 +333,7 @@ proc main() =
     quit(doTeardown(sessionName, swarmFile))
   of "guide":
     if params.len < 2:
-      stderr.writeLine("Usage: agora guide <install|check|uninstall> [path]")
+      stderr.writeLine("Usage: garden guide <install|check|uninstall> [path]")
       quit(1)
     let action = params[1].toLowerAscii()
     let target = if params.len > 2: params[2] else: "AGENTS.md"
@@ -323,15 +347,15 @@ proc main() =
     of "check", "status":
       let st = checkGuide(target)
       case st
-      of gsInstalled: echo "[INSTALLED] Agora Guide is installed in: " & target
-      of gsNotFound: echo "[NOT FOUND] Agora Guide not found in: " & target
+      of gsInstalled: echo "[INSTALLED] Garden Guide is installed in: " & target
+      of gsNotFound: echo "[NOT FOUND] Garden Guide not found in: " & target
       of gsMalformed: (stderr.writeLine("[MALFORMED] Unbalanced markers in: " & target); quit(1))
       of gsFileMissing: echo "[MISSING] Target file does not exist: " & target
     else:
       stderr.writeLine("Unknown guide action: " & action)
       quit(1)
   else:
-    stderr.writeLine("Unknown subcommand: '" & subcmd & "'. Run 'agora --help' for usage.")
+    stderr.writeLine("Unknown subcommand: '" & subcmd & "'. Run 'garden --help' for usage.")
     quit(1)
 
 when isMainModule:

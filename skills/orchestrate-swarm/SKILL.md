@@ -1,6 +1,6 @@
 ---
 name: orchestrate-swarm
-description: "Directs live multi-agent swarm execution from the primary chat session acting as Supreme Orchestrator. Dispatches tasks over the Locu Redis bus, monitors worker heartbeats with locu who, governs task leasing and dead-letter queues, ratifies emergent design addenda, verifies Two-Key Gate reports from workers, executes fast-forward trunk merges via braid weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
+description: "Directs live multi-agent swarm execution from the primary chat session acting as Supreme Orchestrator. Dispatches tasks over the Rhizo Redis bus, monitors worker heartbeats with rhizo who, governs task leasing and dead-letter queues, ratifies emergent design addenda, verifies Two-Key Gate reports from workers, executes fast-forward trunk merges via vine weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
 ---
 
 # `orchestrate-swarm`: Main-Chat Swarm Governance & Trunk Integration
@@ -14,8 +14,8 @@ description: "Directs live multi-agent swarm execution from the primary chat ses
 
 The main chat session assumes the role of **Supreme Orchestrator**:
 - **Non-Interference**: Never perform massive multi-file edits directly when workers are active in isolated strands.
-- **Strict Transport Discipline**: All task assignments, handoffs, and cancellation interrupts flow exclusively over the Locu Redis bus (`locu send`, `locu reply`, `locu enqueue`).
-- **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Braid strands.
+- **Strict Transport Discipline**: All task assignments, handoffs, and cancellation interrupts flow exclusively over the Rhizo Redis bus (`rhizo send`, `rhizo reply`, `rhizo enqueue`).
+- **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Vine strands.
 
 ---
 
@@ -23,12 +23,12 @@ The main chat session assumes the role of **Supreme Orchestrator**:
 
 ```mermaid
 flowchart TD
-    Start([Start Task from Plan]) --> Dispatch["Dispatch Task via locu send / enqueue"]
-    Dispatch --> Wait["Wait for Worker locu reply (Two-Key Gate Report)"]
+    Start([Start Task from Plan]) --> Dispatch["Dispatch Task via rhizo send / enqueue"]
+    Dispatch --> Wait["Wait for Worker rhizo reply (Two-Key Gate Report)"]
     Wait --> Decision{Did Worker Pass Two-Key Gate?}
     Decision -->|NO / Blocked| Remediate["Dispatch Fix Task to Auditor / Implementer"]
     Remediate --> Wait
-    Decision -->|YES| Weave["Execute braid weave into Canonical Trunk"]
+    Decision -->|YES| Weave["Execute vine weave into Canonical Trunk"]
     Weave --> Update["Update implementation_plan.md Checkbox & Harness To-Do"]
     Update --> CheckAddenda{Emergent Design Addendum Filed?}
     CheckAddenda -->|YES| Ratify["Review, Ratify, Update design.md & plan"]
@@ -47,14 +47,14 @@ Depending on the task distribution model in `implementation_plan.md`:
 
 - **Direct Assignment (O2O)**:
   ```bash
-  locu send --to architect \
+  rhizo send --to architect \
     --subject "Task 1.1: Core Data Structures" \
-    --body '{"task_id": "task-core-ds", "instructions": "Implement AST node kinds and message serializers. Use braid strand.", "strand": "strand/task-core-ds"}'
+    --body '{"task_id": "task-core-ds", "instructions": "Implement AST node kinds and message serializers. Use vine strand.", "strand": "strand/task-core-ds"}'
   ```
 
 - **Competing-Consumers Work Queue**:
   ```bash
-  locu enqueue queue:myproject:tasks \
+  rhizo enqueue queue:myproject:tasks \
     --subject "Task 1.2: Test Harness" \
     --body '{"task_id": "task-test-harness", "strand": "strand/task-test-harness"}'
   ```
@@ -62,12 +62,12 @@ Depending on the task distribution model in `implementation_plan.md`:
 ### SOP 2: Monitoring Swarm Health & Heartbeats
 Check active workers and ensure no listener has stalled or timed out:
 ```bash
-locu who --json
+rhizo who --json
 ```
 
 If a worker is waiting for a lease or has held a lock too long, inspect its active tmux pane:
 ```bash
-tmux capture-pane -p -t agora-<project>:1 | tail -n 25
+tmux capture-pane -p -t garden-<project>:1 | tail -n 25
 ```
 
 ### SOP 3: Verifying Two-Key Gate & Weaving
@@ -86,10 +86,10 @@ When a worker replies indicating task completion:
 The Orchestrator verifies and integrates:
 ```bash
 # 1. Weave the verified strand into main
-braid weave
+vine weave
 
 # 2. Release any held fencing locks if applicable
-locu unlock file:src/types.nim
+rhizo unlock file:src/types.nim
 ```
 
 ### SOP 4: Updating Dynamic Progress Checklists
@@ -105,7 +105,7 @@ If an incoming message contains `[DESIGN ADDENDUM]`:
 3. If approved:
    - Append addendum section to `design.md`.
    - Adjust downstream tasks in `implementation_plan.md`.
-   - Reply to worker: `locu reply --to <worker> --subject "Addendum Approved" --body "Proceed with modified design."`.
+   - Reply to worker: `rhizo reply --to <worker> --subject "Addendum Approved" --body "Proceed with modified design."`.
 4. If rejected:
    - Reply with counter-guidance and instruct the worker to remain aligned with original specs.
 
@@ -117,12 +117,12 @@ When all checkboxes in `implementation_plan.md` are marked `- [x]`:
 1. Run final repository-wide test suite and linter on the canonical trunk.
 2. Gracefully deregister all swarm agents:
    ```bash
-   for worker in $(python3 -c "import json; [print(w['name']) for w in json.load(open('agora-swarm.json'))['workers']]"); do
-     locu close "$worker" 2>/dev/null || true
+   for worker in $(python3 -c "import json; [print(w['name']) for w in json.load(open('garden-swarm.json'))['workers']]"); do
+     rhizo close "$worker" 2>/dev/null || true
    done
    ```
 3. Kill the tmux session:
    ```bash
-   tmux kill-session -t agora-<project> 2>/dev/null || true
+   tmux kill-session -t garden-<project> 2>/dev/null || true
    ```
 4. Output the final executive summary to the human operator.

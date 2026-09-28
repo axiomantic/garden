@@ -1,13 +1,13 @@
-# tests/test_agora.nim
-# Comprehensive unit & integration tests for Agora CLI and Guide management engine.
+# tests/test_garden.nim
+# Comprehensive unit & integration tests for Garden CLI and Guide management engine.
 
 import std/[os, osproc, strutils, json, unittest]
 import ../src/guide
 
-suite "Agora Guide Management & Marker Suite":
+suite "Garden Guide Management & Marker Suite":
 
   test "Guide install creates AGENTS.md if missing":
-    let tmpDir = getTempDir() / ("agora_test_" & $getCurrentProcessId())
+    let tmpDir = getTempDir() / ("garden_test_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
@@ -20,7 +20,7 @@ suite "Agora Guide Management & Marker Suite":
     check checkGuide(targetFile) == gsInstalled
 
   test "Guide install is idempotent and updates in-place":
-    let tmpDir = getTempDir() / ("agora_test_idempotent_" & $getCurrentProcessId())
+    let tmpDir = getTempDir() / ("garden_test_idempotent_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
@@ -44,7 +44,7 @@ suite "Agora Guide Management & Marker Suite":
     check secondContent.contains("Some custom text before.")
 
   test "Guide uninstall removes block cleanly and preserves surrounding text":
-    let tmpDir = getTempDir() / ("agora_test_uninstall_" & $getCurrentProcessId())
+    let tmpDir = getTempDir() / ("garden_test_uninstall_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
@@ -62,7 +62,7 @@ suite "Agora Guide Management & Marker Suite":
     check content.contains("# Postscript")
 
   test "Guide malformed markers fail fast to prevent data loss":
-    let tmpDir = getTempDir() / ("agora_test_malformed_" & $getCurrentProcessId())
+    let tmpDir = getTempDir() / ("garden_test_malformed_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
@@ -75,40 +75,40 @@ suite "Agora Guide Management & Marker Suite":
     check ok == false
     check msg.contains("Malformed markers")
 
-suite "Agora CLI Compilation & Telemetry Suite":
+suite "Garden CLI Compilation & Telemetry Suite":
 
-  test "Agora binary compiles and outputs clean --help and --version":
+  test "Garden binary compiles and outputs clean --help and --version":
     let root = getCurrentDir()
-    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:bin/agora src/agora.nim")
+    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim")
     check cCode == 0
-    check fileExists("bin/agora")
+    check fileExists("bin/garden")
 
-    let (hOut, hCode) = execCmdEx("bin/agora --help")
+    let (hOut, hCode) = execCmdEx("bin/garden --help")
     check hCode == 0
     check hOut.contains("Usage:")
     check hOut.contains("subcommand")
     check hOut.contains("launch")
     check hOut.contains("status")
 
-    let (vOut, vCode) = execCmdEx("bin/agora --version")
+    let (vOut, vCode) = execCmdEx("bin/garden --version")
     check vCode == 0
-    check vOut.contains("agora v")
+    check vOut.contains("garden v")
 
-  test "Agora init generates agora.toml and installs guide":
-    let tmpDir = getTempDir() / ("agora_test_init_" & $getCurrentProcessId())
+  test "Garden init generates garden.toml and installs guide":
+    let tmpDir = getTempDir() / ("garden_test_init_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let (initOut, initCode) = execCmdEx("bin/agora init " & quoteShell(tmpDir))
+    let (initOut, initCode) = execCmdEx("bin/garden init " & quoteShell(tmpDir))
     check initCode == 0
-    check fileExists(tmpDir / "agora.toml")
+    check fileExists(tmpDir / "garden.toml")
     check fileExists(tmpDir / "AGENTS.md")
     check dirExists(tmpDir / "docs" / "addenda")
-    check readFile(tmpDir / "agora.toml").contains("preferred_terminal")
+    check readFile(tmpDir / "garden.toml").contains("preferred_terminal")
     check readFile(tmpDir / "AGENTS.md").contains(BeginMarker)
 
-  test "Agora status outputs valid JSON with --json":
-    let (sOut, sCode) = execCmdEx("bin/agora status --json")
+  test "Garden status outputs valid JSON with --json":
+    let (sOut, sCode) = execCmdEx("bin/garden status --json")
     check sCode == 0
     let j = parseJson(sOut.strip())
     check j.hasKey("project")

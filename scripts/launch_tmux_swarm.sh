@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/launch_tmux_swarm.sh
-# Provisions a dedicated tmux session for an Agora worker swarm, registers identities
-# on the Locu Redis bus, arms listeners, and opens a visible terminal viewer (Ghostty/Terminal.app).
+# Provisions a dedicated tmux session for a Garden worker swarm, registers identities
+# on the Rhizo Redis bus, arms listeners, and opens a visible terminal viewer (Ghostty/Terminal.app).
 
 set -euo pipefail
 
@@ -10,9 +10,9 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Options:
-  --session-name <name>    tmux session name (default: agora-<dirname>)
+  --session-name <name>    tmux session name (default: garden-<dirname>)
   --project-dir <path>     Target project working directory (default: current directory)
-  --swarm-file <path>      Path to agora-swarm.json manifest
+  --swarm-file <path>      Path to garden-swarm.json manifest
   --terminal-app <app>     Terminal viewer app: Ghostty | Terminal | iTerm | none (default: auto)
   --force                  Kill existing tmux session if running
   --help                   Show this help message
@@ -65,22 +65,22 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v locu >/dev/null 2>&1 && ! command -v locutus >/dev/null 2>&1; then
-  echo "Error: locu is required but not found in PATH." >&2
-  echo "Install via npm: npm install -g @axiomantic/locu" >&2
+if ! command -v rhizo >/dev/null 2>&1 && ! command -v locu >/dev/null 2>&1 && ! command -v locutus >/dev/null 2>&1; then
+  echo "Error: rhizo (or locu) is required but not found in PATH." >&2
+  echo "Install via npm: npm install -g @axiomantic/rhizo" >&2
   exit 1
 fi
 
-LOCU_BIN="$(command -v locu || command -v locutus)"
+RHIZO_BIN="$(command -v rhizo || command -v locu || command -v locutus)"
 
 if [[ -z "$SESSION_NAME" ]]; then
   PROJECT_BASE="$(basename "$PROJECT_DIR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')"
-  SESSION_NAME="agora-${PROJECT_BASE}"
+  SESSION_NAME="garden-${PROJECT_BASE}"
 fi
 
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   if [[ $FORCE -eq 1 ]]; then
-    echo "[agora] Killing existing tmux session: $SESSION_NAME"
+    echo "[garden] Killing existing tmux session: $SESSION_NAME"
     tmux kill-session -t "$SESSION_NAME"
   else
     echo "Error: tmux session '$SESSION_NAME' already exists. Use --force to recreate." >&2
@@ -92,6 +92,14 @@ fi
 declare -a WORKER_NAMES=()
 declare -a WORKER_TAGS=()
 declare -a WORKER_COMMANDS=()
+
+if [[ -z "$SWARM_FILE" ]]; then
+  if [[ -f "$PROJECT_DIR/garden-swarm.json" ]]; then
+    SWARM_FILE="$PROJECT_DIR/garden-swarm.json"
+  elif [[ -f "$PROJECT_DIR/agora-swarm.json" ]]; then
+    SWARM_FILE="$PROJECT_DIR/agora-swarm.json"
+  fi
+fi
 
 if [[ -n "$SWARM_FILE" && -f "$SWARM_FILE" ]]; then
   if ! command -v jq >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1; then
@@ -127,7 +135,7 @@ if [[ ${#WORKER_NAMES[@]} -eq 0 ]]; then
   WORKER_COMMANDS=("" "" "")
 fi
 
-echo "[agora] Provisioning tmux session: $SESSION_NAME for project: $PROJECT_DIR"
+echo "[garden] Provisioning tmux session: $SESSION_NAME for project: $PROJECT_DIR"
 
 # 1. Create first worker window (index 0)
 FIRST_NAME="${WORKER_NAMES[0]}"
@@ -136,13 +144,13 @@ FIRST_CMD="${WORKER_COMMANDS[0]}"
 
 tmux new-session -d -s "$SESSION_NAME" -n "$FIRST_NAME" -c "$PROJECT_DIR"
 tmux send-keys -t "$SESSION_NAME:0" "cd $(printf %q "$PROJECT_DIR")" C-m
-tmux send-keys -t "$SESSION_NAME:0" "export LOCUTUS_AGENT_NAME=$(printf %q "$FIRST_NAME")" C-m
-tmux send-keys -t "$SESSION_NAME:0" "$LOCU_BIN open $(printf %q "$FIRST_NAME") $(printf %q "$FIRST_TAGS")" C-m
+tmux send-keys -t "$SESSION_NAME:0" "export RHIZO_AGENT_NAME=$(printf %q "$FIRST_NAME") LOCUTUS_AGENT_NAME=$(printf %q "$FIRST_NAME")" C-m
+tmux send-keys -t "$SESSION_NAME:0" "$RHIZO_BIN open $(printf %q "$FIRST_NAME") $(printf %q "$FIRST_TAGS")" C-m
 
 if [[ -n "$FIRST_CMD" ]]; then
   tmux send-keys -t "$SESSION_NAME:0" "$FIRST_CMD" C-m
 else
-  tmux send-keys -t "$SESSION_NAME:0" "$LOCU_BIN listen $(printf %q "$FIRST_NAME")" C-m
+  tmux send-keys -t "$SESSION_NAME:0" "$RHIZO_BIN listen $(printf %q "$FIRST_NAME")" C-m
 fi
 
 # 2. Create subsequent worker windows
@@ -153,20 +161,20 @@ for (( i=1; i<${#WORKER_NAMES[@]}; i++ )); do
 
   tmux new-window -t "$SESSION_NAME" -n "$WNAME" -c "$PROJECT_DIR"
   tmux send-keys -t "$SESSION_NAME:$i" "cd $(printf %q "$PROJECT_DIR")" C-m
-  tmux send-keys -t "$SESSION_NAME:$i" "export LOCUTUS_AGENT_NAME=$(printf %q "$WNAME")" C-m
-  tmux send-keys -t "$SESSION_NAME:$i" "$LOCU_BIN open $(printf %q "$WNAME") $(printf %q "$WTAGS")" C-m
+  tmux send-keys -t "$SESSION_NAME:$i" "export RHIZO_AGENT_NAME=$(printf %q "$WNAME") LOCUTUS_AGENT_NAME=$(printf %q "$WNAME")" C-m
+  tmux send-keys -t "$SESSION_NAME:$i" "$RHIZO_BIN open $(printf %q "$WNAME") $(printf %q "$WTAGS")" C-m
 
   if [[ -n "$WCMD" ]]; then
     tmux send-keys -t "$SESSION_NAME:$i" "$WCMD" C-m
   else
-    tmux send-keys -t "$SESSION_NAME:$i" "$LOCU_BIN listen $(printf %q "$WNAME")" C-m
+    tmux send-keys -t "$SESSION_NAME:$i" "$RHIZO_BIN listen $(printf %q "$WNAME")" C-m
   fi
 done
 
 # Select window 0 initially
 tmux select-window -t "$SESSION_NAME:0"
 
-echo "[agora] Spawned ${#WORKER_NAMES[@]} worker windows in tmux session '$SESSION_NAME'."
+echo "[garden] Spawned ${#WORKER_NAMES[@]} worker windows in tmux session '$SESSION_NAME'."
 
 # 3. Launch OS-level Terminal Viewer
 if [[ "$TERMINAL_APP" == "auto" ]]; then
@@ -182,7 +190,7 @@ if [[ "$TERMINAL_APP" == "auto" ]]; then
 fi
 
 if [[ "$TERMINAL_APP" != "none" && "$(uname -s)" == "Darwin" ]]; then
-  echo "[agora] Launching viewer in $TERMINAL_APP..."
+  echo "[garden] Launching viewer in $TERMINAL_APP..."
   case "$TERMINAL_APP" in
     Ghostty|ghostty)
       # Launch Ghostty with attach command
@@ -208,7 +216,7 @@ if [[ "$TERMINAL_APP" != "none" && "$(uname -s)" == "Darwin" ]]; then
       " >/dev/null 2>&1 || true
       ;;
     *)
-      echo "[agora] Unknown terminal app '$TERMINAL_APP'; skipping auto-launch." >&2
+      echo "[garden] Unknown terminal app '$TERMINAL_APP'; skipping auto-launch." >&2
       ;;
   esac
 fi

@@ -1,6 +1,6 @@
 ---
 name: choose-personas
-description: "Selects, balances, and configures specialized agent personas for an Agora swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. For every persona, explicitly recommends the optimal coding harness (e.g. OpenCode Desktop, Claude Code CLI, Antigravity, OpenAI Codex) and foundation model (e.g. Claude 3.5 Sonnet, Claude 3 Opus, GPT-4o, local models) aligned with operator preferences. Solicits operator confirmation or edits with candidate alternatives via interactive questions, and outputs agora-swarm.json. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
+description: "Selects, balances, and configures specialized agent personas for a Garden swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. For every persona, explicitly recommends the optimal coding harness (e.g. OpenCode Desktop, Claude Code CLI, Antigravity, OpenAI Codex) and foundation model (e.g. Gemini 3.8 Flash, Claude 3.5 Sonnet, Claude 3 Opus, GPT-4o, local models) aligned with operator preferences. Solicits operator confirmation or edits with candidate alternatives via interactive questions, and outputs garden-swarm.json. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
 ---
 
 # `choose-personas`: Dynamic Swarm Persona Selection & Harness/Model Pairing
@@ -39,13 +39,13 @@ graph TD
 
 ## 2. Harness & Model Matching Matrix
 
-When proposing personas, the assistant must explicitly pair each persona with an appropriate **coding harness** and **foundation model**, taking operator preferences into account:
+When proposing personas, the assistant must explicitly pair each persona with an appropriate **coding harness** and **foundation model**, taking operator preferences into account (defaulting to Antigravity + Gemini 3.8 Flash for rapid implementation, and invoking Claude for deep adversarial auditing):
 
 | Role Mandate | Recommended Harness | Recommended Model Tier | Rationale |
 | :--- | :--- | :--- | :--- |
-| **Architectural Design & Systems Modeling** | **OpenCode Desktop** or **Antigravity** | **Claude 3.5 Sonnet** or **GPT-4o** | Fast token throughput, deep reasoning, superior multi-file architectural comprehension, and native background ear support. |
+| **Architectural Design & Systems Modeling** | **Antigravity** or **OpenCode** | **Gemini 3.8 Flash** or **Claude 3.5 Sonnet** | Fast token throughput, deep reasoning, superior multi-file architectural comprehension, and native background ear support. |
 | **Adversarial Audit & Code Quality Purism** | **Claude Code CLI** | **Claude 3 Opus** or **Claude 3.5 Sonnet** | Uncompromising adherence to instructions, meticulous attention to negative controls, zero tolerance for superficial green tests. |
-| **DevEx, Rapid Prototyping & Implementation** | **Antigravity** or **OpenCode** | **Claude 3.5 Sonnet** | Native reactive tool execution (`run_command`), rapid file modification, direct terminal feedback. |
+| **DevEx, Rapid Prototyping & Implementation** | **Antigravity** | **Gemini 3.8 Flash** | Native reactive tool execution (`run_command`), rapid file modification, direct terminal feedback. |
 | **Hermetic / Local Security Analysis** | **Headless Terminal Worker** | **Ollama / Local DeepSeek-R1** | Air-gapped execution for proprietary credentials, licensing checks, or sensitive security audits. |
 
 ---
@@ -63,7 +63,7 @@ sequenceDiagram
     Note over Orch: Formulates primary triad + 2 alternate candidates
     Orch->>User: Renders interactive ask_question modal with recommendations & alternatives
     User-->>Orch: Submits chosen triad (or specifies custom modifications)
-    Orch->>Repo: Writes agora-swarm.json manifest
+    Orch->>Repo: Writes garden-swarm.json manifest
 ```
 
 ### Step 1: Codebase & Task Analysis
@@ -90,8 +90,8 @@ Invoke `ask_question` with structured, selectable options:
 - Option 2: Alternative balance (e.g. replacing Purist with Performance Engineer).
 - Option 3: Custom configuration (allows user write-in).
 
-### Step 4: Generate Swarm Manifest (`agora-swarm.json`)
-Once ratified, write `agora-swarm.json` to the target project directory:
+### Step 4: Generate Swarm Manifest (`garden-swarm.json`)
+Once ratified, write `garden-swarm.json` to the target project directory:
 
 ```json
 {
@@ -102,11 +102,11 @@ Once ratified, write `agora-swarm.json` to the target project directory:
       "name": "architect",
       "persona": "Marcus Vance",
       "role": "Staff Systems Architect",
-      "harness": "opencode",
-      "model": "claude-3-5-sonnet",
+      "harness": "antigravity",
+      "model": "gemini-3-8-flash",
       "tags": ["systems", "architecture", "coordinator"],
       "system_prompt": "You are Marcus Vance, Staff Systems Architect...",
-      "startup_command": "opencode --agent architect"
+      "startup_command": "rhizo listen architect"
     },
     {
       "name": "auditor",
@@ -123,10 +123,10 @@ Once ratified, write `agora-swarm.json` to the target project directory:
       "persona": "Elena Rostova",
       "role": "DevEx & Implementation Lead",
       "harness": "antigravity",
-      "model": "claude-3-5-sonnet",
+      "model": "gemini-3-8-flash",
       "tags": ["dev", "devex", "build"],
       "system_prompt": "You are Elena Rostova, DevEx Lead...",
-      "startup_command": "locu listen implementer"
+      "startup_command": "rhizo listen implementer"
     }
   ]
 }
@@ -137,6 +137,6 @@ Once ratified, write `agora-swarm.json` to the target project directory:
 ## 4. Verification & Handoff
 
 Before concluding:
-1. Verify `agora-swarm.json` is syntactically valid JSON.
+1. Verify `garden-swarm.json` is syntactically valid JSON.
 2. Confirm each worker has unique `name` and non-empty `tags`.
 3. Proceed directly to [`launch-workers`](../launch-workers/SKILL.md).
