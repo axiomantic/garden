@@ -1,0 +1,25 @@
+{
+  "name": "@axiomantic/agora",
+  "version": "0.1.0",
+  "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Locu & Braid",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "keywords": [
+    "multi-agent",
+    "ai-agents",
+    "orchestration",
+    "tmux",
+    "dialectics",
+    "locu",
+    "braid",
+    "swarm"
+  ],
+  "author": "Axiomantic",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axiomantic/agora.git"
+  }
+}

@@ -1,0 +1,29 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Dependencies & Caches
+node_modules/
+.npm
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+
+# Agent & Workspace State (Zero Dirty Commits Invariant)
+.locutus.agent
+.braid.agent
+.braid.json
+workspaces/
+*.lock
+*.tmp.*
+
+# Local Swarm Logs & Sessions
+*.log
+.agora/
