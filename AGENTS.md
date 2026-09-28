@@ -230,3 +230,37 @@ rm -rf "$STRAND_DIR"
 command -v rift >/dev/null 2>&1 && rift prune >/dev/null 2>&1 || true
 ```
 <!-- END BRAID GUIDE -->
+
+<!-- BEGIN AGORA GUIDE [v1.0] -->
+<!-- DO NOT EDIT DIRECTLY: Managed by `agora guide install` -->
+
+## Agora Multi-Agent Swarm & Ceremony Guide
+
+Agora directs high-level methodology, persona deliberations, and synchronized task execution on top of Locu (transport) and Braid (workspace integrator).
+
+### 0. Self-Bootstrapping Prerequisite
+This project requires `locu`, `braid`, and `agora`. If missing, install via npm:
+```bash
+npm install -g @axiomantic/locu @axiomantic/braid @axiomantic/agora
+```
+
+### 1. Invariants & Epistemic Protocol
+* **Zero Theatrical Dialogue**:
+  Every dialectical exchange must cite empirical evidence obtained from tool execution (file line citations, test suite runs, AST analysis, compiler output). Theatrical roleplay without tool grounding is strictly prohibited.
+* **Single-Source Planning**:
+  All tasks, locks, and strands must be coordinated via `implementation_plan.md`. Dynamic progress must be tracked in lockstep with plan checkboxes (`- [ ]` to `- [x]`) and harness To-Do tracking.
+* **Emergent Design Addendum Protocol**:
+  Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
+
+### 2. Fleet Lifecycle & Multiplexer Discipline
+* **Tmux Multiplexing**:
+  All swarm workers run inside managed tmux panes created via `agora launch` or `scripts/launch_tmux_swarm.sh`. Never detach unmanaged background processes with `&` or redirect output.
+* **Continuous Listening**:
+  Workers must keep their Locu listener active (`locu listen <agent>`) with zero-timeout infinite wait to prevent token thrashing.
+
+### 3. The Two-Key Gate & Strand Weaving
+Never weave a strand into the canonical trunk without passing both keys:
+* **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
+* **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
+* **Weave**: `braid weave && locu ack queue:<project>:tasks <task_id>`
+<!-- END AGORA GUIDE -->
