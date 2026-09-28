@@ -65,13 +65,13 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v rhizo >/dev/null 2>&1 && ! command -v locu >/dev/null 2>&1 && ! command -v locutus >/dev/null 2>&1; then
-  echo "Error: rhizo (or locu) is required but not found in PATH." >&2
+if ! command -v rhizo >/dev/null 2>&1; then
+  echo "Error: rhizo is required but not found in PATH." >&2
   echo "Install via npm: npm install -g @axiomantic/rhizo" >&2
   exit 1
 fi
 
-RHIZO_BIN="$(command -v rhizo || command -v locu || command -v locutus)"
+RHIZO_BIN="rhizo"
 
 if [[ -z "$SESSION_NAME" ]]; then
   PROJECT_BASE="$(basename "$PROJECT_DIR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '_')"
@@ -93,12 +93,8 @@ declare -a WORKER_NAMES=()
 declare -a WORKER_TAGS=()
 declare -a WORKER_COMMANDS=()
 
-if [[ -z "$SWARM_FILE" ]]; then
-  if [[ -f "$PROJECT_DIR/garden-swarm.json" ]]; then
-    SWARM_FILE="$PROJECT_DIR/garden-swarm.json"
-  elif [[ -f "$PROJECT_DIR/agora-swarm.json" ]]; then
-    SWARM_FILE="$PROJECT_DIR/agora-swarm.json"
-  fi
+if [[ -z "$SWARM_FILE" && -f "$PROJECT_DIR/garden-swarm.json" ]]; then
+  SWARM_FILE="$PROJECT_DIR/garden-swarm.json"
 fi
 
 if [[ -n "$SWARM_FILE" && -f "$SWARM_FILE" ]]; then
@@ -144,7 +140,7 @@ FIRST_CMD="${WORKER_COMMANDS[0]}"
 
 tmux new-session -d -s "$SESSION_NAME" -n "$FIRST_NAME" -c "$PROJECT_DIR"
 tmux send-keys -t "$SESSION_NAME:0" "cd $(printf %q "$PROJECT_DIR")" C-m
-tmux send-keys -t "$SESSION_NAME:0" "export RHIZO_AGENT_NAME=$(printf %q "$FIRST_NAME") LOCUTUS_AGENT_NAME=$(printf %q "$FIRST_NAME")" C-m
+tmux send-keys -t "$SESSION_NAME:0" "export RHIZO_AGENT_NAME=$(printf %q "$FIRST_NAME")" C-m
 tmux send-keys -t "$SESSION_NAME:0" "$RHIZO_BIN open $(printf %q "$FIRST_NAME") $(printf %q "$FIRST_TAGS")" C-m
 
 if [[ -n "$FIRST_CMD" ]]; then
@@ -161,7 +157,7 @@ for (( i=1; i<${#WORKER_NAMES[@]}; i++ )); do
 
   tmux new-window -t "$SESSION_NAME" -n "$WNAME" -c "$PROJECT_DIR"
   tmux send-keys -t "$SESSION_NAME:$i" "cd $(printf %q "$PROJECT_DIR")" C-m
-  tmux send-keys -t "$SESSION_NAME:$i" "export RHIZO_AGENT_NAME=$(printf %q "$WNAME") LOCUTUS_AGENT_NAME=$(printf %q "$WNAME")" C-m
+  tmux send-keys -t "$SESSION_NAME:$i" "export RHIZO_AGENT_NAME=$(printf %q "$WNAME")" C-m
   tmux send-keys -t "$SESSION_NAME:$i" "$RHIZO_BIN open $(printf %q "$WNAME") $(printf %q "$WTAGS")" C-m
 
   if [[ -n "$WCMD" ]]; then

@@ -43,8 +43,8 @@ Options for 'teardown':
 proc findProjectRoot(startDir: string = getCurrentDir()): string =
   var dir = startDir
   while dir.len > 0:
-    if fileExists(dir / "garden.toml") or fileExists(dir / "agora.toml") or
-       fileExists(dir / "garden-swarm.json") or fileExists(dir / "agora-swarm.json") or
+    if fileExists(dir / "garden.toml") or 
+       fileExists(dir / "garden-swarm.json") or 
        dirExists(dir / ".git"):
       return dir
     let parent = dir.parentDir()
@@ -111,8 +111,7 @@ proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, termin
     cmd &= " --swarm-file " & quoteShell(swarmFile)
   elif fileExists(root / "garden-swarm.json"):
     cmd &= " --swarm-file " & quoteShell(root / "garden-swarm.json")
-  elif fileExists(root / "agora-swarm.json"):
-    cmd &= " --swarm-file " & quoteShell(root / "agora-swarm.json")
+
   if terminalApp.len > 0:
     cmd &= " --terminal-app " & quoteShell(terminalApp)
   if force:
@@ -133,14 +132,6 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
   # 1. Query tmux
   var (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
   var activeSession = sessionName
-  if tmuxCode != 0:
-    # Try legacy prefix agora-
-    let legacySession = "agora-" & projBase
-    let (legOut, legCode) = execCmdEx("tmux has-session -t " & quoteShell(legacySession))
-    if legCode == 0:
-      activeSession = legacySession
-      tmuxCode = 0
-
   let tmuxActive = (tmuxCode == 0)
   statusObj["tmux_active"] = %tmuxActive
 
@@ -158,8 +149,8 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
         tmuxWindows.add(wObj)
   statusObj["windows"] = %tmuxWindows
 
-  # 2. Query Rhizo heartbeats via 'rhizo who --json' (fallback to 'locu who --json')
-  var (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json 2>/dev/null || locu who --json")
+  # 2. Query Rhizo heartbeats via 'rhizo who --json'
+  var (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
   if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
     try:
       let rhizoJson = parseJson(rhizoOut.strip())
@@ -169,8 +160,8 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
   else:
     statusObj["rhizo"] = newJNull()
 
-  # 3. Query Vine active strands via 'vine list' (fallback to 'braid list')
-  var (vineOut, vineCode) = execCmdEx("vine list 2>/dev/null || braid list")
+  # 3. Query Vine active strands via 'vine list'
+  var (vineOut, vineCode) = execCmdEx("vine list")
   if vineCode == 0 and vineOut.strip().startsWith("{"):
     try:
       let vineJson = parseJson(vineOut.strip())
@@ -220,11 +211,8 @@ proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
 
   # 1. Gracefully close registered agents in Redis
   var swarmFile = swarmFileParam
-  if swarmFile.len == 0:
-    if fileExists(root / "garden-swarm.json"):
-      swarmFile = root / "garden-swarm.json"
-    elif fileExists(root / "agora-swarm.json"):
-      swarmFile = root / "agora-swarm.json"
+  if swarmFile.len == 0 and fileExists(root / "garden-swarm.json"):
+    swarmFile = root / "garden-swarm.json"
 
   if swarmFile.len > 0 and fileExists(swarmFile):
     try:
@@ -234,18 +222,12 @@ proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
           if w.hasKey("name"):
             let wname = w["name"].getStr()
             echo "[garden] Closing agent @" & wname & " in Redis..."
-            discard execCmdEx("rhizo close " & quoteShell(wname) & " 2>/dev/null || locu close " & quoteShell(wname))
+            discard execCmdEx("rhizo close " & quoteShell(wname))
     except CatchableError: discard
 
   # 2. Terminate tmux session
   var targetSession = sessionName
   var (hasOut, hasCode) = execCmdEx("tmux has-session -t " & quoteShell(targetSession))
-  if hasCode != 0:
-    let legacySession = "agora-" & projBase
-    let (_, legCode) = execCmdEx("tmux has-session -t " & quoteShell(legacySession))
-    if legCode == 0:
-      targetSession = legacySession
-      hasCode = 0
 
   if hasCode == 0:
     echo "[garden] Terminating tmux session: " & targetSession
