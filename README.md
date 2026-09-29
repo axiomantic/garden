@@ -69,6 +69,29 @@ Garden is organized into a clean, batteries-included catalog of self-explanatory
 
 ---
 
+## Installation
+
+### 1. For AI Coding Assistants (Interactive Skill Setup)
+Install the Garden skills into your coding assistants (Claude Code, Antigravity, Cursor, etc.):
+```bash
+npx skills add axiomantic/garden
+```
+*(Launches the interactive selector to choose which skills and which agents to equip. Self-bootstraps Rhizo & Vine automatically).*
+
+### 2. Standalone CLI Installation
+Install the compiled CLI tool directly onto your `$PATH`:
+```bash
+npm install -g @axiomantic/garden
+```
+
+### 3. Repository Coordination Guide
+Install the Garden multi-agent swarm coordination protocol directly into any project's `AGENTS.md`:
+```bash
+garden guide install
+```
+
+---
+
 ## System Prerequisites
 
 1. **`tmux`** (3.0+):
