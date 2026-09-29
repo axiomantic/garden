@@ -10,15 +10,20 @@ description: "Master entrypoint and end-to-end ceremony director for multi-agent
 
 ## 0. Prerequisite & Automatic Bootstrapping
 
-All swarm ceremonies require the native `garden` CLI. If `command -v garden` fails, immediately install it:
+All swarm ceremonies require the native `garden` CLI. If `command -v garden` fails, install it:
 ```bash
+# Recommended: Install globally for fastest native execution (2ms) and clean syntax:
 npm install -g @axiomantic/garden
-```
-Or install the full coordination triad:
-```bash
+
+# Or install the full coordination triad:
 npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
 ```
-Once installed, `garden` is available on `$PATH` and provisions architecture-appropriate binaries automatically.
+
+> [!TIP]
+> **Zero-Install Fallback (`npx`)**: If you are in a restricted environment, container, or CI runner where global installation is prohibited or unavailable, you can run commands directly without installing by prefixing with `npx -y`:
+> ```bash
+> npx -y @axiomantic/garden <command>
+> ```
 
 ---
 

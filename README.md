@@ -110,6 +110,12 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
 npm install -g @axiomantic/garden
 ```
 
+> [!TIP]
+> **Zero-Install Run via NPX**: In restricted or containerized environments where global installation is unavailable, you can run any command directly without installing:
+> ```bash
+> npx -y @axiomantic/garden <command>
+> ```
+
 ### 3. Repository Coordination Guide
 
 Install the Garden multi-agent swarm coordination protocol directly into any project's `AGENTS.md`:
