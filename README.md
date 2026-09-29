@@ -67,24 +67,51 @@ Garden is organized into a clean, batteries-included catalog of self-explanatory
 | **[`plan-implementation`](skills/plan-implementation/SKILL.md)** | **Master Scheduling** | Authors `implementation_plan.md` defining task assignment matrices, `rhizo` distributed fencing locks, `vine` strand workflows, dynamic markdown checkboxes, harness To-Do integration, and emergent design addenda. |
 | **[`orchestrate-swarm`](skills/orchestrate-swarm/SKILL.md)** | **Main-Chat Governor** | Governs execution from the primary chat session: dispatches tasks over Redis, tracks heartbeats, ratifies emergent design addenda, verifies Two-Key gate passes, and triggers `vine weave`. |
 
+## Standalone Yet Designed for the Axiomantic Triad
+
+Garden is completely standalone and can direct multi-agent dialectics, persona selection, and tmux worker swarms on any codebase.
+
+However, Garden is designed from the ground up to pair seamlessly with **Rhizo** and **Vine**:
+- [**Rhizo**](https://github.com/axiomantic/rhizo) (Transport & Concurrency): Inter-agent messaging bus, monotonic fencing locks, and task queues over Redis.
+- [**Vine**](https://github.com/axiomantic/vine) (Workspaces & Verification): Sub-second APFS Copy-on-Write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
+- **Garden** (Swarm Ceremonies): Tmux worker fleet provisioning, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
+
 ---
 
 ## Installation
 
-### 1. For AI Coding Assistants (Interactive Skill Setup)
-Install the Garden skills into your coding assistants (Claude Code, Antigravity, Cursor, etc.):
+### 1. For AI Coding Assistants (Recommended)
+
+Install the skills globally (`-g`) across all your coding assistants (Claude Code, Antigravity, Cursor, Codex, OpenCode, etc.):
+
 ```bash
-npx skills add axiomantic/garden
+# Recommended: Install the complete multi-agent triad globally
+npx skills add -g axiomantic/rhizo
+npx skills add -g axiomantic/vine
+npx skills add -g axiomantic/garden
 ```
-*(Launches the interactive selector to choose which skills and which agents to equip. Self-bootstraps Rhizo & Vine automatically).*
+
+*(Each skill automatically self-bootstraps its native CLI binary if it is not already installed on your system).*
+
+To install only Garden (includes the 6 Garden skills):
+```bash
+npx skills add -g axiomantic/garden
+```
 
 ### 2. Standalone CLI Installation
-Install the compiled CLI tool directly onto your `$PATH`:
+
+Install the compiled CLI tools directly onto your `$PATH`:
+
 ```bash
+# Install all three tools:
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+
+# Or install Garden alone:
 npm install -g @axiomantic/garden
 ```
 
 ### 3. Repository Coordination Guide
+
 Install the Garden multi-agent swarm coordination protocol directly into any project's `AGENTS.md`:
 ```bash
 garden guide install
