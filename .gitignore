@@ -8,7 +8,8 @@ Thumbs.db
 .vscode/
 
 # Dependencies & Caches
-bin/
+bin/*
+!bin/run.js
 node_modules/
 .npm
 __pycache__/

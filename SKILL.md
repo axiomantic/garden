@@ -8,6 +8,18 @@ description: "Master entrypoint and end-to-end ceremony director for multi-agent
 > **The Sovereign Orchestration Layer for Autonomous AI Swarms**  
 > *Where `rhizo` is the transport nervous system and `vine` is the workspace integrator, `garden` is the institutional intellect, deliberation crucible, and master ceremony conductor.*
 
+## 0. Prerequisite & Automatic Bootstrapping
+
+All swarm ceremonies require the native `garden` CLI. If `command -v garden` fails, immediately install it:
+```bash
+npm install -g @axiomantic/garden
+```
+Or install the full coordination triad:
+```bash
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+```
+Once installed, `garden` is available on `$PATH` and provisions architecture-appropriate binaries automatically.
+
 ---
 
 ## 1. Architectural Architecture & Layering
