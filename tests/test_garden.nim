@@ -79,19 +79,19 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
   test "Garden binary compiles and outputs clean --help and --version":
     let root = getCurrentDir()
-    let binPath = "bin" / ("garden" & ExeExt)
-    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:" & binPath & " src/garden.nim")
+    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim")
     check cCode == 0
-    check fileExists(binPath)
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    check fileExists(exePath)
 
-    let (hOut, hCode) = execCmdEx(binPath & " --help")
+    let (hOut, hCode) = execCmdEx(exePath & " --help")
     check hCode == 0
     check hOut.contains("Usage:")
     check hOut.contains("subcommand")
     check hOut.contains("launch")
     check hOut.contains("status")
 
-    let (vOut, vCode) = execCmdEx(binPath & " --version")
+    let (vOut, vCode) = execCmdEx(exePath & " --version")
     check vCode == 0
     check vOut.contains("garden v")
 
@@ -100,8 +100,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let binPath = "bin" / ("garden" & ExeExt)
-    let (initOut, initCode) = execCmdEx(binPath & " init " & quoteShell(tmpDir))
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (initOut, initCode) = execCmdEx(exePath & " init " & quoteShell(tmpDir))
     check initCode == 0
     check fileExists(tmpDir / "garden.toml")
     check fileExists(tmpDir / "AGENTS.md")
@@ -110,8 +110,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check readFile(tmpDir / "AGENTS.md").contains(BeginMarker)
 
   test "Garden status outputs valid JSON with --json":
-    let binPath = "bin" / ("garden" & ExeExt)
-    let (sOut, sCode) = execCmdEx(binPath & " status --json")
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (sOut, sCode) = execCmdEx(exePath & " status --json")
     check sCode == 0
     let j = parseJson(sOut.strip())
     check j.hasKey("project")
