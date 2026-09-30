@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.6] - 2026-09-30
+
+### Fixed
+- **Cross-Platform Test Execution**: Resolved binary executable naming conventions (`ExeExt`) across Windows, macOS, and Linux test runners.
+- **Resilient Swarm Status**: Added robust error handling in `doStatus` to gracefully handle corrupted or empty worker metadata files.
 
 ## [0.1.5] - 2026-09-30
 

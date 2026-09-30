@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json, parseopt]
 import guide
 
 const
-  GardenVersion = "0.1.5"
+  GardenVersion = "0.1.6"
   DefaultConfigFileName = "garden.toml"
 
 proc printHelp() =
