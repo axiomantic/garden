@@ -112,9 +112,12 @@ suite "Garden CLI Compilation & Telemetry Suite":
   test "Garden status outputs valid JSON with --json":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (sOut, sCode) = execCmdEx(exePath & " status --json")
+    if sCode != 0:
+      checkpoint("status failed with code " & $sCode & ": " & sOut)
     check sCode == 0
-    let j = parseJson(sOut.strip())
-    check j.hasKey("project")
-    check j.hasKey("session_name")
-    check j.hasKey("tmux_active")
-    check j.hasKey("windows")
+    if sCode == 0:
+      let j = parseJson(sOut.strip())
+      check j.hasKey("project")
+      check j.hasKey("session_name")
+      check j.hasKey("tmux_active")
+      check j.hasKey("windows")

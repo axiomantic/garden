@@ -121,88 +121,93 @@ proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, termin
   return exitCode
 
 proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
-  let root = findProjectRoot()
-  let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
-  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
+  try:
+    let root = findProjectRoot()
+    let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
+    let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
 
-  var statusObj = newJObject()
-  statusObj["project"] = %root
-  statusObj["session_name"] = %sessionName
+    var statusObj = newJObject()
+    statusObj["project"] = %root
+    statusObj["session_name"] = %sessionName
 
-  # 1. Query tmux
-  var (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
-  var activeSession = sessionName
-  let tmuxActive = (tmuxCode == 0)
-  statusObj["tmux_active"] = %tmuxActive
-
-  var tmuxWindows: seq[JsonNode] = @[]
-  if tmuxActive:
-    let (wOut, _) = execCmdEx("tmux list-windows -t " & quoteShell(activeSession) & " -F '#{window_index}:#{window_name}:#{pane_current_command}'")
-    for line in wOut.strip().splitLines():
-      if line.len == 0: continue
-      let parts = line.split(":", 2)
-      if parts.len >= 2:
-        var wObj = newJObject()
-        wObj["index"] = %parts[0]
-        wObj["name"] = %parts[1]
-        wObj["command"] = %(if parts.len > 2: parts[2] else: "")
-        tmuxWindows.add(wObj)
-  statusObj["windows"] = %tmuxWindows
-
-  # 2. Query Rhizo heartbeats via 'rhizo who --json'
-  var (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
-  if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
+    # 1. Query tmux
+    var tmuxActive = false
+    var tmuxWindows: seq[JsonNode] = @[]
     try:
-      let rhizoJson = parseJson(rhizoOut.strip())
-      statusObj["rhizo"] = rhizoJson
+      let (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
+      tmuxActive = (tmuxCode == 0)
+      if tmuxActive:
+        let (wOut, _) = execCmdEx("tmux list-windows -t " & quoteShell(sessionName) & " -F '#{window_index}:#{window_name}:#{pane_current_command}'")
+        for line in wOut.strip().splitLines():
+          if line.len == 0: continue
+          let parts = line.split(":", 2)
+          if parts.len >= 2:
+            var wObj = newJObject()
+            wObj["index"] = %parts[0]
+            wObj["name"] = %parts[1]
+            wObj["command"] = %(if parts.len > 2: parts[2] else: "")
+            tmuxWindows.add(wObj)
+    except CatchableError:
+      discard
+
+    statusObj["tmux_active"] = %tmuxActive
+    statusObj["windows"] = %tmuxWindows
+
+    # 2. Query Rhizo heartbeats via 'rhizo who --json'
+    try:
+      let (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
+      if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
+        statusObj["rhizo"] = parseJson(rhizoOut.strip())
+      else:
+        statusObj["rhizo"] = newJNull()
     except CatchableError:
       statusObj["rhizo"] = newJNull()
-  else:
-    statusObj["rhizo"] = newJNull()
 
-  # 3. Query Vine active strands via 'vine list'
-  var (vineOut, vineCode) = execCmdEx("vine list")
-  if vineCode == 0 and vineOut.strip().startsWith("{"):
+    # 3. Query Vine active strands via 'vine list'
     try:
-      let vineJson = parseJson(vineOut.strip())
-      statusObj["vine_strands"] = vineJson
+      let (vineOut, vineCode) = execCmdEx("vine list")
+      if vineCode == 0 and vineOut.strip().startsWith("{"):
+        statusObj["vine_strands"] = parseJson(vineOut.strip())
+      else:
+        statusObj["vine_strands"] = newJNull()
     except CatchableError:
       statusObj["vine_strands"] = newJNull()
-  else:
-    statusObj["vine_strands"] = newJNull()
 
-  if jsonOutput:
-    echo pretty(statusObj)
-  else:
-    echo "=========================================================="
-    echo "  Garden Swarm Telemetry: " & activeSession
-    echo "=========================================================="
-    echo "Project: " & root
-    echo "Tmux Active: " & (if tmuxActive: "YES (" & $tmuxWindows.len & " windows)" else: "NO")
-    if tmuxWindows.len > 0:
-      echo "Windows:"
-      for w in tmuxWindows:
-        echo "  [" & w["index"].getStr() & "] " & w["name"].getStr() & " (" & w["command"].getStr() & ")"
-    
-    if not statusObj["rhizo"].isNil and statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents"):
-      let agents = statusObj["rhizo"]["agents"]
-      echo "\nRhizo Agents Online (" & $agents.len & "):"
-      for a in agents:
-        let aname = if a.hasKey("name"): a["name"].getStr() else: "unknown"
-        let astate = if a.hasKey("state"): a["state"].getStr() else: "active"
-        let atags = if a.hasKey("tags"): a["tags"].getStr() else: ""
-        echo "  @" & aname & " [" & astate & "] tags: " & atags
+    if jsonOutput:
+      echo pretty(statusObj)
+    else:
+      echo "=========================================================="
+      echo "  Garden Swarm Telemetry: " & sessionName
+      echo "=========================================================="
+      echo "Project: " & root
+      echo "Tmux Active: " & (if tmuxActive: "YES (" & $tmuxWindows.len & " windows)" else: "NO")
+      if tmuxWindows.len > 0:
+        echo "Windows:"
+        for w in tmuxWindows:
+          echo "  [" & w["index"].getStr() & "] " & w["name"].getStr() & " (" & w["command"].getStr() & ")"
+      
+      if not statusObj["rhizo"].isNil and statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents"):
+        let agents = statusObj["rhizo"]["agents"]
+        echo "\nRhizo Agents Online (" & $agents.len & "):"
+        for a in agents:
+          let aname = if a.hasKey("name"): a["name"].getStr() else: "unknown"
+          let astate = if a.hasKey("state"): a["state"].getStr() else: "active"
+          let atags = if a.hasKey("tags"): a["tags"].getStr() else: ""
+          echo "  @" & aname & " [" & astate & "] tags: " & atags
 
-    if not statusObj["vine_strands"].isNil and statusObj["vine_strands"].kind == JObject and statusObj["vine_strands"].hasKey("strands"):
-      let strands = statusObj["vine_strands"]["strands"]
-      echo "\nActive Vine Strands (" & $strands.len & "):"
-      for s in strands:
-        let tid = if s.hasKey("task_id"): s["task_id"].getStr() else: ""
-        let branch = if s.hasKey("branch"): s["branch"].getStr() else: ""
-        echo "  Strand: " & tid & " -> " & branch
-    echo "=========================================================="
+      if not statusObj["vine_strands"].isNil and statusObj["vine_strands"].kind == JObject and statusObj["vine_strands"].hasKey("strands"):
+        let strands = statusObj["vine_strands"]["strands"]
+        echo "\nActive Vine Strands (" & $strands.len & "):"
+        for s in strands:
+          let tid = if s.hasKey("task_id"): s["task_id"].getStr() else: ""
+          let branch = if s.hasKey("branch"): s["branch"].getStr() else: ""
+          echo "  Strand: " & tid & " -> " & branch
+      echo "=========================================================="
 
-  return 0
+    return 0
+  except CatchableError as e:
+    stderr.writeLine("[garden] Error in doStatus: " & e.msg)
+    return 1
 
 proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
   let root = findProjectRoot()
