@@ -79,18 +79,19 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
   test "Garden binary compiles and outputs clean --help and --version":
     let root = getCurrentDir()
-    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim")
+    let binPath = "bin" / ("garden" & ExeExt)
+    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:" & binPath & " src/garden.nim")
     check cCode == 0
-    check fileExists("bin/garden")
+    check fileExists(binPath)
 
-    let (hOut, hCode) = execCmdEx("bin/garden --help")
+    let (hOut, hCode) = execCmdEx(binPath & " --help")
     check hCode == 0
     check hOut.contains("Usage:")
     check hOut.contains("subcommand")
     check hOut.contains("launch")
     check hOut.contains("status")
 
-    let (vOut, vCode) = execCmdEx("bin/garden --version")
+    let (vOut, vCode) = execCmdEx(binPath & " --version")
     check vCode == 0
     check vOut.contains("garden v")
 
@@ -99,7 +100,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let (initOut, initCode) = execCmdEx("bin/garden init " & quoteShell(tmpDir))
+    let binPath = "bin" / ("garden" & ExeExt)
+    let (initOut, initCode) = execCmdEx(binPath & " init " & quoteShell(tmpDir))
     check initCode == 0
     check fileExists(tmpDir / "garden.toml")
     check fileExists(tmpDir / "AGENTS.md")
@@ -108,7 +110,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check readFile(tmpDir / "AGENTS.md").contains(BeginMarker)
 
   test "Garden status outputs valid JSON with --json":
-    let (sOut, sCode) = execCmdEx("bin/garden status --json")
+    let binPath = "bin" / ("garden" & ExeExt)
+    let (sOut, sCode) = execCmdEx(binPath & " status --json")
     check sCode == 0
     let j = parseJson(sOut.strip())
     check j.hasKey("project")
