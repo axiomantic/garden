@@ -16,7 +16,7 @@ The Orchestrator authors `implementation_plan.md` adhering to four core invarian
 
 1. **Deterministic Assignment**: Every subtask has exactly one primary persona owner.
 2. **Resource Fencing Before Mutation**: Any non-mergeable resource (e.g. database schemas, configuration files, migration scripts) must have an explicit `rhizo lock file:<path> --fencing` lease scheduled before modification begins.
-3. **Workspace Isolation via Vine**: Complex, multi-file changes must occur in isolated APFS CoW strands (`vine new <task_id> --worktree`). Strands cannot be woven until passing the Two-Key Gate (`vine gate`).
+3. **Workspace Isolation via Vine**: Complex, multi-file changes must occur in isolated Rift strands (`vine new <task_id>`). Strands cannot be woven until passing the Two-Key Gate (`vine gate`).
 4. **Zero Silent Architectural Drift**: If an implementer encounters an unforeseen constraint during coding, it cannot unilaterally alter the architecture. It must submit a formal design addendum.
 
 ---

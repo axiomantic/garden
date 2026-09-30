@@ -1,5 +1,5 @@
 # Package
-version       = "0.1.4"
+version       = "0.1.5"
 author        = "Axiomantic"
 description   = "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine"
 license       = "MIT"

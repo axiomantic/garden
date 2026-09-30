@@ -5,31 +5,21 @@ description: "Master entrypoint and end-to-end ceremony director for multi-agent
 
 # Garden: Multi-Agent Swarm Ceremony & Orchestration Engine
 
-> **The Sovereign Orchestration Layer for Autonomous AI Swarms**  
-> *Where `rhizo` is the transport nervous system and `vine` is the workspace integrator, `garden` is the institutional intellect, deliberation crucible, and master ceremony conductor.*
-
 ## 0. Prerequisite & Automatic Bootstrapping
 
-All swarm ceremonies require the native `garden` CLI. If `command -v garden` fails, install it:
+All swarm ceremonies require `garden`, `rhizo`, `vine`, and `rift`. If missing, install globally:
 ```bash
-# Recommended: Install globally for fastest native execution (2ms) and clean syntax:
-npm install -g @axiomantic/garden
-
-# Or install the full coordination triad:
-npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapshot
 ```
 
 > [!TIP]
-> **Zero-Install Fallback (`npx`)**: If you are in a restricted environment, container, or CI runner where global installation is prohibited or unavailable, you can run commands directly without installing by prefixing with `npx -y`:
-> ```bash
-> npx -y @axiomantic/garden <command>
-> ```
+> **Zero-Install Fallback (`npx`)**: In restricted environments where global installation is prohibited, prefix commands with `npx -y @axiomantic/garden <command>`.
 
 ---
 
-## 1. Architectural Architecture & Layering
+## 1. Architecture & Layering
 
-Garden coordinates teams of heterogeneous AI coding assistants across terminals and machines:
+Garden directs multi-agent swarms using Rhizo for transport and Vine for workspace virtualization:
 
 ```mermaid
 flowchart TD
@@ -43,7 +33,7 @@ flowchart TD
 
     subgraph Infrastructure["Coordination Infrastructure"]
         Rhizo["Rhizo (Redis Bus, Fencing Mutexes, Work Queues)"]
-        Vine["Vine (APFS CoW Strands, Two-Key Gate, Weaving)"]
+        Vine["Vine (Rift Strands, Two-Key Gate, Weaving)"]
     end
 
     Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
@@ -57,94 +47,32 @@ flowchart TD
 
 ## 2. The 5-Phase End-to-End Ceremony
 
-When invoked, the Orchestrator (the primary conversation chat) executes these five phases sequentially. Never skip phases or invert the order.
+Execute all five phases sequentially. Never skip phases or invert the order.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Human Operator
-    participant Orch as Main Chat (Orchestrator)
-    participant Swarm as Tmux Worker Swarm
-    participant Bus as Rhizo (Redis)
-    participant Gate as Vine (Strands & Gate)
-
-    User->>Orch: "garden: implement feature X"
-    Note over Orch: Phase 1: Team Calibration
-    Orch->>User: Suggests Persona Roster (Roles, Harnesses, Models) via ask_question
-    User-->>Orch: Ratifies / Adjusts Roster
-
-    Note over Orch: Phase 2: Fleet Provisioning
-    Orch->>Swarm: Executes launch-workers (tmux panes + Ghostty/Terminal viewer)
-    Swarm->>Bus: rhizo open + rhizo listen (Workers armed)
-
-    Note over Orch: Phase 3: Empirical Dialectic
-    Orch->>Swarm: Dispatches dialectical-pump
-    Note over Swarm: 1. Research ➔ understanding.md ➔ Fact-Check Gate<br/>2. Architecture ➔ design.md<br/>3. Adversarial Audit ➔ audit_report.md ➔ Remediation
-    Swarm-->>Orch: Ratified design.md & cleared audit report
-
-    Note over Orch: Phase 4: Master Planning
-    Orch->>Orch: Authors implementation_plan.md (Locks, Strands, To-Do list)
-
-    Note over Orch: Phase 5: Swarm Execution & Weaving
-    loop For Each Plan Task
-        Orch->>Bus: Dispatch task (rhizo send / enqueue)
-        Bus->>Swarm: Worker claims lease (rhizo claim)
-        Swarm->>Gate: Creates strand (vine new)
-        Swarm->>Swarm: Implements code + verifies tests
-        Swarm->>Gate: Verifies Two-Key Gate (vine gate)
-        Swarm->>Orch: Reports gate pass (rhizo reply)
-        Orch->>Gate: Fast-forward merge (vine weave)
-        Orch->>Orch: Updates plan checkbox & Harness To-Do
-    end
-    Orch->>User: Mission Accomplished Summary
-```
-
----
-
-## 3. Phase Transition Protocols & Quality Gates
-
-### Gate 1 $\to$ 2: Persona Ratification Gate
-- **Condition**: Operator has confirmed the roster via `ask_question`.
-- **Artifact**: `garden-swarm.json` persisted in the project directory.
-- **Action**: Call `launch-workers`.
-
-### Gate 2 $\to$ 3: Cluster Readiness Gate
-- **Condition**: All worker panes booted, heartbeats active in Redis.
-- **Verification**: `rhizo who --json` confirms 100% of agents online and tagged.
-- **Action**: Call `dialectical-pump`.
-
-### Gate 3 $\to$ 4: Design Audit Clearance Gate
-- **Condition**:
-  1. `understanding.md` passed the Fact-Check Gate (zero ungrounded claims).
-  2. `design.md` authored and debated by the triadic pump.
-  3. `audit_report.md` contains 0 open `CRIT` or `BLOCKER` defects.
-- **Action**: Call `plan-implementation`.
-
-### Gate 4 $\to$ 5: Plan Alignment Gate
-- **Condition**: `implementation_plan.md` complete with task matrix, locking schedule, vine strand lifecycles, and emergent design addendum protocol.
-- **Action**: Call `orchestrate-swarm`.
-
----
-
-## 4. Sub-Skill Reference Map
-
-When executing Garden, invoke the sub-skills at their designated phases:
-
-| Phase | Skill Name | Description | Primary Artifacts |
+| Phase | Sub-Skill | Action | Quality Gate to Proceed |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Analyzes task, formulates 3 balanced personas with suggested **coding harness** and **model**, and confirms with operator. | `garden-swarm.json` |
-| **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Provisions tmux session with worker panes, registers `rhizo open`, arms listeners, and launches OS terminal viewer (Ghostty / Terminal.app). | Live tmux session, visible terminal |
-| **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Drives empirical multi-persona debate grounded in tool calls (file reading, test running, AST inspecting). Produces research, design, and audit docs. | `understanding.md`, `design.md`, `audit_report.md` |
-| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Authors master implementation plan detailing task assignments, `rhizo` locks (`--fencing`), `vine` strands, dynamic checkboxes, and To-Do tracking. | `implementation_plan.md` |
-| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: dispatches tasks over Redis, tracks heartbeats, approves emergent design addenda, and executes `vine weave` upon Two-Key gate pass. | Completed code, woven trunk, git commits |
+| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Formulate 3 balanced personas with harness/model pairings. | Operator ratifies `garden-swarm.json`. |
+| **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Provision tmux session, register agents, launch viewer. | `rhizo who --json` confirms 100% of workers active. |
+| **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
+| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules and strands. | Complete `implementation_plan.md` with task-locking matrix. |
+| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, trunk weaving. | All plan tasks woven via `vine weave` after passing Two-Key Gate. |
 
 ---
 
-## 5. Invariants & Rules of Engagement
+## 3. Core Operational Invariants
 
-1. **The Supreme Orchestrator Invariant**:
-   The primary conversation session acts as the Supreme Orchestrator. It coordinates, plans, reviews, and merges. It delegates intensive multi-file edits to the worker fleet.
-2. **Zero Theatrical Dialogue**:
-   In dialectical deliberations, every assertion must be backed by empirical evidence (line citations, test execution outputs, compiler errors).
-3. **No Unmanaged Daemons / Zero Dirty Commits**:
-   All coordination metadata (`.rhizo.*`, `.vine.*`, `*.lock`) must remain in `.gitignore`. Workers must adhere to the Two-Key Gate before any code touches the canonical trunk.
+<CRITICAL>
+The primary conversation session acts as the Supreme Orchestrator. The orchestrator directs, reviews, and weaves; it never performs large multi-file implementation edits directly when a worker fleet is active.
+</CRITICAL>
+
+<INVARIANT>
+Zero Theatrical Dialogue: Every dialectical assertion must be substantiated with empirical evidence obtained through tool calls (file reading, test executions, benchmarks, or AST inspections). Theoretical roleplay without evidence is rejected.
+</INVARIANT>
+
+<INVARIANT>
+Never merge code into the canonical trunk without a verified Two-Key Gate pass ('vine gate' exit code 0) inside an isolated Rift strand.
+</INVARIANT>
+
+<FORBIDDEN>
+Never stage coordination metadata (*.lock, .rhizo.*, .vine.json, workspaces/) into Git. Keep all agent state ignored.
+</FORBIDDEN>
