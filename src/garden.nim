@@ -242,8 +242,9 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "  Acknowledge queue tasks once verified:\n"
   result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
 
-  result &= "### 6. Scheduled Watchdog & Health Check Protocol (For Codex / Antigravity / Schedulers)\n"
-  result &= "If setting up a recurring scheduled health check or watchdog (e.g. every 15 minutes), USE THIS EXACT PROMPT TEMPLATE:\n\n"
+  result &= "### 6. Scheduled Watchdog & Health Check Protocol (ONLY for OpenAI Codex / ChatGPT CLI)\n"
+  result &= "NOTE: If running in Google Antigravity or OpenCode: DO NOT set up recurring scheduled tasks. Antigravity's native background listener task (`run_command`) and OpenCode's background ear reactively wake the session on message receipt without timers.\n\n"
+  result &= "If running in Codex Desktop / CLI where background processes cannot reactively wake the harness, use this exact prompt template for recurring health checks:\n\n"
   result &= "```text\n"
   result &= "Verify Rhizo listener and task execution for @" & w.name & " in " & cfg.targetRepo & ".\n"
   result &= "STEP 1: INSPECT COMPLETED LISTENER SUBAGENTS / TASKS FIRST:\n"

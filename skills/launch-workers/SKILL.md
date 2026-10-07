@@ -104,8 +104,9 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
    - `rhizo open "<name>" "<tags>"`
    - `rhizo hook install --codex --agent "<name>"` (if running in Codex CLI/Desktop)
    - `rhizo listen "<name>"` (blocking foreground command with infinite wait)
-5. **Scheduled Health Check Template (For Codex / Antigravity / Schedulers)**:
-   If workers configure a recurring 15-minute listener health check, prompts include the bulletproof 4-step template:
+5. **Scheduled Health Check Template (ONLY for OpenAI Codex / ChatGPT CLI)**:
+   In Google Antigravity (using background `run_command`) and OpenCode (using background ear), DO NOT configure scheduled tasks; reactive background process completion handles wakeups natively.
+   In Codex Desktop / CLI where sessions cannot wake from background process exits without external stimulation, prompts include the bulletproof 4-step template:
    - STEP 1: Inspect completed subagents/tasks for unhandled delivered tasks and execute them immediately (never stay quiet with pending work).
    - STEP 2: Inspect active tasks to verify a listener is currently running, and re-arm if missing.
    - STEP 3: Run `rhizo probe <name> --json` and drain any inbox backlog.
