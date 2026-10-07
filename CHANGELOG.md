@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-10-07
+
+### Added
+- **Unified Work Item State Machine (WISM) Integration (Module 18)**:
+  - Embedded the full 10-state lifecycle specification into `garden`, `orchestrate-swarm`, and `launch-workers` skills.
+  - Included both high-fidelity Mermaid diagrams and structured ASCII transition flowcharts for zero-loss LLM reasoning and visual frontend rendering.
+  - Documented automated DAG dependency resolution (`BLOCKED` $\rightarrow$ `QUEUED`), transport delivery receipts, and Two-Key integration gates.
+
 ## [0.2.5] - 2026-10-07
 
 ### Added
