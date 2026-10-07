@@ -69,16 +69,16 @@ When an operator initiates a project or requests multi-agent coordination, the s
    - *Option 1 (Recommended)*: Multi-Agent Swarm (Dedicated terminal tabs/coding harnesses over Rhizo & Vine).
    - *Option 2*: Single-Agent Inline (Sequential execution within current chat session).
 2. **Question 2: Swarm Composition & Team Sizing**:
-   - *Option 1 (Recommended)*: Balanced Triad (3 Workers: Systems Architect `@architect`, Adversarial Auditor `@auditor`, DevEx Lead `@implementer`).
-   - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@implementer`, Adversarial Auditor `@auditor`).
+   - *Option 1 (Recommended)*: Balanced Triad (3 Workers: Systems Architect `@<project>-architect`, Adversarial Auditor `@<project>-auditor`, DevEx Lead `@<project>-implementer`).
+   - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
    - *Option 3*: Custom Swarm (Operator specifies custom roles and headcount).
 3. **Question 3: Available AI Coding Harnesses**:
    - The operator specifies which coding environments they have available (Claude Code CLI, Antigravity, OpenCode, Pi, Cursor, Headless Terminal). Explain that workers can run in **any** combination of harnesses!
 4. **Question 4: Foundation Model Pairing & Equivalencies**:
    - Recommend optimal models with fallback equivalents:
-     - `@architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
-     - `@auditor`: Claude 3.5 Sonnet / Claude 3 Opus (strict negative controls, zero sloppy approvals).
-     - `@implementer`: Gemini 3.8 Flash / Claude 3.5 Sonnet (rapid, iterative coding velocity).
+     - `@<project>-architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
+     - `@<project>-auditor`: Claude 3.5 Sonnet / Claude 3 Opus (strict negative controls, zero sloppy approvals).
+     - `@<project>-implementer`: Gemini 3.8 Flash / Claude 3.5 Sonnet (rapid, iterative coding velocity).
      - *Air-gapped / Local*: Ollama / DeepSeek-R1.
 
 #### Automatic Fulfillment & 10-Backtick Prompt Generation:
@@ -92,7 +92,7 @@ Upon receiving the operator's responses:
    2. Copy the raw block inside each 10-backtick pre block below and paste it into its corresponding session.
    3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
    ```
-5. Register the orchestrator's presence (`rhizo open orchestrator`) and arm the listener.
+5. Register the orchestrator's presence (`rhizo open <project>-orchestrator`) and arm the listener.
 6. Poll or await cluster readiness gate (`rhizo who --json`) before proceeding to Phase 3.
 
 

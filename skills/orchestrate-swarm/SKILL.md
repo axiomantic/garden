@@ -231,7 +231,7 @@ Depending on the task distribution model in `implementation_plan.md`:
 
 - **Direct Assignment (O2O)**:
   ```bash
-  rhizo send --to architect \
+  rhizo send --to <project>-architect \
     --subject "Task 1.1: Core Data Structures" \
     --body '{"task_id": "task-core-ds", "instructions": "Implement AST node kinds and message serializers. Use vine strand.", "strand": "strand/task-core-ds"}'
   ```
@@ -246,7 +246,7 @@ Depending on the task distribution model in `implementation_plan.md`:
 - **Mandatory Turn-End Listener Arming**:
   Immediately after executing `rhizo send` or `rhizo enqueue`, arm your single-shot background listener before completing your turn:
   ```bash
-  run_command(CommandLine="rhizo listen orchestrator", IsDaemon=false, WaitMsBeforeAsync=500)
+  run_command(CommandLine="rhizo listen <project>-orchestrator", IsDaemon=false, WaitMsBeforeAsync=500)
   ```
   *(Never end your turn without this active background task; without it, worker gate reports cannot wake you up).*
 

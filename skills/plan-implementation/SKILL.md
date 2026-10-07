@@ -31,20 +31,20 @@ The generated implementation plan must follow this exact template:
 ## 1. Swarm Roster & Role Mapping
 | Worker Name | Persona | Role | Assigned Subsystems |
 | :--- | :--- | :--- | :--- |
-| `architect` | Marcus Vance | Staff Systems Architect | Core data structures, API contracts |
-| `auditor` | Caleb Thorne | Refactoring Purist | Unit tests, negative controls, linter |
-| `implementer` | Elena Rostova | DevEx & Implementation Lead | CLI commands, adapters, docs |
+| `<project>-architect` | Marcus Vance | Staff Systems Architect | Core data structures, API contracts |
+| `<project>-auditor` | Caleb Thorne | Refactoring Purist | Unit tests, negative controls, linter |
+| `<project>-implementer` | Elena Rostova | DevEx & Implementation Lead | CLI commands, adapters, docs |
 
 ---
 
 ## 2. Distributed Locking & Concurrency Schedule
 Before modifying any shared or non-mergeable file, the designated worker must obtain an atomic lease:
 - **Lock Target**: `file:src/config.nim`
-  - *Owner*: `architect`
+  - *Owner*: `<project>-architect`
   - *Command*: `rhizo lock file:src/config.nim 600 --fencing`
   - *Monotonic Fencing Counter*: Record token in task execution log.
 - **Lock Target**: `file:migrations/001_schema.sql`
-  - *Owner*: `implementer`
+  - *Owner*: `<project>-implementer`
   - *Command*: `rhizo lock file:migrations/001_schema.sql 300 --fencing`
 
 ---
@@ -74,14 +74,14 @@ For all parallel development tracks:
 ## 4. Phase-by-Phase Task Checklist
 
 ### Phase 1: Core Engine Primitives
-- [ ] **Task 1.1: Core Data Structures** (`architect`)
+- [ ] **Task 1.1: Core Data Structures** (`<project>-architect`)
   - *Strand*: `strand/task-core-ds`
   - *Lock*: `rhizo lock file:src/types.nim 300 --fencing`
   - *Actions*: Define AST node kinds and message serializers.
   - *Verification*: `nim c -r tests/test_types.nim`
   - *Weave*: `vine gate && vine weave && rhizo unlock file:src/types.nim`
 
-- [ ] **Task 1.2: Test Harness & Negative Controls** (`auditor`)
+- [ ] **Task 1.2: Test Harness & Negative Controls** (`<project>-auditor`)
   - *Strand*: `strand/task-test-harness`
   - *Actions*: Implement negative assertion tests for malformed JSON.
   - *Verification*: `pytest tests/test_harness.py`

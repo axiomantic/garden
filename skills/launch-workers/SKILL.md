@@ -77,22 +77,22 @@ Run `garden prompts` (or `garden launch`) from the project root:
 garden prompts --write garden-prompts.md
 
 # Or generate for a specific worker:
-garden prompts --worker architect
+garden prompts --worker <project>-architect  # (or suffix shorthand: --worker architect)
 ```
 
 If `garden-swarm.json` exists in the repository, Garden uses its configured personas, mandates, harnesses, and models. If missing, Garden automatically synthesizes the standard balanced triad:
-- `@architect` (Marcus Vance - Staff Systems Architect)
-- `@auditor` (Caleb Thorne - Verification & Adversarial Auditor)
-- `@implementer` (Elena Rostova - DevEx & Implementation Lead)
+- `@<project>-architect` (Marcus Vance - Staff Systems Architect)
+- `@<project>-auditor` (Caleb Thorne - Verification & Adversarial Auditor)
+- `@<project>-implementer` (Elena Rostova - DevEx & Implementation Lead)
 
 ### Step 2: Present & Paste Prompts into Sessions
 The Orchestrator presents the generated prompt blocks to the operator with clear, structured guidance:
 
 1. **Numbered Terminal Tab / Session Instructions**:
    Provide a concise setup list instructing the operator on how many sessions to open and which harness/model to configure for each:
-   - **Session 1 (@architect)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash / Claude 3.5 Sonnet $\to$ Paste Card 1
-   - **Session 2 (@auditor)**: e.g. Claude Code CLI with Claude 3.5 Sonnet / Claude 3 Opus $\to$ Paste Card 2
-   - **Session 3 (@implementer)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash $\to$ Paste Card 3
+   - **Session 1 (@<project>-architect)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash / Claude 3.5 Sonnet $\to$ Paste Card 1
+   - **Session 2 (@<project>-auditor)**: e.g. Claude Code CLI with Claude 3.5 Sonnet / Claude 3 Opus $\to$ Paste Card 2
+   - **Session 3 (@<project>-implementer)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash $\to$ Paste Card 3
 2. **Harness & Model Agnostic Flexibility**:
    Explicitly reassure the operator: *"Workers can run in ANY coding harness (Claude Code, OpenCode, Antigravity, Pi, Cursor) and use any equivalent model tier. Coordination occurs strictly over Rhizo (local Redis) and Vine (Rift strands)."*
 3. **10-Backtick Raw Markdown Formatting**:

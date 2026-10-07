@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-10-07
+
+### Added
+- **Project-Scoped Swarm Naming & Suffix Matching**:
+  - Updated `loadSwarmConfig` and `initDefaultSwarmConfig` in `src/garden.nim` to synthesize default orchestrator and workers with project prefixes (`<project>-orchestrator`, `<project>-architect`, `<project>-auditor`, `<project>-implementer`).
+  - Added prefix/suffix matching in `garden prompts --worker <worker>` (e.g. `--worker architect` resolves to `<project>-architect`).
+  - Updated all swarm ceremony skills (`garden`, `choose-personas`, `launch-workers`, `plan-implementation`, `orchestrate-swarm`) to enforce project-scoped naming and prevent multi-project cluster collisions.
+
 ## [0.2.6] - 2026-10-07
 
 ### Added

@@ -128,9 +128,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check pCode == 0
     check pOut.contains("GARDEN SWARM BOOTSTRAP")
     check pOut.contains("``````````markdown")
-    check pOut.contains("@architect")
-    check pOut.contains("@auditor")
-    check pOut.contains("@implementer")
+    check pOut.contains("architect")
+    check pOut.contains("auditor")
+    check pOut.contains("implementer")
     check pOut.contains("export RHIZO_AGENT_NAME=")
     check pOut.contains("rhizo open")
     check pOut.contains("rhizo listen")
@@ -141,10 +141,10 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
     check pCode == 0
-    check pOut.contains("@auditor")
+    check pOut.contains("auditor")
     check pOut.contains("Caleb Thorne")
-    check not pOut.contains("@architect")
-    check not pOut.contains("@implementer")
+    check not pOut.contains("Marcus Vance")
+    check not pOut.contains("Elena Rostova")
 
   test "Garden prompts --json outputs structured json telemetry":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -153,7 +153,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let j = parseJson(jOut.strip())
     check j["count"].getInt() == 3
     check j["workers"].len == 3
-    check j["workers"][0]["name"].getStr() == "architect"
+    check j["workers"][0]["name"].getStr() == "garden-architect"
     check j["workers"][0]["prompt"].getStr().contains("Marcus Vance")
 
   test "Garden prompts --write outputs prompts to file":
@@ -168,9 +168,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check fileExists(outFile)
     let content = readFile(outFile)
     check content.contains("``````````markdown")
-    check content.contains("@architect")
-    check content.contains("@auditor")
-    check content.contains("@implementer")
+    check content.contains("architect")
+    check content.contains("auditor")
+    check content.contains("implementer")
 
   test "Garden launch defaults to prompt generation without requiring tmux":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"

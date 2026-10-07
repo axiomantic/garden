@@ -69,16 +69,16 @@ When an operator initiates a project or requests multi-agent coordination, the s
    - *Option 1 (Recommended)*: Multi-Agent Swarm (Dedicated terminal tabs/coding harnesses over Rhizo & Vine).
    - *Option 2*: Single-Agent Inline (Sequential execution within current chat session).
 2. **Question 2: Swarm Composition & Team Sizing**:
-   - *Option 1 (Recommended)*: Balanced Triad (3 Workers: Systems Architect `@architect`, Adversarial Auditor `@auditor`, DevEx Lead `@implementer`).
-   - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@implementer`, Adversarial Auditor `@auditor`).
+   - *Option 1 (Recommended)*: Balanced Triad (3 Workers: Systems Architect `@<project>-architect`, Adversarial Auditor `@<project>-auditor`, DevEx Lead `@<project>-implementer`).
+   - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
    - *Option 3*: Custom Swarm (Operator specifies custom roles and headcount).
 3. **Question 3: Available AI Coding Harnesses**:
    - The operator specifies which coding environments they have available (Claude Code CLI, Antigravity, OpenCode, Pi, Cursor, Headless Terminal). Explain that workers can run in **any** combination of harnesses!
 4. **Question 4: Foundation Model Pairing & Equivalencies**:
    - Recommend optimal models with fallback equivalents:
-     - `@architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
-     - `@auditor`: Claude 3.5 Sonnet / Claude 3 Opus (strict negative controls, zero sloppy approvals).
-     - `@implementer`: Gemini 3.8 Flash / Claude 3.5 Sonnet (rapid, iterative coding velocity).
+     - `@<project>-architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
+     - `@<project>-auditor`: Claude 3.5 Sonnet / Claude 3 Opus (strict negative controls, zero sloppy approvals).
+     - `@<project>-implementer`: Gemini 3.8 Flash / Claude 3.5 Sonnet (rapid, iterative coding velocity).
      - *Air-gapped / Local*: Ollama / DeepSeek-R1.
 
 #### Automatic Fulfillment & 10-Backtick Prompt Generation:
@@ -92,8 +92,115 @@ Upon receiving the operator's responses:
    2. Copy the raw block inside each 10-backtick pre block below and paste it into its corresponding session.
    3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
    ```
-5. Register the orchestrator's presence (`rhizo open orchestrator`) and arm the listener.
+5. Register the orchestrator's presence (`rhizo open <project>-orchestrator`) and arm the listener.
 6. Poll or await cluster readiness gate (`rhizo who --json`) before proceeding to Phase 3.
+
+
+---
+
+## Unified Work Item State Machine (WISM)
+
+Rhizo, Garden, and Vine coordinate all multi-agent work through the formal **Work Item State Machine (WISM)**. Every task progresses through 10 deterministic states with atomic Redis transitions, automated DAG unblocking, and Two-Key integration gates.
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFTED : rhizo task create <id>
+    DRAFTED --> BLOCKED : Unmet DAG dependencies (depends_on)
+    DRAFTED --> QUEUED : Zero unmet dependencies
+    BLOCKED --> QUEUED : Parent task COMPLETED (Auto-promoted by Lua engine)
+
+    QUEUED --> DELIVERED : Listener pops message (Transport Receipt emitted)
+    DELIVERED --> CLAIMED : Worker acknowledges (Acquires monotonic lease)
+    DELIVERED --> ORPHANED : Receipt timeout (180s without claim)
+
+    CLAIMED --> IN_PROGRESS : Worker provisions strand (vine new <id>)
+    IN_PROGRESS --> IN_PROGRESS : Progress reported (rhizo task progress, lease extended)
+    IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine gate)
+    IN_PROGRESS --> YIELDED : rhizo task yield (Returned to pool)
+    IN_PROGRESS --> ORPHANED : Lease expires without progress
+
+    GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red or merge conflict)
+    GATE_EVALUATING --> READY_TO_WEAVE : Two-Key Gate PASSED (Cryptographic gate token stamped)
+
+    READY_TO_WEAVE --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
+
+    ORPHANED --> QUEUED : Re-queued for retry (attempts < 3)
+    ORPHANED --> DEAD_LETTER : Max delivery retries exceeded (attempts >= 3)
+    YIELDED --> QUEUED : Returned to pool
+
+    COMPLETED --> [*]
+    DEAD_LETTER --> [*]
+```
+
+### ASCII State Transition Reference (LLM Fast-Path)
+
+```text
+  [rhizo task create]
+          │
+          ▼
+     +---------+      Unmet deps
+     | DRAFTED | ──────────────────► [ BLOCKED ]
+     +---------+                         │
+          │ Zero deps                    │ Parent task COMPLETED
+          ▼                              ▼
+     +---------+ ◄───────────────────────+
+     | QUEUED  |
+     +---------+
+          │
+          │ rhizo listen pops task (Transport Receipt emitted)
+          ▼
+    +-----------+      180s Receipt Timeout
+    | DELIVERED | ─────────────────────────────────► [ ORPHANED ]
+    +-----------+                                          │
+          │                                                │ Attempts >= 3
+          │ rhizo task claim / rhizo reply                 ▼
+          ▼                                         [ DEAD_LETTER ]
+     +---------+
+     | CLAIMED |
+     +---------+
+          │
+          │ vine new <task_id> (Provision strand)
+          ▼
+   +-------------+      Lease expires
+   | IN_PROGRESS | ────────────────────────────────► [ ORPHANED ]
+   +-------------+
+     │        ▲
+     │ vine   │ Gate fails
+     │ gate   │ (Tests red or conflict)
+     ▼        │
+  +-----------------+
+  | GATE_EVALUATING |
+  +-----------------+
+          │
+          │ Two-Key Gate PASSED (Key 1 merge-tree + Key 2 live test suite green)
+          ▼
+  +----------------+
+  | READY_TO_WEAVE |
+  +----------------+
+          │
+          │ vine weave && rhizo task complete
+          ▼
+    +-----------+
+    | COMPLETED | ──► Auto-promotes BLOCKED child tasks to QUEUED!
+    +-----------+
+```
+
+### State Definitions & Invariants
+
+| State | CLI Trigger | Atomic Action & Side Effects | Timeout / Failure Escalation |
+| :--- | :--- | :--- | :--- |
+| **`DRAFTED`** | `rhizo task create <id> --title <t>` | Creates immutable task contract hash `task:<id>` in Redis. | N/A |
+| **`BLOCKED`** | Evaluated on create | Stamped if `depends_on` contains incomplete tasks. Workers cannot claim. | N/A |
+| **`QUEUED`** | Auto on create or parent complete | Pushed to queue/inbox. Available for worker consumption. | N/A |
+| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $ightarrow$ `ORPHANED` |
+| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $ightarrow$ `ORPHANED` |
+| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $ightarrow$ `ORPHANED` |
+| **`GATE_EVALUATING`**| `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite) evaluated. | Exit 1 $ightarrow$ `CONFLICTED`<br>Exit 2 $ightarrow$ `GATE_FAILED` |
+| **`READY_TO_WEAVE`** | Both keys pass 100% | Cryptographic gate token stamped (`gate_token`). Report sent to orchestrator. | N/A |
+| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $ightarrow$ `QUEUED`)!** | N/A |
+| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
+| **`YIELDED`** | `rhizo task yield <id>` | Worker gracefully steps aside. Task returned to `QUEUED`. | N/A |
+| **`DEAD_LETTER`** | Retries exhausted ($\ge 3$) | Moved to dead-letter queue. Alerts orchestrator and operator. | Requires manual operator triage |
 
 ---
 

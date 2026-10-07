@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json]
 import guide
 
 const
-  GardenVersion = "0.2.6"
+  GardenVersion = "0.2.7"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -99,20 +99,22 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       result.project = if sJson.hasKey("project"): sJson["project"].getStr(projName) else: projName
       result.targetRepo = if sJson.hasKey("target_repo"): sJson["target_repo"].getStr(root) else: root
       
+      let defaultOrch = projName & "-orchestrator"
       if sJson.hasKey("orchestrator"):
         if sJson["orchestrator"].kind == JObject and sJson["orchestrator"].hasKey("name"):
-          result.orchestrator = sJson["orchestrator"]["name"].getStr("orchestrator")
+          result.orchestrator = sJson["orchestrator"]["name"].getStr(defaultOrch)
         elif sJson["orchestrator"].kind == JString:
-          result.orchestrator = sJson["orchestrator"].getStr("orchestrator")
+          result.orchestrator = sJson["orchestrator"].getStr(defaultOrch)
         else:
-          result.orchestrator = "orchestrator"
+          result.orchestrator = defaultOrch
       else:
-        result.orchestrator = "orchestrator"
+        result.orchestrator = defaultOrch
 
       if sJson.hasKey("workers") and sJson["workers"].kind == JArray:
         for w in sJson["workers"]:
           var spec: WorkerSpec
-          spec.name = if w.hasKey("name"): w["name"].getStr() else: "worker"
+          let rawName = if w.hasKey("name"): w["name"].getStr() else: "worker"
+          spec.name = if rawName in ["architect", "auditor", "implementer", "worker"]: projName & "-" & rawName else: rawName
           spec.persona = if w.hasKey("persona"): w["persona"].getStr(spec.name) else: spec.name
           spec.role = if w.hasKey("role"): w["role"].getStr("Swarm Worker") else: "Swarm Worker"
           spec.harness = if w.hasKey("harness"): w["harness"].getStr("Any (Claude Code / OpenCode / Antigravity)") else: "Any"
@@ -128,19 +130,24 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
             spec.tags = @[result.project, spec.name]
           spec.systemPrompt = if w.hasKey("system_prompt"): w["system_prompt"].getStr() else: ""
           spec.opposingPriority = if w.hasKey("opposing_priority"): w["opposing_priority"].getStr() else: ""
-          spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr() else: ""
+          spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr() else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
           result.workers.add(spec)
     except CatchableError as e:
       stderr.writeLine("[garden] Warning: Failed to parse swarm file '" & swarmFile & "': " & e.msg)
 
   if result.workers.len == 0:
-    # Synthesize default balanced triad
+    # Synthesize default balanced triad with project prefix
     result.project = projName
     result.targetRepo = root
-    result.orchestrator = "orchestrator"
+    let orchName = projName & "-orchestrator"
+    result.orchestrator = orchName
+
+    let archName = projName & "-architect"
+    let auditName = projName & "-auditor"
+    let implName = projName & "-implementer"
 
     result.workers.add(WorkerSpec(
-      name: "architect",
+      name: archName,
       persona: "Marcus Vance",
       role: "Staff Systems Architect",
       harness: "Antigravity / Claude Code",
@@ -148,11 +155,11 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       tags: @[projName, "systems", "architecture", "invariants"],
       systemPrompt: "You are Marcus Vance, Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
-      startupCommand: "rhizo open architect '" & projName & ",systems,architecture' && rhizo listen architect"
+      startupCommand: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
     ))
 
     result.workers.add(WorkerSpec(
-      name: "auditor",
+      name: auditName,
       persona: "Caleb Thorne",
       role: "Verification & Adversarial Auditor",
       harness: "Claude Code CLI / Antigravity",
@@ -160,11 +167,11 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       tags: @[projName, "qa", "audit", "verifier", "purist"],
       systemPrompt: "You are Caleb Thorne, Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
-      startupCommand: "rhizo open auditor '" & projName & ",qa,audit,verifier' && rhizo listen auditor"
+      startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
     ))
 
     result.workers.add(WorkerSpec(
-      name: "implementer",
+      name: implName,
       persona: "Elena Rostova",
       role: "DevEx & Implementation Lead",
       harness: "Antigravity / OpenCode",
@@ -172,7 +179,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       tags: @[projName, "dev", "devex", "build", "implementation"],
       systemPrompt: "You are Elena Rostova, DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
-      startupCommand: "rhizo open implementer '" & projName & ",dev,devex,build' && rhizo listen implementer"
+      startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
     ))
 
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
@@ -270,8 +277,10 @@ proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, wri
   
   var selectedWorkers: seq[WorkerSpec] = @[]
   if targetWorker.len > 0:
+    let tw = targetWorker.toLowerAscii()
     for w in cfg.workers:
-      if w.name.toLowerAscii() == targetWorker.toLowerAscii():
+      let wn = w.name.toLowerAscii()
+      if wn == tw or wn.endsWith("-" & tw) or wn.startsWith(tw & "-"):
         selectedWorkers.add(w)
     if selectedWorkers.len == 0:
       stderr.writeLine("[garden] Error: Worker '" & targetWorker & "' not found in swarm configuration.")
@@ -532,8 +541,10 @@ proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
             discard execCmdEx("rhizo close " & quoteShell(wname))
     except CatchableError: discard
   else:
-    # Default triad close
-    for wname in ["architect", "auditor", "implementer"]:
+    # Default triad close with project prefix
+    let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
+    for role in ["architect", "auditor", "implementer"]:
+      let wname = proj & "-" & role
       echo "[garden] Closing agent @" & wname & " in Redis..."
       discard execCmdEx("rhizo close " & quoteShell(wname))
 

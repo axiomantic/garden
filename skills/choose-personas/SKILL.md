@@ -98,10 +98,10 @@ Once ratified, write `garden-swarm.json` to the target project directory:
   "project": "my-project",
   "created_at": "2026-09-28T12:00:00Z",
   "target_repo": "/Users/eek/Development/my-project",
-  "orchestrator": "orchestrator",
+  "orchestrator": "my-project-orchestrator",
   "workers": [
     {
-      "name": "architect",
+      "name": "my-project-architect",
       "persona": "Marcus Vance",
       "role": "Staff Systems Architect",
       "harness": "Antigravity / OpenCode",
@@ -111,7 +111,7 @@ Once ratified, write `garden-swarm.json` to the target project directory:
       "opposing_priority": "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes."
     },
     {
-      "name": "auditor",
+      "name": "my-project-auditor",
       "persona": "Caleb Thorne",
       "role": "Verification & Adversarial Auditor",
       "harness": "Claude Code CLI / Antigravity",
@@ -121,7 +121,7 @@ Once ratified, write `garden-swarm.json` to the target project directory:
       "opposing_priority": "Adversarial skepticism, rigorous negative controls, and proof over convenience."
     },
     {
-      "name": "implementer",
+      "name": "my-project-implementer",
       "persona": "Elena Rostova",
       "role": "DevEx & Implementation Lead",
       "harness": "Antigravity / OpenCode",
