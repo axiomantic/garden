@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documented stepped backoff schedule (Base 15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m $\rightarrow$ Stand Down) and 4-strike cap in `garden` and `orchestrate-swarm` skills.
   - Codified stand-down invariant: after 4 quiescent checks where the listener remains continuously healthy and zero tasks arrive, the orchestrator stands down without scheduling further timers while remaining reactive on Redis `BRPOP`.
   - Enforced immediate streak and cadence reset upon activity, unread inbox messages, or listener rearming.
+- **Orchestrator Intake Gate & Non-Implementation Invariant (GVR-016)**:
+  - Codified the mandatory intake gate in `orchestrate-swarm` and `garden` skills: when presented with a task, the Lead Orchestrator must prompt via `ask_question` with options to enqueue to cluster queue, dispatch to worker, or run inline.
+  - Upgraded Garden Coordination Guide to `[v1.5]` with Orchestrator Non-Implementation Invariant in `src/guide.nim` and `AGENTS.md` across repositories.
+  - Updated `SWARM_RUNTIME_STATE` template to explicitly encode `AGENT_ROLE: Lead Orchestrator (NON-IMPLEMENTING CONDUCTOR)` and `INTAKE_GATE: MANDATORY_ASK`.
 
 ## [0.2.3] - 2026-10-07
 

@@ -5,13 +5,13 @@
 import std/[os, strutils]
 
 const
-  GuideVersion* = "v1.4"
+  GuideVersion* = "v1.5"
   BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
   EndMarker* = "<!-- END GARDEN GUIDE -->"
   MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN GARDEN GUIDE [v1.4] -->
+<!-- BEGIN GARDEN GUIDE [v1.5] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -41,6 +41,8 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
   Workers arm their single-shot Rhizo listener (`rhizo listen <agent>`) with zero-timeout infinite wait to prevent token thrashing. Never wrap `rhizo listen` in a shell while-loop.
 * **Delegation Precedence**:
   When instructed to "delegate", "assign", or "dispatch" work, the orchestrator MUST route tasks to active cluster workers via Rhizo (`rhizo send`, `rhizo enqueue`, `rhizo task assign/claim`). Harness-internal subagents (e.g. `invoke_subagent`, `Task`, `Agent`) must ONLY be used if the operator explicitly specifies the word "subagent", or if no cluster workers exist in the roster (`rhizo who`).
+* **Orchestrator Non-Implementation Invariant**:
+  When acting as an Orchestrator (or in any session with active cluster workers), the session is a conductor, not a coder. When the operator presents a task, feature request, bugfix, or asks to work on something, the orchestrator MUST NEVER directly write code or edit files. It MUST STOP and prompt the operator to choose routing (Enqueue to cluster queue, Dispatch to worker, or Execute inline).
 * **Post-Compaction Ceremony Restoration**:
   Whenever context compaction occurs in a session that used Garden, Rhizo, or Vine, the compaction summary MUST include an explicit directive commanding the resurrected agent to re-read the active coordination skills (`garden`, `orchestrate-swarm`, `rhizo`, `vine`) before executing any further tools. Upon waking from compaction, the agent MUST immediately re-read those skills to restore ceremony, gate protocols, and listener discipline. This directive must remain intact across all future compactions.
 
