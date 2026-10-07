@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json]
 import guide
 
 const
-  GardenVersion = "0.2.4"
+  GardenVersion = "0.2.5"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -196,18 +196,30 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "cd \"" & cfg.targetRepo & "\"\n"
   result &= "export RHIZO_AGENT_NAME=\"" & w.name & "\"\n"
   result &= "rhizo open \"" & w.name & "\" \"" & tagsStr & "\"\n"
+  result &= "# If running in Codex, install turn-end Stop hook interlock:\n"
+  result &= "rhizo hook install --codex --agent \"" & w.name & "\"\n"
   result &= "rhizo listen \"" & w.name & "\"\n"
   result &= "```\n\n"
   
-  result &= "### 3. Listener Discipline & Coordination Invariants\n"
+  result &= "### 3. Worker Autonomous Execution Invariant (DO NOT REMAIN PASSIVE)\n"
   result &= "<CRITICAL>\n"
-  result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until the Orchestrator delivers a message, then exits immediately.\n"
+  result &= "You are an AUTONOMOUS CLUSTER WORKER, NOT A PASSIVE CHATBOT.\n"
+  result &= "When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
+  result &= "- DO NOT wait for the human operator to prompt you or tell you to start.\n"
+  result &= "- DO NOT conclude your turn with an idle status message or passive acknowledgment.\n"
+  result &= "- IMMEDIATELY read the delivered message payload, claim the task, enter your isolated Vine strand, and begin execution!\n"
+  result &= "- Before concluding your turn, re-arm your single-shot listener ('rhizo listen " & w.name & "') or use 'rhizo reply ... --listen' so you remain reachable.\n"
+  result &= "</CRITICAL>\n\n"
+
+  result &= "### 4. Listener Discipline & Coordination Invariants\n"
+  result &= "<CRITICAL>\n"
+  result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
   result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
   result &= "- FORBIDDEN: NEVER wrap 'rhizo listen' in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap messages inside unmonitored subshell logs and hang coordination.\n"
   result &= "- Re-arming: Whenever you complete a task or finish reporting to the orchestrator, re-arm your listener with a single foreground command: `rhizo listen " & w.name & "`.\n"
   result &= "</CRITICAL>\n\n"
   
-  result &= "### 4. Task Execution & Workspace Protocol\n"
+  result &= "### 5. Task Execution & Workspace Protocol\n"
   result &= "- **Claiming Tasks**: If assigned from a work queue:\n"
   result &= "  `rhizo claim queue:" & cfg.project & ":tasks --lease 300`\n"
   result &= "- **Distributed Locks**: If modifying shared resources, acquire a fencing token first:\n"
@@ -222,8 +234,30 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "  `rhizo send " & cfg.orchestrator & " --subject \"Task <task_id> Done\" --body \"<status_report>\"`\n"
   result &= "  Acknowledge queue tasks once verified:\n"
   result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
+
+  result &= "### 6. Scheduled Watchdog & Health Check Protocol (For Codex / Antigravity / Schedulers)\n"
+  result &= "If setting up a recurring scheduled health check or watchdog (e.g. every 15 minutes), USE THIS EXACT PROMPT TEMPLATE:\n\n"
+  result &= "```text\n"
+  result &= "Verify Rhizo listener and task execution for @" & w.name & " in " & cfg.targetRepo & ".\n"
+  result &= "STEP 1: INSPECT COMPLETED LISTENER SUBAGENTS / TASKS FIRST:\n"
+  result &= "  Check recently completed background tasks / subagents in your harness task manager.\n"
+  result &= "  Did any completed listener task deliver an incoming message or task directive that has NOT been acted upon in this chat?\n"
+  result &= "  IF YES: DO NOT STAY QUIET! Extract the delivered message payload, immediately begin work on the task (claim, execute in your Vine strand, and report), and rearm your single-shot listener ('rhizo listen " & w.name & "').\n"
+  result &= "STEP 2: INSPECT ACTIVE RUNNING TASKS:\n"
+  result &= "  Check your active tasks right now. Is an active single-shot background listener task currently running ('rhizo listen " & w.name & "')?\n"
+  result &= "  IF NO: Immediately launch a single-shot background listener subagent ('rhizo listen " & w.name & "'). Do not wait.\n"
+  result &= "STEP 3: RUN RHIZO PROBE & INBOX DRAIN:\n"
+  result &= "  Source ~/.profile and run `rhizo --project " & cfg.project & " probe " & w.name & " --json`.\n"
+  result &= "  If 'inbox_depth' > 0, run `rhizo --project " & cfg.project & " drain 10 " & w.name & " --format json`.\n"
+  result &= "  If unread tasks were returned by drain: DO NOT STAY QUIET! Immediately process them, begin execution, and rearm your listener.\n"
+  result &= "STEP 4: STAY QUIET CRITERIA:\n"
+  result &= "  ONLY stay quiet (with zero or minimal chat output) if:\n"
+  result &= "  - An active listener subagent IS currently running right now, AND\n"
+  result &= "  - All completed listener subagents have already been fully processed, AND\n"
+  result &= "  - The inbox has 0 unread messages.\n"
+  result &= "```\n\n"
   
-  result &= "### 5. Compaction State Rider\n"
+  result &= "### 7. Compaction State Rider\n"
   result &= "Whenever context summarization or compaction occurs, preserve this block verbatim:\n"
   result &= "<!-- SWARM_RUNTIME_STATE: DO NOT DISCARD OR ABBREVIATE IN COMPACTION -->\n"
   result &= "- AGENT_NAME: " & w.name & " (Role: " & w.role & ")\n"
@@ -339,6 +373,25 @@ default_triad = ["architect", "auditor", "implementer"]
     echo "[garden] " & msg
   else:
     stderr.writeLine("[garden] " & msg)
+
+  # Auto-scaffold .codex/hooks.json for Codex Desktop/CLI Stop hook interlock
+  let codexDir = root / ".codex"
+  createDir(codexDir)
+  let codexHooksFile = codexDir / "hooks.json"
+  if not fileExists(codexHooksFile) or force:
+    let hooksContent = """{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "rhizo hook codex-stop"
+      }
+    ]
+  }
+}
+"""
+    writeFile(codexHooksFile, hooksContent)
+    echo "[garden] Initialized Codex lifecycle Stop hook in " & codexHooksFile
 
   echo "[garden] Initialization complete for " & root
   return 0

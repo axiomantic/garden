@@ -124,6 +124,13 @@ Delegation Precedence: When instructed to "delegate", "assign", or "dispatch" wo
 Zero Theatrical Dialogue: Every dialectical assertion must be substantiated with empirical evidence obtained through tool calls (file reading, test executions, benchmarks, or AST inspections). Theoretical roleplay without evidence is rejected.
 </INVARIANT>
 
+<CRITICAL>
+Worker Autonomous Execution Invariant (GVR-017):
+Swarm workers are sovereign, autonomous implementers, not passive chatbots.
+When 'rhizo listen' delivers an incoming task and exits, workers MUST NOT wait for an operator prompt or ask "Shall I begin?".
+They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Two-Key Gate, report results, and re-arm the single-shot listener before concluding their turn.
+</CRITICAL>
+
 <INVARIANT>
 Never merge code into the canonical trunk without a verified Two-Key Gate pass ('vine gate' exit code 0) inside an isolated Rift strand.
 </INVARIANT>

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-10-07
+
+### Added
+- **Worker Autonomous Execution Prompt Cards (GVR-017)**:
+  - Updated `generateWorkerPrompt` in `src/garden.nim` and `skills/launch-workers/SKILL.md` with the Worker Autonomous Execution Invariant: workers must never remain passive chatbots upon receiving a task, but immediately claim, execute in an isolated Vine strand, verify the Two-Key Gate, and re-arm listeners.
+  - Added auto-installation instructions for native Codex turn-end lifecycle hooks (`rhizo hook install --codex`).
+- **4-Step Scheduled Watchdog & Health Check Protocol (GVR-017)**:
+  - Upgraded scheduled listener health check prompt template to mandate:
+    1. Inspecting completed background subagent tasks first to extract and act upon any delivered task payloads sitting unprocessed in task logs.
+    2. Inspecting active harness tasks to ensure a single-shot `rhizo listen` is running; rearming if absent.
+    3. Probing Redis listener and inbox state via `rhizo probe` and draining backlog.
+    4. Staying quiet only when an active listener is running AND zero unprocessed task outputs exist.
+- **Codex Turn-End Hook Auto-Scaffolding**:
+  - `garden init` now automatically scaffolds `.codex/hooks.json` with the `Stop` event interlock.
+- **Garden Coordination Guide v1.6**:
+  - Codified the Worker Autonomous Execution Invariant in Section 2 of `src/guide.nim` and synchronized `AGENTS.md` across repositories.
+
 ## [0.2.4] - 2026-10-07
 
 ### Added

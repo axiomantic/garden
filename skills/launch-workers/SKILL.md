@@ -28,7 +28,14 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    Inside worker prompts, `rhizo listen <name>` must always be presented as a single-shot, blocking foreground command with zero timeout (infinite wait).
    NEVER wrap `rhizo listen` in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap message payloads inside unmonitored subshell logs and hang coordination.
    </CRITICAL>
-4. **Zero Dirty Commits**:
+4. **Worker Autonomous Execution Invariant (GVR-017)**:
+   <CRITICAL>
+   Swarm workers operate as sovereign, autonomous implementers, not passive chatbots.
+   When 'rhizo listen' unblocks and exits, a directive has been delivered!
+   Workers MUST NOT wait for operator intervention or ask "Shall I start?".
+   They MUST immediately inspect the delivered directive, claim the task, switch to their isolated Vine strand, execute the requested work, verify the Two-Key Gate, report results, and re-arm their single-shot listener.
+   </CRITICAL>
+5. **Zero Dirty Commits**:
    - Never stage coordination state (`.rhizo.*`, `*.lock`, `.vine.json`, `workspaces/`) into Git.
 
 ---
@@ -95,8 +102,15 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
    - `cd "<project_dir>"`
    - `export RHIZO_AGENT_NAME="<name>"`
    - `rhizo open "<name>" "<tags>"`
+   - `rhizo hook install --codex --agent "<name>"` (if running in Codex CLI/Desktop)
    - `rhizo listen "<name>"` (blocking foreground command with infinite wait)
-5. **Readiness Prompt**:
+5. **Scheduled Health Check Template (For Codex / Antigravity / Schedulers)**:
+   If workers configure a recurring 15-minute listener health check, prompts include the bulletproof 4-step template:
+   - STEP 1: Inspect completed subagents/tasks for unhandled delivered tasks and execute them immediately (never stay quiet with pending work).
+   - STEP 2: Inspect active tasks to verify a listener is currently running, and re-arm if missing.
+   - STEP 3: Run `rhizo probe <name> --json` and drain any inbox backlog.
+   - STEP 4: Stay quiet ONLY when a listener is actively running AND no delivered tasks are pending.
+6. **Readiness Prompt**:
    Instruct the operator: *"Once you have pasted these prompts and the sessions are listening, tell me here (or I will automatically detect them online via `rhizo who`), and we will proceed to Phase 3 (Dialectical Deliberation)."*
 
 ### Step 3: Verify Cluster Readiness Gate
