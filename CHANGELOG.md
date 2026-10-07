@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-10-07
+
+### Added
+- **Watchdog Stepped Backoff & 4-Strike Cap Protocol (GVR-015)**:
+  - Documented stepped backoff schedule (Base 15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m $\rightarrow$ Stand Down) and 4-strike cap in `garden` and `orchestrate-swarm` skills.
+  - Codified stand-down invariant: after 4 quiescent checks where the listener remains continuously healthy and zero tasks arrive, the orchestrator stands down without scheduling further timers while remaining reactive on Redis `BRPOP`.
+  - Enforced immediate streak and cadence reset upon activity, unread inbox messages, or listener rearming.
+
 ## [0.2.3] - 2026-10-07
 
 ### Added

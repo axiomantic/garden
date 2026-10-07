@@ -166,10 +166,12 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
 2. **Watchdog Window**: If a worker fails to respond within the expected turn window (e.g. 5–10 minutes) and `rhizo probe` reveals `NO_LISTENER` or unread inbox items:
    - **Escalate Immediately**: Prompt the operator via `ask_question` with the diagnostic status.
    - **Actionable Remediation**: Offer options to (1) re-arm the listener in the worker's terminal session (`rhizo listen <worker>`), (2) reboot the agent harness, or (3) reassign the task via `rhizo reroute <worker> <new_worker>`.
-3. **Orchestrator Self-Audit Watchdog & Debouncer Protocol (GVR-014)**:
-   - For harnesses supporting `schedule` (e.g. Antigravity), arm a debounced 15-minute watchdog timer (`schedule(DurationSeconds=900, Prompt="...", TimerCondition="any")`).
-   - Debouncer replaces (kills previous timer via `manage_task(Action='kill')` before arming a new one) on task dispatch, worker reports, and plan updates ("early and often"). Arriving worker traffic cancels the timer for free with 0 token overhead.
-   - When the timer fires, execute the short check: `rhizo watchdog check --agent <orchestrator> --json`. If `ACTION_REQUIRED: REARM_LISTENER`, revive `rhizo listen` in the background and debounce. When all tasks in the plan are complete (`- [x]`), stand down.
+3. **Orchestrator Self-Audit Watchdog & Stepped Backoff Protocol (GVR-014, GVR-015)**:
+   - For harnesses supporting `schedule` (e.g. Antigravity), arm a debounced watchdog timer (`schedule(DurationSeconds=cadence, Prompt="...", TimerCondition="any")`).
+   - **Stepped Backoff & 4-Strike Cap**: Starts at base 15m (900s). On consecutive quiescent checks with a stable listener, backs off (15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m) and stands down at check 4 (`recommended_cadence=0`), preventing infinite token-eating polling loops.
+   - **Reset Invariant**: Resets immediately to base 15m (streak 0) on any listener failure, unread inbox backlog, outbound task dispatch (`rhizo send`/`enqueue`), worker reply, or user chat prompt.
+   - **Replace, Never Stack**: Kills previous timer via `manage_task(Action='kill')` before arming a new one. Arriving worker traffic cancels the timer automatically with zero token overhead.
+   - When the timer fires, execute the short check: `rhizo watchdog check --agent <orchestrator> --json` and follow `next_action` (`SCHEDULE_TIMER` or `STAND_DOWN`).
 
 ---
 
