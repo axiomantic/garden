@@ -102,3 +102,8 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
 2. **Watchdog Window**: If a worker fails to respond within the expected turn window (e.g. 5–10 minutes) and `rhizo probe` reveals `NO_LISTENER` or unread inbox items:
    - **Escalate Immediately**: Prompt the operator via `ask_question` with the diagnostic status.
    - **Actionable Remediation**: Offer options to (1) re-arm the listener in the worker's terminal session (`rhizo listen <worker>`), (2) reboot the agent harness, or (3) reassign the task via `rhizo reroute <worker> <new_worker>`.
+3. **Orchestrator Self-Audit Watchdog & Debouncer Protocol (GVR-014)**:
+   - For harnesses supporting `schedule` (e.g. Antigravity), arm a debounced 15-minute watchdog timer (`schedule(DurationSeconds=900, Prompt="...", TimerCondition="any")`).
+   - Debouncer replaces (kills previous timer via `manage_task(Action='kill')` before arming a new one) on task dispatch, worker reports, and plan updates ("early and often"). Arriving worker traffic cancels the timer for free with 0 token overhead.
+   - When the timer fires, execute the short check: `rhizo watchdog check --agent <orchestrator> --json`. If `ACTION_REQUIRED: REARM_LISTENER`, revive `rhizo listen` in the background and debounce. When all tasks in the plan are complete (`- [x]`), stand down.
+
