@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-10-06
+
+### Added
+- **Phase 0 Interactive Intake Interview**: Codified the 4-question interactive interview (`ask_question`) into Garden's entrypoint, allowing operators to calibrate team topology (Triad vs Duo vs Custom), coding harnesses, and model pairings/fallbacks without guessing.
+- **Numbered Operator Setup Guidance**: Formatted prompt generator output with explicit, numbered terminal tab instructions (Tab 1, Tab 2, Tab 3) and reiterated harness-agnostic flexibility.
+- **Automatic Multi-Agent Activation in Develop**: Updated `/develop` gate in ISO standard plain English to offer "Coordinated Multi-Agent Team (Garden + Rhizo + Vine)" on any code development request, detailing what it is, what it means, and what it entails.
+- **Garden Coordination Guide v1.2**: Updated the canonical guide in `src/guide.nim` and `AGENTS.md` across projects to reflect the intake interview and prompt-bootstrapped sessions.
+
+### Changed
+- **Lead Orchestrator Terminology**: Replaced all occurrences of "Supreme Orchestrator" with "Lead Orchestrator" across all guides, READMEs, and skills for professional, ISO standard plain English alignment.
+- **Skill Instruction Cleanliness**: Removed human-facing quickstart callouts from skill files to optimize LLM prompt contexts, preserving them exclusively in project READMEs.
+
 ## [0.2.1] - 2026-10-06
 
 ### Added
