@@ -20,6 +20,15 @@
 
 **Garden** is an agentic engineering framework and skill library for orchestrating heterogeneous teams of AI coding assistants (Claude Code, OpenCode, Antigravity, Cursor, Codex).
 
+> [!NOTE]
+> ### Quick Note: Using Garden as your High-Level Swarm Wrapper
+> **Garden is the sovereign high-level multi-agent wrapper for all your engineering projects.**  
+> After installing `@axiomantic/garden`, `@axiomantic/rhizo`, and `@axiomantic/vine`, you don't need complex shell scripts, background daemon managers, or brittle terminal multiplexers. Whenever you start a session in your favorite coding harness (Antigravity, Claude Code, OpenCode, Cursor), simply tell the assistant:
+> ```text
+> "garden: I want to build [feature/system/project]"
+> ```
+> The session automatically acts as the **Supreme Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
+
 Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated APFS Copy-on-Write strands verified by Vine's Two-Key Gate.
 
 ```mermaid
@@ -153,22 +162,24 @@ In your primary AI coding assistant (Antigravity, Claude Code, OpenCode):
 User: "garden: Implement high-throughput batch claim leases with Redis pipeline support"
 ```
 
-### 2. Interactive Team Calibration (`choose-personas`)
-Garden inspects your repository and suggests a balanced persona roster with recommended harnesses and models:
-- **Marcus Vance** (Staff Systems Architect) $\to$ **Antigravity** | **Gemini 3.8 Flash**
-- **Caleb Thorne** (Refactoring & Code Quality Purist) $\to$ **Claude Code CLI** | **Claude 3 Opus**
-- **Elena Rostova** (DevEx & API Lead) $\to$ **Antigravity** | **Gemini 3.8 Flash**
-
-Confirm or adjust the roster with a single click.
+### 2. Interactive Project Intake Interview (Phase 0)
+The Orchestrator asks 4 quick interactive questions via `ask_question`:
+1. **Execution Mode**: Multi-Agent Swarm (Recommended) vs Single Session.
+2. **Team Sizing**: Standard Triad (3 Workers) vs Focused Duo (2 Workers) vs Custom.
+3. **Available Harnesses**: Claude Code CLI, OpenCode, Antigravity, Pi, Cursor, Terminal.
+4. **Model Preferences & Equivalents**:
+   - Systems Architect (`@architect`) $\to$ **Antigravity** or **OpenCode** | **Gemini 3.8 Flash** or **Claude 3.5 Sonnet**
+   - Adversarial Auditor (`@auditor`) $\to$ **Claude Code CLI** | **Claude 3.5 Sonnet** or **Claude 3 Opus**
+   - DevEx & Implementation Lead (`@implementer`) $\to$ **Antigravity** or **OpenCode** | **Gemini 3.8 Flash**
 
 ### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
-Garden generates raw markdown prompt cards wrapped in 10 backticks for each worker:
-```bash
-garden prompts
-```
-- The operator copies and pastes each prompt block into a separate terminal window or coding harness (Claude Code, OpenCode, Antigravity, Pi, Cursor).
-- Each session enters the project directory, sets `RHIZO_AGENT_NAME`, registers on the bus with `rhizo open`, and arms its single-shot listener with `rhizo listen`.
-- The Orchestrator verifies readiness via `rhizo who --json` before dispatching tasks.
+Garden writes `garden-swarm.json` and runs `garden prompts` to emit raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `):
+- The Orchestrator tells the operator:
+  1. Open **Tab 1**: Launch `claude` (Claude 3.5 Sonnet) $\to$ Paste Prompt 1 (`@auditor`)
+  2. Open **Tab 2**: Launch `opencode` $\to$ Paste Prompt 2 (`@architect`)
+  3. Open **Tab 3**: Launch `antigravity` (Gemini 3.8 Flash) $\to$ Paste Prompt 3 (`@implementer`)
+- Each session enters the project directory, exports `RHIZO_AGENT_NAME`, registers on the Redis bus (`rhizo open`), and arms its single-shot listener (`rhizo listen`).
+- The Orchestrator confirms all workers are live via `rhizo who --json` before dispatching tasks!
 
 ### 4. The Dialectical Pump (`dialectical-pump`)
 The personas deliberate across three empirical stages:

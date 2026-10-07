@@ -1,9 +1,20 @@
 ---
 name: garden
-description: "Master entrypoint and end-to-end ceremony director for multi-agent swarms operating on top of Rhizo (transport) and Vine (workspace integrator). Guides the user and orchestrator session through the full lifecycle: persona selection with harness/model pairing, prompt-based worker fleet bootstrapping with 10-backtick copy-paste prompt cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning with locking/strand schedules, and live swarm execution with Two-Key gate verification and fast-forward trunk weaving. Triggers: 'garden', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony'."
+description: "Master entrypoint and end-to-end ceremony director for multi-agent swarms operating on top of Rhizo (transport) and Vine (workspace integrator). Guides the user and orchestrator session through the full lifecycle: conversational project intake interview, persona selection with harness/model pairing, prompt-based worker fleet bootstrapping with 10-backtick copy-paste prompt cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning with locking/strand schedules, and live swarm execution with Two-Key gate verification and fast-forward trunk weaving. Triggers: 'garden', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony', 'start a project with garden', 'start a project with rhizo', 'set up a multi-agent team', 'use rhizo for this project', 'set up a swarm', 'coordinate multiple agents on this project', 'set up agents for this project'."
 ---
 
 # Garden: Multi-Agent Swarm Ceremony & Orchestration Engine
+
+> [!NOTE]
+> ### Quick Note: Using Garden as your High-Level Swarm Wrapper
+> **Garden is the sovereign high-level multi-agent wrapper for all your engineering projects.**
+> After installing `@axiomantic/garden`, `@axiomantic/rhizo`, and `@axiomantic/vine`, you don't need complex shell scripts, background daemon managers, or brittle terminal multiplexers. Whenever you start a session in your favorite coding harness (Antigravity, Claude Code, OpenCode, Cursor), simply tell the assistant:
+> ```text
+> "garden: I want to build [feature/system/project]"
+> ```
+> The session automatically acts as the **Supreme Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
+
+---
 
 ## 0. Prerequisite & Automatic Bootstrapping
 
@@ -24,8 +35,9 @@ Garden directs multi-agent swarms using Rhizo for transport and Vine for workspa
 ```mermaid
 flowchart TD
     subgraph Garden["Garden Layer (Methodology & Ceremonies)"]
-        Phase1["Phase 1: choose-personas (Team Selection & Models)"]
-        Phase2["Phase 2: launch-workers (Prompt-Based Session Bootstrapping)"]
+        Phase0["Phase 0: Interactive Intake Interview (Scope, Team & Models)"]
+        Phase1["Phase 1: choose-personas (Ratify garden-swarm.json)"]
+        Phase2["Phase 2: launch-workers (10-Backtick Prompt Cards & Sessions)"]
         Phase3["Phase 3: dialectical-pump (Research ➔ Design ➔ Audit)"]
         Phase4["Phase 4: plan-implementation (Locking & Strands)"]
         Phase5["Phase 5: orchestrate-swarm (Dispatch & Vine Weaving)"]
@@ -36,7 +48,7 @@ flowchart TD
         Vine["Vine (Rift Strands, Two-Key Gate, Weaving)"]
     end
 
-    Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
+    Phase0 --> Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
     Phase2 -.-> Rhizo
     Phase3 -.-> Rhizo
     Phase4 -.-> Rhizo & Vine
@@ -45,17 +57,54 @@ flowchart TD
 
 ---
 
-## 2. The 5-Phase End-to-End Ceremony
+## 2. The End-to-End Ceremony Workflow
 
-Execute all five phases sequentially. Never skip phases or invert the order.
+Execute phases sequentially. Never skip phases or invert the order.
 
-| Phase | Sub-Skill | Action | Quality Gate to Proceed |
+| Phase | Sub-Skill / Step | Action | Quality Gate to Proceed |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Formulate 3 balanced personas with harness/model pairings. | Operator ratifies `garden-swarm.json`. |
-| **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Generate 10-backtick worker prompt cards for operator pasting into sessions. | `rhizo who --json` confirms 100% of workers active. |
+| **Phase 0** | **Intake Gate** | Conduct interactive interview via `ask_question`: execution mode, swarm size, harnesses, and models. | Operator submits preferences. |
+| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize and write `garden-swarm.json` reflecting the interview. | Valid JSON written to repo root. |
+| **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
 | **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
 | **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules and strands. | Complete `implementation_plan.md` with task-locking matrix. |
 | **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, trunk weaving. | All plan tasks woven via `vine weave` after passing Two-Key Gate. |
+
+---
+
+### Phase 0: Interactive Project Intake & Swarm Calibration
+
+When an operator initiates a project or requests multi-agent coordination, the session MUST NOT silently guess configuration or begin writing code directly. It immediately invokes `ask_question` to conduct the **Interactive Intake Interview**:
+
+1. **Question 1: Execution Mode**:
+   - *Option 1 (Recommended)*: Multi-Agent Swarm (Dedicated terminal tabs/coding harnesses over Rhizo & Vine).
+   - *Option 2*: Single-Agent Inline (Sequential execution within current chat session).
+2. **Question 2: Swarm Composition & Team Sizing**:
+   - *Option 1 (Recommended)*: Balanced Triad (3 Workers: Systems Architect `@architect`, Adversarial Auditor `@auditor`, DevEx Lead `@implementer`).
+   - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@implementer`, Adversarial Auditor `@auditor`).
+   - *Option 3*: Custom Swarm (Operator specifies custom roles and headcount).
+3. **Question 3: Available AI Coding Harnesses**:
+   - The operator specifies which coding environments they have available (Claude Code CLI, Antigravity, OpenCode, Pi, Cursor, Headless Terminal). Explain that workers can run in **any** combination of harnesses!
+4. **Question 4: Foundation Model Pairing & Equivalencies**:
+   - Recommend optimal models with fallback equivalents:
+     - `@architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
+     - `@auditor`: Claude 3.5 Sonnet / Claude 3 Opus (strict negative controls, zero sloppy approvals).
+     - `@implementer`: Gemini 3.8 Flash / Claude 3.5 Sonnet (rapid, iterative coding velocity).
+     - *Air-gapped / Local*: Ollama / DeepSeek-R1.
+
+#### Automatic Fulfillment & 10-Backtick Prompt Generation:
+Upon receiving the operator's responses:
+1. Run `garden init` if `garden.toml` or `AGENTS.md` is not yet initialized.
+2. Generate `garden-swarm.json` reflecting the chosen workers, roles, harnesses, and models.
+3. Run `garden prompts` to generate the raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `).
+4. Present the operator with clear, numbered instructions:
+   ```text
+   1. Open X terminal tabs or windows in your selected coding harnesses.
+   2. Copy the raw block inside each 10-backtick pre block below and paste it into its corresponding session.
+   3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
+   ```
+5. Register the orchestrator's presence (`rhizo open orchestrator`) and arm the listener.
+6. Poll or await cluster readiness gate (`rhizo who --json`) before proceeding to Phase 3.
 
 ---
 

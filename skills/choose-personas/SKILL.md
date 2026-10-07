@@ -97,36 +97,38 @@ Once ratified, write `garden-swarm.json` to the target project directory:
 {
   "project": "my-project",
   "created_at": "2026-09-28T12:00:00Z",
+  "target_repo": "/Users/eek/Development/my-project",
+  "orchestrator": "orchestrator",
   "workers": [
     {
       "name": "architect",
       "persona": "Marcus Vance",
       "role": "Staff Systems Architect",
-      "harness": "antigravity",
-      "model": "gemini-3-8-flash",
-      "tags": ["systems", "architecture", "coordinator"],
-      "system_prompt": "You are Marcus Vance, Staff Systems Architect...",
-      "startup_command": "rhizo listen architect"
+      "harness": "Antigravity / OpenCode",
+      "model": "Gemini 3.8 Flash / Claude 3.5 Sonnet",
+      "tags": ["my-project", "systems", "architecture", "invariants"],
+      "system_prompt": "You are Marcus Vance, Staff Systems Architect for project my-project...",
+      "opposing_priority": "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes."
     },
     {
       "name": "auditor",
       "persona": "Caleb Thorne",
-      "role": "Code Quality & Refactoring Purist",
-      "harness": "claude-code",
-      "model": "claude-3-5-sonnet",
-      "tags": ["qa", "audit", "purist"],
-      "system_prompt": "You are Caleb Thorne, Refactoring Purist...",
-      "startup_command": "claude --agent auditor"
+      "role": "Verification & Adversarial Auditor",
+      "harness": "Claude Code CLI / Antigravity",
+      "model": "Claude 3.5 Sonnet / Claude 3 Opus",
+      "tags": ["my-project", "qa", "audit", "verifier", "purist"],
+      "system_prompt": "You are Caleb Thorne, Verification & Adversarial Auditor for project my-project...",
+      "opposing_priority": "Adversarial skepticism, rigorous negative controls, and proof over convenience."
     },
     {
       "name": "implementer",
       "persona": "Elena Rostova",
       "role": "DevEx & Implementation Lead",
-      "harness": "antigravity",
-      "model": "gemini-3-8-flash",
-      "tags": ["dev", "devex", "build"],
-      "system_prompt": "You are Elena Rostova, DevEx Lead...",
-      "startup_command": "rhizo listen implementer"
+      "harness": "Antigravity / OpenCode",
+      "model": "Gemini 3.8 Flash / Claude 3.5 Sonnet",
+      "tags": ["my-project", "dev", "devex", "build", "implementation"],
+      "system_prompt": "You are Elena Rostova, DevEx & Implementation Lead for project my-project...",
+      "opposing_priority": "High-velocity implementation, pragmatic delivery, and developer ergonomics."
     }
   ]
 }
@@ -134,9 +136,12 @@ Once ratified, write `garden-swarm.json` to the target project directory:
 
 ---
 
-## 4. Verification & Handoff
+## 4. Verification & Automatic Prompt Generation Handoff
 
 Before concluding:
 1. Verify `garden-swarm.json` is syntactically valid JSON.
 2. Confirm each worker has unique `name` and non-empty `tags`.
-3. Proceed directly to [`launch-workers`](../launch-workers/SKILL.md).
+3. Proceed directly to [`launch-workers`](../launch-workers/SKILL.md):
+   - Call `garden prompts` to generate the 10-backtick raw markdown blocks.
+   - Present the operator with numbered terminal tab setup instructions.
+   - Await cluster readiness verification via `rhizo who --json`.

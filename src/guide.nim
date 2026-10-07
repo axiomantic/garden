@@ -5,13 +5,13 @@
 import std/[os, strutils]
 
 const
-  GuideVersion* = "v1.1"
+  GuideVersion* = "v1.2"
   BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
   EndMarker* = "<!-- END GARDEN GUIDE -->"
   MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN GARDEN GUIDE [v1.1] -->
+<!-- BEGIN GARDEN GUIDE [v1.2] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -33,8 +33,10 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
   Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
 
 ### 2. Fleet Lifecycle & Session Coordination
+* **Interactive Intake & Persona Calibration**:
+  Before dispatching work, the orchestrator conducts an intake interview (`garden` / `choose-personas`) to calibrate personas, harnesses, and foundation models, then generates `garden-swarm.json`.
 * **Prompt-Bootstrapped Sessions**:
-  Swarm workers operate in dedicated interactive coding sessions (Claude Code, OpenCode, Antigravity, Pi, etc.) bootstrapped from Garden prompt cards (`garden prompts` / `garden launch`). Never detach unmanaged background processes with `&` or redirect output.
+  Swarm workers operate in dedicated interactive coding sessions (Claude Code, OpenCode, Antigravity, Pi, Cursor) bootstrapped from Garden prompt cards (`garden prompts` / `garden launch`) wrapped in 10 backticks. Never detach unmanaged background processes with `&` or redirect output.
 * **Listener Discipline**:
   Workers arm their single-shot Rhizo listener (`rhizo listen <agent>`) with zero-timeout infinite wait to prevent token thrashing. Never wrap `rhizo listen` in a shell while-loop.
 
