@@ -33,6 +33,21 @@ Maintain this exact block in the working context:
 <!-- END_SWARM_RUNTIME_STATE -->
 </CRITICAL>
 
+<CRITICAL>
+Orchestrator Turn-End Listener Invariant (GVR-014):
+Coding harnesses (Antigravity, Claude Code, OpenCode) are event-driven: when the model yields a turn with text output, execution is completely suspended. Redis inbox state changes CANNOT wake an idle harness without an active child process registered in the task manager.
+
+Whenever the Supreme Orchestrator dispatches a task, broadcasts instructions, or awaits worker responses, THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
+`run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`
+
+FORBIDDEN: Never yield the conversation turn to the operator after dispatching work without an active background listener running. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies in Redis and causing silent swarm stalls.
+
+Safety Net (Belt-and-Suspenders):
+Whenever dispatching batches or entering long wait states, set a fallback schedule timer:
+`schedule(DurationSeconds=120, Prompt="Check swarm liveness: run rhizo who and rhizo probe", TimerCondition="any")`
+If worker messages arrive early, the message satisfies the condition and cancels the timer. If no message arrives or the listener stalls, the timer wakes the orchestrator within 2 minutes instead of stalling indefinitely.
+</CRITICAL>
+
 ---
 
 ## 2. The Runtime Governance Loop
@@ -74,6 +89,13 @@ Depending on the task distribution model in `implementation_plan.md`:
     --subject "Task 1.2: Test Harness" \
     --body '{"task_id": "task-test-harness", "strand": "strand/task-test-harness"}'
   ```
+
+- **Mandatory Turn-End Listener Arming**:
+  Immediately after executing `rhizo send` or `rhizo enqueue`, arm your single-shot background listener before completing your turn:
+  ```bash
+  run_command(CommandLine="rhizo listen orchestrator", IsDaemon=false, WaitMsBeforeAsync=500)
+  ```
+  *(Never end your turn without this active background task; without it, worker gate reports cannot wake you up).*
 
 ### SOP 2: Monitoring Swarm Health, Watchdog & Escalation (GVR-011)
 Check active workers and cluster status:
