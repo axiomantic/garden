@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.5] - 2026-09-30
 
 ### Changed
-- **Swarm Invariants Formalization**: Embedded strict XML invariants (`<CRITICAL>`, `<INVARIANT>`) into the coordination guide and skill documentation enforcing the Supreme Orchestrator Invariant, Zero Theatrical Dialogue (requiring empirical verification via tool calls for all dialectical claims), and Multiplexer Discipline for tmux workers.
+- **Swarm Invariants Formalization**: Embedded strict XML invariants (`<CRITICAL>`, `<INVARIANT>`) into the coordination guide and skill documentation enforcing the Lead Orchestrator Invariant, Zero Theatrical Dialogue (requiring empirical verification via tool calls for all dialectical claims), and Multiplexer Discipline for tmux workers.
 - **Rift Workspace Integration**: Aligned swarm task planning and execution workflows with Rift copy-on-write strand virtualization and Two-Key Gate verification.
 - **Swarm Ceremony Streamlining**: Harmonized the 5-phase swarm ceremony across `choose-personas`, `launch-workers`, `dialectical-pump`, `plan-implementation`, and `orchestrate-swarm`.
 - **Version Alignment**: Synchronized `GardenVersion = "0.1.5"` across `src/garden.nim`, `garden.nimble`, and `package.json`.

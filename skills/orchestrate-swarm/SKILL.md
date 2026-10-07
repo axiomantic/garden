@@ -1,18 +1,18 @@
 ---
 name: orchestrate-swarm
-description: "Directs live multi-agent swarm execution from the primary chat session acting as Supreme Orchestrator. Dispatches tasks over the Rhizo Redis bus, monitors worker heartbeats with rhizo who, governs task leasing and dead-letter queues, ratifies emergent design addenda, verifies Two-Key Gate reports from workers, executes fast-forward trunk merges via vine weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
+description: "Directs live multi-agent swarm execution from the primary chat session acting as Lead Orchestrator. Dispatches tasks over the Rhizo Redis bus, monitors worker heartbeats with rhizo who, governs task leasing and dead-letter queues, ratifies emergent design addenda, verifies Two-Key Gate reports from workers, executes fast-forward trunk merges via vine weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
 ---
 
 # `orchestrate-swarm`: Main-Chat Swarm Governance & Trunk Integration
 
 > **The Sovereign Conductor of Autonomous Execution**  
-> *The Supreme Orchestrator does not write the low-level code lines; it directs the symphony. It dispatches work over Redis, unblocks dependencies, enforces the Two-Key Gate, and weaves clean strands into the trunk.*
+> *The Lead Orchestrator does not write the low-level code lines; it directs the symphony. It dispatches work over Redis, unblocks dependencies, enforces the Two-Key Gate, and weaves clean strands into the trunk.*
 
 ---
 
-## 1. The Role of the Supreme Orchestrator
+## 1. The Role of the Lead Orchestrator
 
-The main chat session assumes the role of **Supreme Orchestrator**:
+The main chat session assumes the role of **Lead Orchestrator**:
 - **Non-Interference**: Never perform massive multi-file edits directly when workers are active in isolated strands.
 - **Strict Transport Discipline**: All task assignments, handoffs, and cancellation interrupts flow exclusively over the Rhizo Redis bus (`rhizo send`, `rhizo reply`, `rhizo enqueue`).
 - **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Vine strands.
@@ -23,7 +23,7 @@ Whenever context summarization or compaction occurs, the coding harness MUST pre
 
 Maintain this exact block in the working context:
 <!-- SWARM_RUNTIME_STATE: DO NOT DISCARD OR ABBREVIATE IN COMPACTION -->
-- AGENT_NAME: <codename> (Role: Supreme Orchestrator)
+- AGENT_NAME: <codename> (Role: Lead Orchestrator)
 - WORKSPACE_MODE: Root Trunk (/Users/eek/Development/<project>)
 - ACTIVE_STRAND: canonical trunk
 - ACTIVE_PEERS:
@@ -37,7 +37,7 @@ Maintain this exact block in the working context:
 Orchestrator Turn-End Listener Invariant (GVR-014):
 Coding harnesses (Antigravity, Claude Code, OpenCode) are event-driven: when the model yields a turn with text output, execution is completely suspended. Redis inbox state changes CANNOT wake an idle harness without an active child process registered in the task manager.
 
-Whenever the Supreme Orchestrator dispatches a task, broadcasts instructions, or awaits worker responses, THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
+Whenever the Lead Orchestrator dispatches a task, broadcasts instructions, or awaits worker responses, THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
 `run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`
 
 FORBIDDEN: Never yield the conversation turn to the operator after dispatching work without an active background listener running. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies in Redis and causing silent swarm stalls.
@@ -143,7 +143,7 @@ The probe returns:
 
 #### Operator Escalation Protocol
 If `rhizo probe` indicates a stalled or dead worker (`NO_LISTENER` or `STALE` with unread inbox messages):
-1. **Never Hang Silently**: The Supreme Orchestrator must immediately surface an escalation to the operator via `ask_question`.
+1. **Never Hang Silently**: The Lead Orchestrator must immediately surface an escalation to the operator via `ask_question`.
 2. **Present Diagnostic**:
    - Alert: `⚠️ SWARM STALL DETECTED: @<worker> has not responded to <subject>`
    - Diagnostic: `Inbox: N unread | Listener: NO_LISTENER | Status: STALE`

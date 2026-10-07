@@ -5,17 +5,6 @@ description: "Master entrypoint and end-to-end ceremony director for multi-agent
 
 # Garden: Multi-Agent Swarm Ceremony & Orchestration Engine
 
-> [!NOTE]
-> ### Quick Note: Using Garden as your High-Level Swarm Wrapper
-> **Garden is the sovereign high-level multi-agent wrapper for all your engineering projects.**
-> After installing `@axiomantic/garden`, `@axiomantic/rhizo`, and `@axiomantic/vine`, you don't need complex shell scripts, background daemon managers, or brittle terminal multiplexers. Whenever you start a session in your favorite coding harness (Antigravity, Claude Code, OpenCode, Cursor), simply tell the assistant:
-> ```text
-> "garden: I want to build [feature/system/project]"
-> ```
-> The session automatically acts as the **Supreme Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
-
----
-
 ## 0. Prerequisite & Automatic Bootstrapping
 
 All swarm ceremonies require `garden`, `rhizo`, `vine`, and `rift`. If missing, install globally:
@@ -111,7 +100,7 @@ Upon receiving the operator's responses:
 ## 3. Core Operational Invariants
 
 <CRITICAL>
-The primary conversation session acts as the Supreme Orchestrator. The orchestrator directs, reviews, and weaves; it never performs large multi-file implementation edits directly when a worker fleet is active.
+The primary conversation session acts as the Lead Orchestrator. The orchestrator directs, reviews, and weaves; it never performs large multi-file implementation edits directly when a worker fleet is active.
 </CRITICAL>
 
 <INVARIANT>

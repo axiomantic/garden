@@ -27,7 +27,7 @@
 > ```text
 > "garden: I want to build [feature/system/project]"
 > ```
-> The session automatically acts as the **Supreme Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
+> The session automatically acts as the **Lead Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
 
 Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated APFS Copy-on-Write strands verified by Vine's Two-Key Gate.
 
@@ -268,7 +268,7 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 
 ## Core Invariants
 
-1. **The Supreme Orchestrator Invariant**:
+1. **The Lead Orchestrator Invariant**:
    The main chat session coordinates, reviews, and integrates. Intensive multi-file edits are executed by the worker fleet in isolated strands.
 2. **Empirical Grounding Protocol (Zero Theatrical Dialogue)**:
    Dialectical deliberations must cite hard evidence from real tool calls (line citations, test outputs, compiler errors). Theatrical roleplay is strictly banned.
