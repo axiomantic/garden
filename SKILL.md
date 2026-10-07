@@ -102,3 +102,14 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
 2. **Watchdog Window**: If a worker fails to respond within the expected turn window (e.g. 5–10 minutes) and `rhizo probe` reveals `NO_LISTENER` or unread inbox items:
    - **Escalate Immediately**: Prompt the operator via `ask_question` with the diagnostic status.
    - **Actionable Remediation**: Offer options to (1) re-arm the listener in the worker's terminal session (`rhizo listen <worker>`), (2) reboot the agent harness, or (3) reassign the task via `rhizo reroute <worker> <new_worker>`.
+
+---
+
+## 5. Configuration & Swarm Manifest Reference
+
+See [`docs/configuration.md`](docs/configuration.md) for full details on:
+- **Environment Variables**: `GARDEN_SWARM_FILE`, `GARDEN_CONFIG`, `GARDEN_PROJECT_DIR`, and `GARDEN_TERMINAL_APP`.
+- **`garden.toml`**: Project-level defaults (`name`, `preferred_terminal`, `session_prefix`, `default_triad`).
+- **`garden-swarm.json`**: Swarm specification schema (`project`, `target_repo`, `orchestrator`, `shared_workspace`, `workers` array: `name`, `persona`, `role`, `harness`, `model`, `tags`, `system_prompt`, `opposing_priority`).
+- **The 10-Backtick Protocol**: Clean raw markdown formatting for copy-paste worker bootstrap prompts.
+

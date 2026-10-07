@@ -187,6 +187,74 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 
 ---
 
+## CLI Reference
+
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `garden prompts` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate 10-backtick raw markdown prompt cards for pasting into worker sessions. |
+| `garden launch` | `[--worker <name>] [--write [file]] [--json] [--tmux] [--session-name <name>]` | Bootstrap swarm worker sessions (defaults to generating prompt cards). |
+| `garden status` | `[--json] [--session-name <name>]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |
+| `garden init` | `[<target_dir>] [--force]` | Initialize `garden.toml`, docs scaffold, and install guide in `AGENTS.md`. |
+| `garden teardown`| `[--session-name <name>] [--swarm-file <file>]` | Gracefully close registered swarm agents on the Redis bus. |
+| `garden guide` | `<install\|check\|uninstall> [path]` | Install or manage Garden Multi-Agent Swarm Guide in `AGENTS.md`. |
+
+---
+
+## Configuration & Swarm Manifest Reference
+
+> [!TIP]
+> For the complete specification of `garden.toml`, `garden-swarm.json` schemas, and environment variables, see the [Garden Configuration & Swarm Manifest Reference](docs/configuration.md).
+
+### Environment Variables
+
+| Variable | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `GARDEN_SWARM_FILE` | Path | `garden-swarm.json` | Explicit path to swarm manifest JSON file. |
+| `GARDEN_CONFIG` | Path | `garden.toml` | Explicit path to project `garden.toml`. |
+| `GARDEN_PROJECT_DIR`| Path | *Auto-detected* | Target repository root directory. |
+| `GARDEN_TERMINAL_APP`| String | `auto` | Preferred terminal viewer for tmux sessions (`Ghostty`, `Terminal`, `iTerm`, `none`). |
+
+### Example `garden-swarm.json`
+
+```json
+{
+  "project": "myproject",
+  "target_repo": "/Users/developer/Development/myproject",
+  "orchestrator": "orchestrator",
+  "workers": [
+    {
+      "name": "architect",
+      "persona": "Dr. Marcus Vance (Systems Architect)",
+      "role": "Systems Architect & Formal Invariant Specifier",
+      "harness": "Claude Code",
+      "model": "claude-3-5-sonnet",
+      "tags": ["design", "spec"],
+      "opposing_priority": "Formal mathematical correctness and zero architectural drift."
+    },
+    {
+      "name": "auditor",
+      "persona": "Lyra Sterling (Adversarial Quality Auditor)",
+      "role": "Adversarial Code Reviewer & Security Auditor",
+      "harness": "OpenCode",
+      "model": "gemini-3.8-flash",
+      "tags": ["audit", "testing"],
+      "opposing_priority": "Aggressive edge-case fault injection and invariant verification."
+    },
+    {
+      "name": "implementer",
+      "persona": "Elena Rostova (Lead Implementation Engineer)",
+      "role": "Polyglot Systems & Performance Engineer",
+      "harness": "Antigravity",
+      "model": "claude-3-5-sonnet",
+      "tags": ["implementation", "perf"],
+      "opposing_priority": "Rapid implementation velocity and minimal dependency footprint."
+    }
+  ]
+}
+```
+
+---
+
 ## Core Invariants
 
 1. **The Supreme Orchestrator Invariant**:

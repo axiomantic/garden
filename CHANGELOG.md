@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-10-06
+
+### Added
+- **Environment Variable Overrides & Precedence**:
+  - Added support for `GARDEN_SWARM_FILE` to override local `garden-swarm.json` discovery.
+  - Added support for `GARDEN_CONFIG` to specify custom paths to `garden.toml`.
+  - Added support for `GARDEN_PROJECT_DIR` to override git/root project directory resolution.
+  - Added support for `GARDEN_TERMINAL_APP` to specify the default terminal application viewer.
+- **Comprehensive Configuration & Manifest Documentation**:
+  - Authored `docs/configuration.md`: Comprehensive reference table for all `GARDEN_*` environment variables, `garden.toml` schema, and `garden-swarm.json` full JSON Schema specification with WorkerSpec details.
+- **Enhanced Test Coverage**:
+  - Added test in `tests/test_garden.nim` verifying `GARDEN_SWARM_FILE` and `GARDEN_PROJECT_DIR` environment variable overrides during prompt generation.
+
 ## [0.2.0] - 2026-10-06
 
 ### Added

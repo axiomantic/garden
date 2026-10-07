@@ -107,3 +107,14 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
    - Debouncer replaces (kills previous timer via `manage_task(Action='kill')` before arming a new one) on task dispatch, worker reports, and plan updates ("early and often"). Arriving worker traffic cancels the timer for free with 0 token overhead.
    - When the timer fires, execute the short check: `rhizo watchdog check --agent <orchestrator> --json`. If `ACTION_REQUIRED: REARM_LISTENER`, revive `rhizo listen` in the background and debounce. When all tasks in the plan are complete (`- [x]`), stand down.
 
+---
+
+## 5. Configuration & Swarm Manifest Reference
+
+See [`docs/configuration.md`](../../docs/configuration.md) for full details on:
+- **Environment Variables**: `GARDEN_SWARM_FILE`, `GARDEN_CONFIG`, `GARDEN_PROJECT_DIR`, and `GARDEN_TERMINAL_APP`.
+- **`garden.toml`**: Project-level defaults (`name`, `preferred_terminal`, `session_prefix`, `default_triad`).
+- **`garden-swarm.json`**: Swarm specification schema (`project`, `target_repo`, `orchestrator`, `shared_workspace`, `workers` array: `name`, `persona`, `role`, `harness`, `model`, `tags`, `system_prompt`, `opposing_priority`).
+- **The 10-Backtick Protocol**: Clean raw markdown formatting for copy-paste worker bootstrap prompts.
+
+

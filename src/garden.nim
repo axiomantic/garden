@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json]
 import guide
 
 const
-  GardenVersion = "0.2.0"
+  GardenVersion = "0.2.1"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -66,9 +66,14 @@ Options for 'teardown':
 """
 
 proc findProjectRoot*(startDir: string = getCurrentDir()): string =
+  let envDir = getEnv("GARDEN_PROJECT_DIR", "")
+  if envDir.len > 0 and dirExists(envDir):
+    return envDir.normalizedPath
   var dir = startDir
   while dir.len > 0:
-    if fileExists(dir / "garden.toml") or 
+    let envCfg = getEnv("GARDEN_CONFIG", "")
+    if (envCfg.len > 0 and fileExists(envCfg)) or
+       fileExists(dir / "garden.toml") or 
        fileExists(dir / "garden-swarm.json") or 
        dirExists(dir / ".git"):
       return dir
@@ -80,9 +85,11 @@ proc findProjectRoot*(startDir: string = getCurrentDir()): string =
 
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
-  var swarmFile = swarmFilePath
-  if swarmFile.len == 0 and fileExists(root / "garden-swarm.json"):
-    swarmFile = root / "garden-swarm.json"
+  let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
+  var swarmFile = if swarmFilePath.len > 0: swarmFilePath
+                  elif envSwarm.len > 0 and fileExists(envSwarm): envSwarm
+                  elif fileExists(root / "garden-swarm.json"): root / "garden-swarm.json"
+                  else: ""
 
   let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
 
@@ -518,11 +525,11 @@ proc main() =
       inc i
     quit(doInit(targetDir, force))
   of "prompts":
-    var swarmFile = ""
+    var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
-    var projectDir = ""
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var i = 1
     while i < params.len:
       case params[i]
@@ -544,14 +551,14 @@ proc main() =
     quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput))
   of "launch":
     var sessionName = ""
-    var swarmFile = ""
+    var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
-    var terminalApp = ""
+    var terminalApp = getEnv("GARDEN_TERMINAL_APP", "")
     var force = false
     var useTmux = false
-    var projectDir = ""
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var i = 1
     while i < params.len:
       case params[i]
@@ -593,7 +600,7 @@ proc main() =
     quit(doStatus(sessionName, jsonOutput))
   of "teardown":
     var sessionName = ""
-    var swarmFile = ""
+    var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var i = 1
     while i < params.len:
       case params[i]

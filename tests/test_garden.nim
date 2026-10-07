@@ -179,3 +179,39 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check lOut.contains("Elena Rostova")
     check lOut.contains("``````````markdown")
 
+  test "Garden respects GARDEN_SWARM_FILE and GARDEN_PROJECT_DIR environment variables":
+    let tmpDir = getTempDir() / ("garden_test_env_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: removeDir(tmpDir)
+
+    let customSwarm = tmpDir / "custom-swarm.json"
+    let customJson = """{
+      "project": "env-proj",
+      "target_repo": "/tmp/env-proj",
+      "workers": [
+        {
+          "name": "env-worker",
+          "persona": "Custom Env Persona",
+          "role": "Environment Validator",
+          "harness": "Claude Code",
+          "model": "claude-3-5-sonnet",
+          "tags": ["env", "test"]
+        }
+      ]
+    }"""
+    writeFile(customSwarm, customJson)
+
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    putEnv("GARDEN_SWARM_FILE", customSwarm)
+    putEnv("GARDEN_PROJECT_DIR", tmpDir)
+    defer:
+      delEnv("GARDEN_SWARM_FILE")
+      delEnv("GARDEN_PROJECT_DIR")
+
+    let (pOut, pCode) = execCmdEx(exePath & " prompts --json")
+    check pCode == 0
+    let j = parseJson(pOut.strip())
+    check j["count"].getInt() == 1
+    check j["workers"][0]["name"].getStr() == "env-worker"
+    check j["workers"][0]["prompt"].getStr().contains("Custom Env Persona")
+
