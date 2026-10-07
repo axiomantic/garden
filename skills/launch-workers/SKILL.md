@@ -1,106 +1,118 @@
 ---
 name: launch-workers
-description: "Provisions an active worker fleet inside a dedicated tmux session and launches an OS-level terminal viewer (Ghostty / Terminal.app). Reads garden-swarm.json, creates named tmux windows/panes for each worker, configures environment variables (RHIZO_AGENT_NAME, project path), registers each agent in Redis with rhizo open, arms background listeners, and runs AppleScript or open commands on macOS to display the live worker windows to the operator. Verifies cluster heartbeat readiness via rhizo who --json before handing off. Triggers: 'launch workers', 'spin up workers', 'start worker swarm', 'open tmux swarm', 'launch fleet'."
+description: "Generates and formats X distinct copy-pasteable bootstrap prompts for new agent sessions (Claude Code, Pi, OpenCode, Antigravity, etc.) to join the Garden work group on Rhizo and Vine. Reads garden-swarm.json, configures identities, environment setup (RHIZO_AGENT_NAME, cd, rhizo open), single-shot listener discipline, task claiming, and Vine strand isolation. Spits out prompt blocks wrapped in 10 backticks for clean, unrendered raw markdown copying, and verifies cluster heartbeat readiness via rhizo who --json before handing off. Triggers: 'launch workers', 'spin up workers', 'start worker swarm', 'generate worker prompts', 'bootstrap swarm', 'launch fleet'."
 ---
 
-# `launch-workers`: Automated Tmux Swarm Provisioning & Terminal Viewer
+# `launch-workers`: Prompt-Based Swarm Bootstrapping & Work Group Onboarding
 
-> **From Manifest to Live Terminals in Under 2 Seconds**  
-> *Tmux multiplexes the background worker processes while OS-level desktop scripting opens your preferred terminal app so you can observe the swarm in real time.*
-
----
-
-## 1. System Requirements & Invariants
-
-1. **`tmux` is Required**:
-   - `tmux 3.0+` must be installed on the host (`command -v tmux`). If missing, fail fast and instruct the operator to install (`brew install tmux`).
-2. **`rhizo` is Required**:
-   - Rhizo engine must be present (`npm install -g @axiomantic/rhizo`).
-3. **No Terminal Fallbacks**:
-   - Workers are strictly managed inside tmux windows/panes. We do not detach headless rogue background processes with `nohup` or `&`.
-4. **Desktop Viewer Priority on macOS**:
-   - Automatically detects installed terminal emulators:
-     - **Priority 1: Ghostty** (`/Applications/Ghostty.app`)
-     - **Priority 2: iTerm2** (`/Applications/iTerm.app`)
-     - **Priority 3: macOS Terminal** (`/System/Applications/Utilities/Terminal.app`)
-   - Pops open a visible terminal window running `tmux attach-session -t garden-<project>`.
+> **From Manifest to Coordinated Sessions Across Any AI Harness**  
+> *Garden generates self-contained, 10-backtick-fenced prompt cards for the human operator to paste into separate terminal tabs or coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor). Each session is immediately grounded in its identity, joins the Rhizo work group, and arms its listener.*
 
 ---
 
-## 2. The Provisioning Flow
+## 1. System Philosophy & Invariants
+
+1. **Human-in-the-Loop Session Autonomy**:
+   - We do not blindly spawn tmux background processes or attempt to drive terminal multiplexers with fragile subshell scripting.
+   - The operator chooses the harness and model for each worker (e.g. Claude Code CLI in one tab, OpenCode in another, Antigravity in a third).
+2. **Raw Markdown 10-Backtick Fencing**:
+   <CRITICAL>
+   When outputting prompt cards in stdout, artifacts, or chat, every prompt block MUST be wrapped in exactly 10 backticks:
+   ``````````markdown
+   ...
+   ``````````
+   This guarantees that nested backtick fences (```bash) and internal markdown headers inside the prompts do NOT prematurely terminate the code block or render markdown, preserving pristine raw text for one-click clipboard copying.
+   </CRITICAL>
+3. **Single-Shot Listener Discipline**:
+   <CRITICAL>
+   Inside worker prompts, `rhizo listen <name>` must always be presented as a single-shot, blocking foreground command with zero timeout (infinite wait).
+   NEVER wrap `rhizo listen` in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap message payloads inside unmonitored subshell logs and hang coordination.
+   </CRITICAL>
+4. **Zero Dirty Commits**:
+   - Never stage coordination state (`.rhizo.*`, `*.lock`, `.vine.json`, `workspaces/`) into Git.
+
+---
+
+## 2. The Bootstrapping Flow
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Orch as Main Chat (Orchestrator)
-    participant Script as launch_tmux_swarm.sh
-    participant Tmux as tmux Daemon
-    participant OS as macOS Window Server (Ghostty / Terminal)
+    participant Garden as garden prompts / launch
+    participant Op as Human Operator
+    participant Workers as New Terminal Sessions (Claude, OpenCode, etc.)
     participant Redis as Rhizo (Redis Bus)
 
-    Orch->>Script: Invokes with --swarm-file garden-swarm.json
-    Script->>Tmux: Creates session garden-<project>
-    loop For Each Worker in Manifest
-        Script->>Tmux: Creates named window/pane
-        Script->>Tmux: Injects RHIZO_AGENT_NAME & cd <project>
-        Script->>Tmux: Sends rhizo open <name> "<tags>"
-        Script->>Tmux: Arms listener (rhizo listen or custom startup command)
-        Tmux->>Redis: Registers heartbeat & listener lock
+    Orch->>Garden: Runs garden prompts (or garden launch)
+    Garden-->>Orch: Emits X prompt cards wrapped in 10 backticks
+    Orch->>Op: Displays formatted prompt blocks to operator
+    Op->>Workers: Pastes Prompt #1 into Session 1, Prompt #2 into Session 2...
+    loop Each Pasted Worker Session
+        Workers->>Workers: Sets RHIZO_AGENT_NAME & enters target directory
+        Workers->>Redis: Runs rhizo open <name> "<tags>"
+        Workers->>Redis: Runs rhizo listen <name> (blocks waiting for tasks)
     end
-    Script->>OS: Opens Ghostty/Terminal attached to tmux session
-    Script-->>Orch: Returns JSON status
-    Orch->>Redis: Verifies cluster readiness (rhizo who --json)
+    Orch->>Redis: Runs rhizo who --json to verify readiness gate
+    Redis-->>Orch: All workers active and listening
+    Orch->>Op: Confirms swarm is ready for task dispatch
 ```
 
 ---
 
 ## 3. Execution Procedure
 
-### Step 1: Run the Swarm Provisioner
-Execute [`scripts/launch_tmux_swarm.sh`](file:///Users/eek/Development/garden/scripts/launch_tmux_swarm.sh) with the active project path and manifest:
+### Step 1: Generate Worker Bootstrap Prompts
+Run `garden prompts` (or `garden launch`) from the project root:
 
 ```bash
-/Users/eek/Development/garden/scripts/launch_tmux_swarm.sh \
-  --project-dir "$(pwd)" \
-  --swarm-file "garden-swarm.json" \
-  --force
+# Output all worker prompts to terminal (and optionally write to file):
+garden prompts --write garden-prompts.md
+
+# Or generate for a specific worker:
+garden prompts --worker architect
 ```
 
-- `--force`: Kills any stale prior session with the same project name before provisioning a clean fleet.
-- Automatically launches Ghostty or Terminal.app on macOS attached to the new session.
+If `garden-swarm.json` exists in the repository, Garden uses its configured personas, mandates, harnesses, and models. If missing, Garden automatically synthesizes the standard balanced triad:
+- `@architect` (Marcus Vance - Staff Systems Architect)
+- `@auditor` (Caleb Thorne - Verification & Adversarial Auditor)
+- `@implementer` (Elena Rostova - DevEx & Implementation Lead)
 
-### Step 2: Verify Cluster Readiness Gate
-Before dispatching tasks, verify that every worker from `garden-swarm.json` is actively registered in Redis and displaying valid heartbeats:
+### Step 2: Present & Paste Prompts into Sessions
+The operator opens a separate terminal window, tab, or harness session for each worker, then copies and pastes the corresponding raw block from the 10-backtick pre block.
+
+Each prompt immediately instructs the agent to:
+1. `cd "<project_dir>"`
+2. `export RHIZO_AGENT_NAME="<name>"`
+3. `rhizo open "<name>" "<tags>"`
+4. `rhizo listen "<name>"` (blocking until the Orchestrator delivers a task)
+
+### Step 3: Verify Cluster Readiness Gate
+Before dispatching tasks, verify that every worker has registered in Redis and is showing active heartbeats:
 
 ```bash
 rhizo who --json
 ```
 
 **Pass Criteria**:
-1. All worker names in `garden-swarm.json` appear in `active_agents`.
+1. All worker codenames from the manifest appear in `active_agents`.
 2. Heartbeats have active TTLs (> 0).
-3. Assigned tags match the manifest.
-
-### Step 3: Inspect Terminal Buffer (Health Check)
-To check the initial logs or output of any worker without leaving your chat:
-
-```bash
-# Capture last 20 lines of worker 'architect' (window 0)
-tmux capture-pane -p -t garden-<project>:0 | tail -n 20
-```
+3. `rhizo probe <agent>` shows an active listener PID ready to receive work.
 
 ---
 
 ## 4. Teardown & Swarm Cleanup
 
-When the entire project is completed, or when canceling a run:
+When the swarm mission is completed, or when canceling a run:
 
 ```bash
 # Gracefully deregister all swarm agents from Redis:
+garden teardown
+```
+
+Or manually:
+```bash
 for worker in $(python3 -c "import json; [print(w['name']) for w in json.load(open('garden-swarm.json'))['workers']]"); do
   rhizo close "$worker" 2>/dev/null || true
 done
-
-# Terminate the tmux session:
-tmux kill-session -t garden-<project> 2>/dev/null || true
 ```

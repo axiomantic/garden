@@ -5,9 +5,9 @@
 **Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![tmux](https://img.shields.io/badge/tmux-3.0%2B-green.svg)](https://github.com/tmux/tmux)
-[![Rhizo](https://img.shields.io/badge/Rhizo-0.1.3%2B-red.svg)](https://github.com/axiomantic/rhizo)
-[![Vine](https://img.shields.io/badge/Vine-0.1.0%2B-purple.svg)](https://github.com/axiomantic/vine)
+[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.1%2B-red.svg)](https://github.com/axiomantic/rhizo)
+[![Vine](https://img.shields.io/badge/Vine-0.2.0%2B-purple.svg)](https://github.com/axiomantic/vine)
+[![Swarm](https://img.shields.io/badge/Swarm-Prompt--Bootstrapped-brightgreen.svg)](README.md)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue.svg)](README.md)
 
 *Where `rhizo` provides inter-agent transport and `vine` provides workspace virtualization, `garden` provides the institutional intellect, empirical deliberation, and synchronized swarm execution.*
@@ -20,7 +20,7 @@
 
 **Garden** is an agentic engineering framework and skill library for orchestrating heterogeneous teams of AI coding assistants (Claude Code, OpenCode, Antigravity, Cursor, Codex).
 
-Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **coordinated worker swarms** inside multiplexed `tmux` sessions, balances specialized personas with designated foundation models and harnesses, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated APFS Copy-on-Write strands verified by Vine's Two-Key Gate.
+Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated APFS Copy-on-Write strands verified by Vine's Two-Key Gate.
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,7 @@ flowchart TD
         direction TB
         GardenSkill["garden (Master Entrypoint)"]
         P1["choose-personas (Team & Models)"]
-        P2["launch-workers (tmux & Terminal Viewer)"]
+        P2["launch-workers (Prompt-Based Session Bootstrapping)"]
         P3["dialectical-pump (Research ➔ Design ➔ Audit)"]
         P4["plan-implementation (Locks & Strands)"]
         P5["orchestrate-swarm (Dispatch & Weave)"]
@@ -62,19 +62,19 @@ Garden is organized into a clean, batteries-included catalog of self-explanatory
 | :--- | :--- | :--- |
 | **[`garden`](skills/garden/SKILL.md)** | **Master Entrypoint** | The sovereign ceremony director. Guides orchestrator and operator step-by-step across all phases from initial task to woven code. |
 | **[`choose-personas`](skills/choose-personas/SKILL.md)** | **Team Calibration** | Formulates a balanced triad of specialized personas (e.g. Architect, Auditor, DevEx Lead) with explicitly recommended **coding harnesses** and **model tiers**, confirmed interactively with the operator. |
-| **[`launch-workers`](skills/launch-workers/SKILL.md)** | **Fleet Provisioning** | Boots a structured `tmux` session with named worker panes, injects environment variables, registers identities via `rhizo open`, arms listeners, and pops open your preferred OS terminal viewer (Ghostty / Terminal.app). |
+| **[`launch-workers`](skills/launch-workers/SKILL.md)** | **Session Bootstrapping** | Generates self-contained, 10-backtick raw markdown prompt cards for pasting into separate terminal sessions (Claude Code, OpenCode, Antigravity, Pi). Configures environment variables, registers identities via `rhizo open`, and arms single-shot listeners. |
 | **[`dialectical-pump`](skills/dialectical-pump/SKILL.md)** | **Empirical Deliberation** | Drives multi-perspective thesis/antithesis/synthesis debates. Strictly prohibits theatrical roleplay: every turn requires tool execution (reading files, running tests, checking ASTs). Produces `understanding.md`, `design.md`, and `audit_report.md`. |
 | **[`plan-implementation`](skills/plan-implementation/SKILL.md)** | **Master Scheduling** | Authors `implementation_plan.md` defining task assignment matrices, `rhizo` distributed fencing locks, `vine` strand workflows, dynamic markdown checkboxes, harness To-Do integration, and emergent design addenda. |
 | **[`orchestrate-swarm`](skills/orchestrate-swarm/SKILL.md)** | **Main-Chat Governor** | Governs execution from the primary chat session: dispatches tasks over Redis, tracks heartbeats, ratifies emergent design addenda, verifies Two-Key gate passes, and triggers `vine weave`. |
 
 ## Standalone Yet Designed for the Axiomantic Triad
 
-Garden is completely standalone and can direct multi-agent dialectics, persona selection, and tmux worker swarms on any codebase.
+Garden is completely standalone and can direct multi-agent dialectics, persona selection, and prompt-bootstrapped worker swarms on any codebase.
 
 However, Garden is designed from the ground up to pair seamlessly with **Rhizo** and **Vine**:
 - [**Rhizo**](https://github.com/axiomantic/rhizo) (Transport & Concurrency): Inter-agent messaging bus, monotonic fencing locks, and task queues over Redis.
 - [**Vine**](https://github.com/axiomantic/vine) (Workspaces & Verification): Sub-second APFS Copy-on-Write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
-- **Garden** (Swarm Ceremonies): Tmux worker fleet provisioning, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
+- **Garden** (Swarm Ceremonies): Prompt-based worker session bootstrapping, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
 
 ---
 
@@ -127,22 +127,20 @@ garden guide install
 
 ## System Prerequisites
 
-1. **`tmux`** (3.0+):
-   ```bash
-   brew install tmux
-   ```
-2. **`rhizo`** (Coordination Engine):
+1. **`rhizo`** (Coordination Engine):
    ```bash
    npm install -g @axiomantic/rhizo
    ```
-3. **`vine`** (Workspace Virtualization Engine):
+2. **`vine`** (Workspace Virtualization Engine):
    ```bash
-   npm install -g @axiomantic/vine
+   npm install -g @axiomantic/vine rift-snapshot
    ```
-4. **Redis or Valkey** (local or remote):
+3. **Redis or Valkey** (local or remote):
    ```bash
    brew install redis && brew services start redis
    ```
+4. **`tmux`** (Optional):
+   Only required if explicitly running legacy headless panes via `garden launch --tmux`.
 
 ---
 
@@ -163,12 +161,14 @@ Garden inspects your repository and suggests a balanced persona roster with reco
 
 Confirm or adjust the roster with a single click.
 
-### 3. Automatic Fleet Provisioning (`launch-workers`)
-Garden executes [`scripts/launch_tmux_swarm.sh`](scripts/launch_tmux_swarm.sh):
-- Creates tmux session `garden-<project>` with dedicated panes for each worker.
-- Sets environment variables and registers each agent via `rhizo open`.
-- Arms background listeners (`rhizo listen`).
-- Automatically pops open a visible **Ghostty** or **Terminal.app** window on macOS so you can watch the swarm running live.
+### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
+Garden generates raw markdown prompt cards wrapped in 10 backticks for each worker:
+```bash
+garden prompts
+```
+- The operator copies and pastes each prompt block into a separate terminal window or coding harness (Claude Code, OpenCode, Antigravity, Pi, Cursor).
+- Each session enters the project directory, sets `RHIZO_AGENT_NAME`, registers on the bus with `rhizo open`, and arms its single-shot listener with `rhizo listen`.
+- The Orchestrator verifies readiness via `rhizo who --json` before dispatching tasks.
 
 ### 4. The Dialectical Pump (`dialectical-pump`)
 The personas deliberate across three empirical stages:

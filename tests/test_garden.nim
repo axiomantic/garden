@@ -121,3 +121,61 @@ suite "Garden CLI Compilation & Telemetry Suite":
       check j.hasKey("session_name")
       check j.hasKey("tmux_active")
       check j.hasKey("windows")
+
+  test "Garden prompts generates 10-backtick raw markdown blocks for default triad":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (pOut, pCode) = execCmdEx(exePath & " prompts")
+    check pCode == 0
+    check pOut.contains("GARDEN SWARM BOOTSTRAP")
+    check pOut.contains("``````````markdown")
+    check pOut.contains("@architect")
+    check pOut.contains("@auditor")
+    check pOut.contains("@implementer")
+    check pOut.contains("export RHIZO_AGENT_NAME=")
+    check pOut.contains("rhizo open")
+    check pOut.contains("rhizo listen")
+    check pOut.contains("Single-Shot Blocking")
+    check pOut.contains("SWARM_RUNTIME_STATE")
+
+  test "Garden prompts --worker filters output to target worker":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
+    check pCode == 0
+    check pOut.contains("@auditor")
+    check pOut.contains("Caleb Thorne")
+    check not pOut.contains("@architect")
+    check not pOut.contains("@implementer")
+
+  test "Garden prompts --json outputs structured json telemetry":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (jOut, jCode) = execCmdEx(exePath & " prompts --json")
+    check jCode == 0
+    let j = parseJson(jOut.strip())
+    check j["count"].getInt() == 3
+    check j["workers"].len == 3
+    check j["workers"][0]["name"].getStr() == "architect"
+    check j["workers"][0]["prompt"].getStr().contains("Marcus Vance")
+
+  test "Garden prompts --write outputs prompts to file":
+    let tmpDir = getTempDir() / ("garden_test_prompts_write_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: removeDir(tmpDir)
+
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let outFile = tmpDir / "swarm-cards.md"
+    let (pOut, pCode) = execCmdEx(exePath & " prompts --write " & quoteShell(outFile))
+    check pCode == 0
+    check fileExists(outFile)
+    let content = readFile(outFile)
+    check content.contains("``````````markdown")
+    check content.contains("@architect")
+    check content.contains("@auditor")
+    check content.contains("@implementer")
+
+  test "Garden launch defaults to prompt generation without requiring tmux":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
+    check lCode == 0
+    check lOut.contains("Elena Rostova")
+    check lOut.contains("``````````markdown")
+

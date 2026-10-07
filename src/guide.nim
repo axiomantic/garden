@@ -5,13 +5,13 @@
 import std/[os, strutils]
 
 const
-  GuideVersion* = "v1.0"
+  GuideVersion* = "v1.1"
   BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
   EndMarker* = "<!-- END GARDEN GUIDE -->"
   MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN GARDEN GUIDE [v1.0] -->
+<!-- BEGIN GARDEN GUIDE [v1.1] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -21,7 +21,7 @@ Garden directs high-level methodology, persona deliberations, and synchronized t
 ### 0. Self-Bootstrapping Prerequisite
 This project requires `rhizo`, `vine`, and `garden`. If missing, install via npm:
 ```bash
-npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapshot
 ```
 
 ### 1. Invariants & Epistemic Protocol
@@ -32,11 +32,11 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
 * **Emergent Design Addendum Protocol**:
   Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
 
-### 2. Fleet Lifecycle & Multiplexer Discipline
-* **Tmux Multiplexing**:
-  All swarm workers run inside managed tmux panes created via `garden launch` or `scripts/launch_tmux_swarm.sh`. Never detach unmanaged background processes with `&` or redirect output.
-* **Continuous Listening**:
-  Workers must keep their Rhizo listener active (`rhizo listen <agent>`) with zero-timeout infinite wait to prevent token thrashing.
+### 2. Fleet Lifecycle & Session Coordination
+* **Prompt-Bootstrapped Sessions**:
+  Swarm workers operate in dedicated interactive coding sessions (Claude Code, OpenCode, Antigravity, Pi, etc.) bootstrapped from Garden prompt cards (`garden prompts` / `garden launch`). Never detach unmanaged background processes with `&` or redirect output.
+* **Listener Discipline**:
+  Workers arm their single-shot Rhizo listener (`rhizo listen <agent>`) with zero-timeout infinite wait to prevent token thrashing. Never wrap `rhizo listen` in a shell while-loop.
 
 ### 3. The Two-Key Gate & Strand Weaving
 Never weave a strand into the canonical trunk without passing both keys:

@@ -17,6 +17,22 @@ The main chat session assumes the role of **Supreme Orchestrator**:
 - **Strict Transport Discipline**: All task assignments, handoffs, and cancellation interrupts flow exclusively over the Rhizo Redis bus (`rhizo send`, `rhizo reply`, `rhizo enqueue`).
 - **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Vine strands.
 
+<CRITICAL>
+Compaction Preservation Rider (GVR-010):
+Whenever context summarization or compaction occurs, the coding harness MUST preserve the `SWARM_RUNTIME_STATE` block verbatim in the compacted summary preamble so the agent immediately retains its operational identity, assigned workspace, peers, and active listeners without operator re-prompting.
+
+Maintain this exact block in the working context:
+<!-- SWARM_RUNTIME_STATE: DO NOT DISCARD OR ABBREVIATE IN COMPACTION -->
+- AGENT_NAME: <codename> (Role: Supreme Orchestrator)
+- WORKSPACE_MODE: Root Trunk (/Users/eek/Development/<project>)
+- ACTIVE_STRAND: canonical trunk
+- ACTIVE_PEERS:
+  * <peer_codename> (<project>: <current_task_description>)
+- ACTIVE_LISTENER: <task_id_or_pid> (Listening on inbox: <codename>)
+- ACTIVE_FENCING_TOKENS: <lock_key>=<token_int>
+<!-- END_SWARM_RUNTIME_STATE -->
+</CRITICAL>
+
 ---
 
 ## 2. The Runtime Governance Loop
@@ -59,15 +75,39 @@ Depending on the task distribution model in `implementation_plan.md`:
     --body '{"task_id": "task-test-harness", "strand": "strand/task-test-harness"}'
   ```
 
-### SOP 2: Monitoring Swarm Health & Heartbeats
-Check active workers and ensure no listener has stalled or timed out:
+### SOP 2: Monitoring Swarm Health, Watchdog & Escalation (GVR-011)
+Check active workers and cluster status:
 ```bash
 rhizo who --json
 ```
 
-If a worker is waiting for a lease or has held a lock too long, inspect its active tmux pane:
+#### Responsiveness Watchdog & Health Probing
+When waiting for a worker to finish an assigned task, run a health probe if no message is received within the expected window (e.g. 5–10 minutes):
 ```bash
-tmux capture-pane -p -t garden-<project>:1 | tail -n 25
+rhizo probe <worker> --json
+```
+The probe returns:
+- `inbox_depth`: Number of unconsumed messages (if > 0, the worker hasn't picked up the task).
+- `listener`: Whether the listener process PID is active (`LISTENING (pid: N)`) or dead (`NO_LISTENER`).
+- `heartbeat`: Last seen age in seconds and heartbeat TTL.
+
+#### Operator Escalation Protocol
+If `rhizo probe` indicates a stalled or dead worker (`NO_LISTENER` or `STALE` with unread inbox messages):
+1. **Never Hang Silently**: The Supreme Orchestrator must immediately surface an escalation to the operator via `ask_question`.
+2. **Present Diagnostic**:
+   - Alert: `⚠️ SWARM STALL DETECTED: @<worker> has not responded to <subject>`
+   - Diagnostic: `Inbox: N unread | Listener: NO_LISTENER | Status: STALE`
+3. **Select Remediation Action**:
+   - Option 1 (Re-arm): Execute `rhizo listen <worker>` in the worker's assigned terminal pane.
+   - Option 2 (Reboot): Restart the worker harness process in that pane.
+   - Option 3 (Reassign): Re-route the task atomically to another active worker:
+     ```bash
+     rhizo reroute <stalled_worker> <new_worker> --all
+     ```
+
+If a worker is waiting for a lease or has held a lock too long, probe its listener and inbox status:
+```bash
+rhizo probe <worker>
 ```
 
 ### SOP 3: Verifying Two-Key Gate & Weaving
@@ -117,12 +157,6 @@ When all checkboxes in `implementation_plan.md` are marked `- [x]`:
 1. Run final repository-wide test suite and linter on the canonical trunk.
 2. Gracefully deregister all swarm agents:
    ```bash
-   for worker in $(python3 -c "import json; [print(w['name']) for w in json.load(open('garden-swarm.json'))['workers']]"); do
-     rhizo close "$worker" 2>/dev/null || true
-   done
+   garden teardown
    ```
-3. Kill the tmux session:
-   ```bash
-   tmux kill-session -t garden-<project> 2>/dev/null || true
-   ```
-4. Output the final executive summary to the human operator.
+3. Output the final executive summary to the human operator.

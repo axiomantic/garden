@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-06
+
+### Added
+- **Prompt-Based Swarm Bootstrapping Mode**: Replaced automated tmux session and pane spawning with human-in-the-loop prompt generation (`garden prompts` / `garden launch`).
+- **10-Backtick Raw Markdown Block Fencing**: All emitted prompt cards are wrapped in exactly 10 backticks, ensuring that nested markdown formatting and bash code fences remain unrendered raw text inside preformatted copy blocks.
+- **Self-Contained Worker Prompt Cards**: Generated prompt cards provide complete session onboarding: codename identity, persona name, role, opposing cognitive priorities, target repo navigation, `RHIZO_AGENT_NAME` environment setup, `rhizo open` registration, single-shot listener discipline (`rhizo listen`), task queue claiming, fencing mutex locks, Vine strand isolation, Two-Key gate verification (`vine gate`), and context compaction state riders (`SWARM_RUNTIME_STATE`).
+- **Garden Coordination Guide v1.1**: Upgraded the canonical guide in `src/guide.nim` and `AGENTS.md` to formalize interactive session coordination and single-shot listener discipline over tmux process multiplexing.
+- **CLI Subcommand `prompts`**: Introduced `garden prompts` with `--worker <name>`, `--write [file]`, and `--json` options for flexible prompt inspection, file persistence, and programmatic consumption.
+
+### Changed
+- **Default `garden launch` Behavior**: `garden launch` now defaults to spitting out 10-backtick-fenced worker prompt cards for direct clipboard copying into new sessions (Claude Code, OpenCode, Antigravity, Pi, Cursor), with `--tmux` preserved as an optional legacy fallback.
+- **Skill Harmonization**: Updated `launch-workers`, `garden`, and `orchestrate-swarm` across repository and global configuration directories to reflect prompt-based session coordination, `rhizo probe` diagnostics, and `garden teardown`.
+
 ## [0.1.6] - 2026-09-30
 
 ### Fixed
