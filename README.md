@@ -5,8 +5,8 @@
 **Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.1%2B-red.svg)](https://github.com/axiomantic/rhizo)
-[![Vine](https://img.shields.io/badge/Vine-0.2.0%2B-purple.svg)](https://github.com/axiomantic/vine)
+[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.11%2B-red.svg)](https://github.com/axiomantic/rhizo)
+[![Vine](https://img.shields.io/badge/Vine-0.2.3%2B-purple.svg)](https://github.com/axiomantic/vine)
 [![Swarm](https://img.shields.io/badge/Swarm-Prompt--Bootstrapped-brightgreen.svg)](README.md)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue.svg)](README.md)
 
@@ -29,7 +29,7 @@
 > ```
 > The session automatically acts as the **Lead Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
 
-Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated APFS Copy-on-Write strands verified by Vine's Two-Key Gate.
+Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated Rift copy-on-write strands verified by Vine's Two-Key Gate.
 
 ```mermaid
 flowchart TD
@@ -45,7 +45,7 @@ flowchart TD
     end
 
     subgraph Layer2["Layer 2: Vine (Workstream Integrator)"]
-        Strands["APFS CoW Strands (Sub-second isolated workspaces)"]
+        Strands["Rift Strands (Zero-cost copy-on-write workspaces)"]
         TwoKey["Two-Key Gate (Mechanical merge-tree + semantic test suite)"]
         Weave["Trunk Weaving (Fast-forward verified branches)"]
     end
@@ -82,7 +82,7 @@ Garden is completely standalone and can direct multi-agent dialectics, persona s
 
 However, Garden is designed from the ground up to pair seamlessly with **Rhizo** and **Vine**:
 - [**Rhizo**](https://github.com/axiomantic/rhizo) (Transport & Concurrency): Inter-agent messaging bus, monotonic fencing locks, and task queues over Redis.
-- [**Vine**](https://github.com/axiomantic/vine) (Workspaces & Verification): Sub-second APFS Copy-on-Write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
+- [**Vine**](https://github.com/axiomantic/vine) (Workspaces & Verification): Zero-cost Rift copy-on-write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
 - **Garden** (Swarm Ceremonies): Prompt-based worker session bootstrapping, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
 
 ---
@@ -113,7 +113,7 @@ Install the compiled CLI tools directly onto your `$PATH`:
 
 ```bash
 # Install all three tools:
-npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapshot
 
 # Or install Garden alone:
 npm install -g @axiomantic/garden
@@ -190,7 +190,7 @@ The personas deliberate across three empirical stages:
 ### 5. Ceremonial Planning (`plan-implementation`)
 Garden authors `implementation_plan.md`:
 - Schedules distributed fencing locks (`rhizo lock file:<path> --fencing`).
-- Assigns tasks and defines APFS CoW strands (`vine new <task_id> --worktree`).
+- Assigns tasks and provisions isolated Rift strands (`vine new <task_id>`).
 - Sets up dynamic progress checkboxes and harness To-Do tracking.
 
 ### 6. Live Orchestration & Trunk Weaving (`orchestrate-swarm`)
