@@ -18,9 +18,9 @@ The main chat session assumes the role of **Lead Orchestrator**:
 - **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Vine strands.
 
 <CRITICAL>
-Delegation Precedence Invariant:
+Delegation Precedence & Sovereign Session Invariant:
 Whenever instructed to "delegate", "assign", or "dispatch" work, the Lead Orchestrator MUST route tasks to active cluster workers via Rhizo (`rhizo send <worker>`, `rhizo enqueue queue:<project>:tasks`, or `rhizo task assign/claim`).
-NEVER spawn harness-internal subagents (e.g. `invoke_subagent`, `Task`) when asked to delegate, UNLESS the operator explicitly specifies the word "subagent". Cluster workers running in dedicated sessions are the primary execution vehicle.
+Cluster workers operate exclusively in dedicated, sovereign sessions bootstrapped via 10-backtick prompt cards. NEVER spawn harness-internal subagents (e.g. `invoke_subagent`, `Task`, OpenCode subtasks) to act as cluster workers. Internal subagents are ephemeral, cannot maintain persistent blocking listeners, and cause severe context poisoning. Harness-internal subagents are restricted solely to transient, single-turn ad-hoc inspections in non-swarm solo chats when the operator explicitly specifies the word "subagent".
 </CRITICAL>
 
 <CRITICAL>

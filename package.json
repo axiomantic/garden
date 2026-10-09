@@ -1,6 +1,6 @@
 {
   "name": "@axiomantic/garden",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine",
   "main": "bin/run.js",
   "bin": {

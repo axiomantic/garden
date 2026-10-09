@@ -29,3 +29,4 @@ workspaces/
 # Local Swarm Logs & Sessions
 *.log
 .agora/
+tests/test_garden

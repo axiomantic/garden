@@ -41,12 +41,18 @@ graph TD
 
 When proposing personas, the assistant must explicitly pair each persona with an appropriate **coding harness** and **foundation model**, taking operator preferences into account (defaulting to Antigravity + Gemini 3.8 Flash for rapid implementation, and invoking Claude for deep adversarial auditing):
 
+<CRITICAL>
+Sovereign Dedicated Sessions Only (Universal Subagent Prohibition):
+Every recommended harness represents an INDEPENDENT, DEDICATED CODING SESSION (separate terminal tab or dedicated IDE window) to be bootstrapped by the operator via Garden 10-backtick prompt cards.
+Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY FORBIDDEN from acting as swarm workers. NEVER pair a persona with internal subagents.
+</CRITICAL>
+
 | Role Mandate | Recommended Harness | Recommended Model Tier | Rationale |
 | :--- | :--- | :--- | :--- |
-| **Architectural Design & Systems Modeling** | **Antigravity** or **OpenCode** | **Gemini 3.8 Flash** or **Claude 3.5 Sonnet** | Fast token throughput, deep reasoning, superior multi-file architectural comprehension, and native background ear support. |
-| **Adversarial Audit & Code Quality Purism** | **Claude Code CLI** | **Claude 3 Opus** or **Claude 3.5 Sonnet** | Uncompromising adherence to instructions, meticulous attention to negative controls, zero tolerance for superficial green tests. |
-| **DevEx, Rapid Prototyping & Implementation** | **Antigravity** | **Gemini 3.8 Flash** | Native reactive tool execution (`run_command`), rapid file modification, direct terminal feedback. |
-| **Hermetic / Local Security Analysis** | **Headless Terminal Worker** | **Ollama / Local DeepSeek-R1** | Air-gapped execution for proprietary credentials, licensing checks, or sensitive security audits. |
+| **Architectural Design & Systems Modeling** | **Antigravity (Dedicated Window)** or **OpenCode (Dedicated Session)** | **Gemini 3.8 Flash** or **Claude 3.5 Sonnet** | Fast token throughput, deep reasoning, superior multi-file architectural comprehension, and native background ear support. |
+| **Adversarial Audit & Code Quality Purism** | **Claude Code CLI (Dedicated Tab)** | **Claude 3 Opus** or **Claude 3.5 Sonnet** | Uncompromising adherence to instructions, meticulous attention to negative controls, zero tolerance for superficial green tests. |
+| **DevEx, Rapid Prototyping & Implementation** | **Antigravity (Dedicated Window)** | **Gemini 3.8 Flash** | Native reactive tool execution (`run_command`), rapid file modification, direct terminal feedback. |
+| **Hermetic / Local Security Analysis** | **Headless Terminal Worker (Dedicated Tab)** | **Ollama / Local DeepSeek-R1** | Air-gapped execution for proprietary credentials, licensing checks, or sensitive security audits. |
 
 ---
 

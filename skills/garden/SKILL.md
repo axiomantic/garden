@@ -73,7 +73,11 @@ When an operator initiates a project or requests multi-agent coordination, the s
    - *Option 2*: Focused Duo (2 Workers: Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
    - *Option 3*: Custom Swarm (Operator specifies custom roles and headcount).
 3. **Question 3: Available AI Coding Harnesses**:
-   - The operator specifies which coding environments they have available (Claude Code CLI, Antigravity, OpenCode, Pi, Cursor, Headless Terminal). Explain that workers can run in **any** combination of harnesses!
+   - The operator specifies which coding environments they will open dedicated tabs/windows for (Claude Code CLI, OpenCode, Antigravity, Pi, Cursor, Headless Terminal).
+   <CRITICAL>
+   Sovereign Sessions Only (Universal Subagent Prohibition):
+   Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs, CLI windows, or IDE sessions) bootstrapped via copy-paste prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY PROHIBITED as swarm workers across all harnesses. Internal subagents are ephemeral, cannot maintain continuous background listeners, and cause severe context poisoning. NEVER offer or present "subagents" as an option in Question 3 or any other intake question.
+   </CRITICAL>
 4. **Question 4: Foundation Model Pairing & Equivalencies**:
    - Recommend optimal models with fallback equivalents:
      - `@<project>-architect`: Gemini 3.8 Flash / Claude 3.5 Sonnet / GPT-4o (deep architecture comprehension).
@@ -224,7 +228,11 @@ This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "
 </CRITICAL>
 
 <INVARIANT>
-Delegation Precedence: When instructed to "delegate", "assign", or "dispatch" work, the Lead Orchestrator MUST route tasks to active cluster workers via Rhizo (`rhizo send <worker>`, `rhizo enqueue queue:<project>:tasks`, or `rhizo task assign/claim`). Harness-internal subagents (e.g. `invoke_subagent`, `Task`, `Agent`) must ONLY be used if the operator explicitly requests a "subagent" by name, or if no cluster workers exist in the cluster roster (`rhizo who`).
+Sovereign Session & Subagent Prohibition: Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs, CLI windows, or IDE sessions) bootstrapped via Garden 10-backtick prompt cards. Harness-internal subagents (e.g., Antigravity's 'invoke_subagent', Claude Code's 'Task', OpenCode subagents, Cursor sub-composers) are STRICTLY PROHIBITED from acting as cluster swarm workers across all harnesses. Internal subagents are ephemeral, terminate upon single-task completion, cannot maintain persistent blocking listeners ('rhizo listen'), corrupt workspace isolation, and cause severe context poisoning by dumping execution traces back into the parent prompt. When orchestrating or bootstrapping a swarm, an orchestrator must NEVER spawn internal subagents and must NEVER offer "subagents" as a worker execution option during intake.
+</INVARIANT>
+
+<INVARIANT>
+Delegation Precedence: When instructed to "delegate", "assign", or "dispatch" work, the Lead Orchestrator MUST route tasks to active cluster workers via Rhizo (`rhizo send <worker>`, `rhizo enqueue queue:<project>:tasks`, or `rhizo task assign/claim`). Harness-internal subagents (e.g. `invoke_subagent`, `Task`, `Agent`) must NEVER be used to fulfill cluster swarm roles; they are restricted solely to transient, single-turn ad-hoc inspections in non-swarm solo chats when the operator explicitly requests a "subagent" by name.
 </INVARIANT>
 
 <INVARIANT>

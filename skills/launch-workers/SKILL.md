@@ -37,6 +37,10 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    </CRITICAL>
 5. **Zero Dirty Commits**:
    - Never stage coordination state (`.rhizo.*`, `*.lock`, `.vine.json`, `workspaces/`) into Git.
+6. **Sovereign Dedicated Session Invariant (Universal Subagent Prohibition)**:
+   <CRITICAL>
+   Swarm workers are ALWAYS sovereign, independent interactive sessions (separate terminal tabs or IDE windows) bootstrapped via Garden 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY FORBIDDEN from acting as swarm workers. Prompt cards are generated strictly for human operators to paste into separate sessions. The orchestrator must NEVER attempt to automate prompt cards by feeding them into internal subagents.
+   </CRITICAL>
 
 ---
 

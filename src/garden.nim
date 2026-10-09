@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json]
 import guide
 
 const
-  GardenVersion = "0.2.8"
+  GardenVersion = "0.2.9"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -185,7 +185,9 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   let tagsStr = w.tags.join(",")
   result = "# Swarm Worker Bootstrap: " & w.persona & " (@" & w.name & ")\n\n"
-  result &= "You are **" & w.persona & "**, serving as **" & w.role & "** for project **" & cfg.project & "**.\n\n"
+  result &= "You are **" & w.persona & "**, serving as **" & w.role & "** for project **" & cfg.project & "**.\n"
+  result &= "> [!IMPORTANT]\n"
+  result &= "> You are operating in a DEDICATED, SOVEREIGN CODING SESSION. You are an autonomous peer worker, NOT an ephemeral subagent.\n\n"
   
   result &= "### 1. Identity & Mandate\n"
   result &= "- **Agent Codename**: `" & w.name & "`\n"
