@@ -5,8 +5,8 @@
 **Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.11%2B-red.svg)](https://github.com/axiomantic/rhizo)
-[![Vine](https://img.shields.io/badge/Vine-0.2.3%2B-purple.svg)](https://github.com/axiomantic/vine)
+[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.13%2B-red.svg)](https://github.com/axiomantic/rhizo)
+[![Vine](https://img.shields.io/badge/Vine-0.2.4%2B-purple.svg)](https://github.com/axiomantic/vine)
 [![Swarm](https://img.shields.io/badge/Swarm-Prompt--Bootstrapped-brightgreen.svg)](README.md)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue.svg)](README.md)
 
@@ -162,22 +162,25 @@ In your primary AI coding assistant (Antigravity, Claude Code, OpenCode):
 User: "garden: Implement high-throughput batch claim leases with Redis pipeline support"
 ```
 
-### 2. Interactive Project Intake Interview (Phase 0)
-The Orchestrator asks 4 quick interactive questions via `ask_question`:
-1. **Execution Mode**: Multi-Agent Swarm (Recommended) vs Single Session.
-2. **Team Sizing**: Standard Triad (3 Workers) vs Focused Duo (2 Workers) vs Custom.
-3. **Available Harnesses**: Claude Code CLI, OpenCode, Antigravity, Pi, Cursor, Terminal.
-4. **Model Preferences & Equivalents**:
-   - Systems Architect (`@architect`) $\to$ **Antigravity** or **OpenCode** | **Gemini 3.8 Flash** or **Claude 3.5 Sonnet**
-   - Adversarial Auditor (`@auditor`) $\to$ **Claude Code CLI** | **Claude 3.5 Sonnet** or **Claude 3 Opus**
-   - DevEx & Implementation Lead (`@implementer`) $\to$ **Antigravity** or **OpenCode** | **Gemini 3.8 Flash**
+### 2. Project Intake & Calibration (Phase 0)
+
+Garden utilizes the **Active Swarm Fast-Path (First-Look Invariant)**:
+- **Existing Cluster Online**: Before asking intake questions, Garden runs `rhizo who --json`. If active, healthy workers already exist on the cluster, Garden skips all setup questions and prompt cards, automatically attaching to the active workers to proceed straight to task planning or execution!
+- **Cold Start (Zero Active Workers)**: If no workers are online, the Orchestrator conducts an interactive interview of at most **two concise questions**:
+  1. **Execution Mode**: Multi-Agent Swarm (Recommended) vs Single Session Inline.
+  2. **Swarm Shape & Harness Environment (Unified)**: Combines team structure with target harness (e.g., Balanced Triad in Antigravity IDE, Balanced Triad in Claude Code CLI, Balanced Triad in OpenCode, Focused Duo, or Custom).
+
+> [!IMPORTANT]
+> **Universal Sovereign Sessions & Model Inheritance**:
+> - **Sovereign Sessions Only**: Swarm workers are strictly independent sessions (separate terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks) are **strictly prohibited** from acting as cluster workers.
+> - **Session-Native Model Inheritance**: Swarm workers inherit whatever foundation model is active in that harness window (`Session Default (active in window/tab)`). Disconnected model pairing quizzes are eliminated.
 
 ### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
 Garden writes `garden-swarm.json` and runs `garden prompts` to emit raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `):
-- The Orchestrator tells the operator:
-  1. Open **Tab 1**: Launch `claude` (Claude 3.5 Sonnet) $\to$ Paste Prompt 1 (`@auditor`)
-  2. Open **Tab 2**: Launch `opencode` $\to$ Paste Prompt 2 (`@architect`)
-  3. Open **Tab 3**: Launch `antigravity` (Gemini 3.8 Flash) $\to$ Paste Prompt 3 (`@implementer`)
+- The Orchestrator presents ready-to-paste prompt cards to the operator:
+  1. Open **Tab 1 / Window 1**: Launch your preferred harness session $\to$ Paste Prompt 1 (`@auditor`)
+  2. Open **Tab 2 / Window 2**: Launch your preferred harness session $\to$ Paste Prompt 2 (`@architect`)
+  3. Open **Tab 3 / Window 3**: Launch your preferred harness session $\to$ Paste Prompt 3 (`@implementer`)
 - Each session enters the project directory, exports `RHIZO_AGENT_NAME`, registers on the Redis bus (`rhizo open`), and arms its single-shot listener (`rhizo listen`).
 - The Orchestrator confirms all workers are live via `rhizo who --json` before dispatching tasks!
 
