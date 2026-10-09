@@ -94,11 +94,11 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
 
 1. **Numbered Terminal Tab / Session Instructions**:
    Provide a concise setup list instructing the operator on how many sessions to open and which harness/model to configure for each:
-   - **Session 1 (@<project>-architect)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash / Claude 3.5 Sonnet $\to$ Paste Card 1
-   - **Session 2 (@<project>-auditor)**: e.g. Claude Code CLI with Claude 3.5 Sonnet / Claude 3 Opus $\to$ Paste Card 2
-   - **Session 3 (@<project>-implementer)**: e.g. Antigravity or OpenCode with Gemini 3.8 Flash $\to$ Paste Card 3
+   - **Session 1 (@<project>-architect)**: e.g. Antigravity IDE (Window 1) or Claude Code CLI (Tab 1) $\to$ Paste Card 1
+   - **Session 2 (@<project>-auditor)**: e.g. Claude Code CLI (Tab 2) or Antigravity IDE (Window 2) $\to$ Paste Card 2
+   - **Session 3 (@<project>-implementer)**: e.g. Antigravity IDE (Window 3) or OpenCode $\to$ Paste Card 3
 2. **Harness & Model Agnostic Flexibility**:
-   Explicitly reassure the operator: *"Workers can run in ANY coding harness (Claude Code, OpenCode, Antigravity, Pi, Cursor) and use any equivalent model tier. Coordination occurs strictly over Rhizo (local Redis) and Vine (Rift strands)."*
+   Explicitly reassure the operator: *"Workers can run in ANY coding harness (Antigravity, Claude Code, OpenCode, Pi, Cursor) and inherit the active model configured in that window/session. Coordination occurs strictly over Rhizo (local Redis) and Vine (Rift strands)."*
 3. **10-Backtick Raw Markdown Formatting**:
    Ensure every prompt card is displayed inside ` ``````````markdown ` fences so the operator can copy the clean, unrendered text with a single click.
 4. **Immediate Autonomous Onboarding**:

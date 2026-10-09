@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json]
 import guide
 
 const
-  GardenVersion = "0.2.9"
+  GardenVersion = "0.2.10"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -118,7 +118,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
           spec.persona = if w.hasKey("persona"): w["persona"].getStr(spec.name) else: spec.name
           spec.role = if w.hasKey("role"): w["role"].getStr("Swarm Worker") else: "Swarm Worker"
           spec.harness = if w.hasKey("harness"): w["harness"].getStr("Any (Claude Code / OpenCode / Antigravity)") else: "Any"
-          spec.model = if w.hasKey("model"): w["model"].getStr("Claude 3.5 Sonnet / Gemini 3.8 Flash") else: "Claude 3.5 Sonnet / Gemini 3.8 Flash"
+          spec.model = if w.hasKey("model"): w["model"].getStr("Session Default (active in window/tab)") else: "Session Default (active in window/tab)"
           if w.hasKey("tags"):
             if w["tags"].kind == JArray:
               for t in w["tags"]: spec.tags.add(t.getStr())
@@ -151,7 +151,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       persona: "Marcus Vance",
       role: "Staff Systems Architect",
       harness: "Antigravity / Claude Code",
-      model: "Claude 3.5 Sonnet / Gemini 3.8 Flash",
+      model: "Session Default (active in window/tab)",
       tags: @[projName, "systems", "architecture", "invariants"],
       systemPrompt: "You are Marcus Vance, Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
@@ -163,7 +163,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       persona: "Caleb Thorne",
       role: "Verification & Adversarial Auditor",
       harness: "Claude Code CLI / Antigravity",
-      model: "Claude 3.5 Sonnet / Claude 3 Opus",
+      model: "Session Default (active in window/tab)",
       tags: @[projName, "qa", "audit", "verifier", "purist"],
       systemPrompt: "You are Caleb Thorne, Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
@@ -175,7 +175,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       persona: "Elena Rostova",
       role: "DevEx & Implementation Lead",
       harness: "Antigravity / OpenCode",
-      model: "Gemini 3.8 Flash / Claude 3.5 Sonnet",
+      model: "Session Default (active in window/tab)",
       tags: @[projName, "dev", "devex", "build", "implementation"],
       systemPrompt: "You are Elena Rostova, DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
@@ -332,7 +332,7 @@ proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, wri
   for idx, w in selectedWorkers:
     let promptText = generateWorkerPrompt(cfg, w)
     let header = "--- WORKER " & $(idx + 1) & " of " & $selectedWorkers.len & ": @" & w.name & " (" & w.persona & " - " & w.role & ") ---"
-    let subheader = "Recommended Harness: " & w.harness & " | Recommended Model: " & w.model
+    let subheader = "Recommended Harness: " & w.harness & " | Model: " & w.model
     
     echo "================================================================================"
     echo header

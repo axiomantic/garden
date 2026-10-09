@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] - 2026-10-09
+
+### Added
+- **Active Swarm Fast-Path (Garden Guide v1.8)**:
+  - Added First-Look Invariant to Phase 0 intake: inspects `rhizo who --json` before presenting any questions; automatically latches onto existing active cluster workers without re-asking team setup questions.
+- **Elimination of Standalone Model Pairing Quiz**:
+  - Removed disconnected "Foundation Model Pairing" question from `garden` and `choose-personas` skills.
+  - Set default worker model across `garden.nim` and generated prompt cards to `Session Default (active in window/tab)`, inheriting native models from the active coding session.
+  - Unified cold-start setup into at most two concise questions combining team shape with target harness environment.
+  - Bumped `GuideVersion` to `v1.8`.
+
 ## [0.2.9] - 2026-10-09
 
 ### Added
