@@ -1,9 +1,9 @@
 ---
 name: choose-personas
-description: "Selects, balances, and configures specialized agent personas for a Garden swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. For every persona, explicitly recommends the optimal coding harness (e.g. OpenCode Desktop, Claude Code CLI, Antigravity, OpenAI Codex) and foundation model (e.g. Gemini 3.8 Flash, Claude 3.5 Sonnet, Claude 3 Opus, GPT-4o, local models) aligned with operator preferences. Solicits operator confirmation or edits with candidate alternatives via interactive questions, and outputs garden-swarm.json. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
+description: "Selects, balances, and configures specialized agent personas for a Garden swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. Auto-detects the active coding harness and aligns worker harnesses and session-default models with operator preferences via a single intake question. Outputs garden-swarm.json. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
 ---
 
-# `choose-personas`: Dynamic Swarm Persona Selection & Harness/Model Pairing
+# `choose-personas`: Dynamic Swarm Persona Selection & Auto-Detected Harness Intake
 
 > **Calibrate the Minds Before Booting the Hands**  
 > *A multi-agent swarm is only as effective as the diversity, specialization, and cognitive balance of its personas. This skill pairs domain roles with their optimal coding harnesses and foundation models.*
@@ -100,23 +100,30 @@ Run `rhizo who --json` and inspect `garden-swarm.json`. If active, healthy worke
    - *Greenfield Subsystem*: Prioritize Systems Architect + API Designer.
    - *Security / Compliance*: Prioritize ISO Compliance Auditor + Security Adversary.
 
-### Step 2: Formulate Unified Recommendation & Alternatives
-Synthesize the primary triad paired with target harness environments:
+### Step 2: Formulate Recommendation in Detected Harness
+Auto-detect the orchestrator's active harness from environment variables:
+- `ANTIGRAVITY_APP_DIR` $\to$ "Antigravity IDE"
+- `CLAUDE_CODE` $\to$ "Claude Code CLI"
+- `OPENCODE_SESSION_ID` $\to$ "OpenCode"
+- `CODEX_SESSION_ID` $\to$ "ChatGPT Desktop / Codex"
+- `PI_SESSION_ID` $\to$ "Pi"
+- Default fallback $\to$ "Antigravity / Claude Code"
+
+Synthesize the primary triad targeting the detected harness with session-default models:
 - **Primary Triad**:
   - Persona 1: Marcus Vance, Staff Systems Architect (Invariants, boundaries, structure)
   - Persona 2: Caleb Thorne, Verification & Adversarial Auditor (Negative controls, purism)
   - Persona 3: Elena Rostova, DevEx & Implementation Lead (Velocity, ergonomics)
 
 ### Step 3: Interactive Operator Ratification (`ask_question`)
-Invoke `ask_question` with unified, selectable options combining team shape and harness:
-- Option 1 (Recommended): Balanced Triad in Antigravity IDE (3 dedicated workspace windows, session-native models)
-- Option 2: Balanced Triad in Claude Code CLI (3 dedicated terminal tabs)
-- Option 3: Balanced Triad in OpenCode (3 dedicated sessions)
-- Option 4: Focused Duo (Implementation Lead + Adversarial Auditor in preferred harness)
-- Option 5: Custom configuration (allows user write-in).
+Invoke `ask_question` with a SINGLE concise question combining execution mode and swarm shape in the detected harness:
+- Option 1 (Recommended): Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Architect, Auditor, Implementer with session-native models)
+- Option 2: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead + Adversarial Auditor)
+- Option 3: Single-Agent Inline (Execute sequentially within current chat session)
+- Option 4: Custom configuration (allows user write-in).
 
 ### Step 4: Generate Swarm Manifest (`garden-swarm.json`)
-Once ratified, write `garden-swarm.json` to the target project directory:
+Once ratified, write `garden-swarm.json` to the target project directory with worker harnesses set to the detected harness:
 
 ```json
 {
@@ -129,7 +136,7 @@ Once ratified, write `garden-swarm.json` to the target project directory:
       "name": "my-project-architect",
       "persona": "Marcus Vance",
       "role": "Staff Systems Architect",
-      "harness": "Antigravity / Claude Code",
+      "harness": "Antigravity IDE",
       "model": "Session Default (active in window/tab)",
       "tags": ["my-project", "systems", "architecture", "invariants"],
       "system_prompt": "You are Marcus Vance, Staff Systems Architect for project my-project...",

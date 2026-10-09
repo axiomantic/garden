@@ -118,9 +118,6 @@ suite "Garden CLI Compilation & Telemetry Suite":
     if sCode == 0:
       let j = parseJson(sOut.strip())
       check j.hasKey("project")
-      check j.hasKey("session_name")
-      check j.hasKey("tmux_active")
-      check j.hasKey("windows")
 
   test "Garden prompts generates 10-backtick raw markdown blocks for default triad":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -214,4 +211,53 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["count"].getInt() == 1
     check j["workers"][0]["name"].getStr() == "env-worker"
     check j["workers"][0]["prompt"].getStr().contains("Custom Env Persona")
+
+  test "Garden auto-detects current harness from environment variables":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    
+    # 1. Antigravity IDE
+    putEnv("ANTIGRAVITY_APP_DIR", "/Applications/Antigravity.app")
+    defer: delEnv("ANTIGRAVITY_APP_DIR")
+    let (pOut1, pCode1) = execCmdEx(exePath & " prompts --json")
+    check pCode1 == 0
+    let j1 = parseJson(pOut1.strip())
+    check j1["workers"][0]["harness"].getStr() == "Antigravity IDE"
+    delEnv("ANTIGRAVITY_APP_DIR")
+
+    # 2. Claude Code CLI
+    putEnv("CLAUDE_CODE", "1")
+    defer: delEnv("CLAUDE_CODE")
+    let (pOut2, pCode2) = execCmdEx(exePath & " prompts --json")
+    check pCode2 == 0
+    let j2 = parseJson(pOut2.strip())
+    check j2["workers"][0]["harness"].getStr() == "Claude Code CLI"
+    delEnv("CLAUDE_CODE")
+
+    # 3. OpenCode
+    putEnv("OPENCODE_SESSION_ID", "sess_12345")
+    defer: delEnv("OPENCODE_SESSION_ID")
+    let (pOut3, pCode3) = execCmdEx(exePath & " prompts --json")
+    check pCode3 == 0
+    let j3 = parseJson(pOut3.strip())
+    check j3["workers"][0]["harness"].getStr() == "OpenCode"
+    delEnv("OPENCODE_SESSION_ID")
+
+    # 4. ChatGPT Desktop / Codex
+    putEnv("CODEX_SESSION_ID", "codex_67890")
+    defer: delEnv("CODEX_SESSION_ID")
+    let (pOut4, pCode4) = execCmdEx(exePath & " prompts --json")
+    check pCode4 == 0
+    let j4 = parseJson(pOut4.strip())
+    check j4["workers"][0]["harness"].getStr() == "ChatGPT Desktop / Codex"
+    delEnv("CODEX_SESSION_ID")
+
+    # 5. Pi
+    putEnv("PI_SESSION_ID", "pi_abcde")
+    defer: delEnv("PI_SESSION_ID")
+    let (pOut5, pCode5) = execCmdEx(exePath & " prompts --json")
+    check pCode5 == 0
+    let j5 = parseJson(pOut5.strip())
+    check j5["workers"][0]["harness"].getStr() == "Pi"
+    delEnv("PI_SESSION_ID")
+
 

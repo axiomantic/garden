@@ -52,8 +52,8 @@ Execute phases sequentially. Never skip phases or invert the order.
 
 | Phase | Sub-Skill / Step | Action | Quality Gate to Proceed |
 | :--- | :--- | :--- | :--- |
-| **Phase 0** | **Intake Gate** | Conduct interactive interview via `ask_question`: execution mode, swarm size, harnesses, and models. | Operator submits preferences. |
-| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize and write `garden-swarm.json` reflecting the interview. | Valid JSON written to repo root. |
+| **Phase 0** | **Intake Gate** | Fast-path check (`rhizo who --json`) or single-question intake via `ask_question` calibrated to detected harness. | Active cluster workers confirmed or operator submits choice. |
+| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize and write `garden-swarm.json` reflecting detected harness and chosen shape. | Valid JSON written to repo root. |
 | **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
 | **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
 | **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules and strands. | Complete `implementation_plan.md` with task-locking matrix. |
@@ -72,38 +72,33 @@ If active, healthy workers are ALREADY registered and listening on the Rhizo clu
 - Confirm cluster readiness and proceed immediately to Phase 3 (Dialectical Pump / Task Breakdown) or Phase 5 (Task Dispatch).
 
 #### Cold-Start Intake Protocol (Zero Active Workers Only)
-When an operator initiates a fresh project or requests multi-agent coordination and NO active cluster workers exist, the session MUST NOT silently guess configuration. It invokes `ask_question` to conduct a streamlined **Interactive Intake Interview** of at most TWO questions:
+When an operator initiates a fresh project or requests multi-agent coordination and NO active cluster workers exist, the session MUST NOT silently guess configuration.
+Because the coding harness is auto-detected from the session environment (`ANTIGRAVITY_APP_DIR` $\to$ Antigravity IDE, `CLAUDE_CODE` $\to$ Claude Code CLI, `OPENCODE_SESSION_ID` $\to$ OpenCode, `CODEX_SESSION_ID` $\to$ ChatGPT Desktop / Codex, `PI_SESSION_ID` $\to$ Pi), the orchestrator invokes `ask_question` to conduct a streamlined **Single-Question Intake Interview**:
 
-1. **Question 1: Execution Mode**:
-   - *Option 1 (Recommended)*: Multi-Agent Swarm (Dedicated terminal tabs/coding harnesses over Rhizo & Vine).
-   - *Option 2*: Single-Agent Inline (Sequential execution within current chat session).
-
-2. **Question 2: Swarm Composition & Harness Environment (Unified)**:
-   Pair team composition directly with the target coding harness in a single decision point:
-   - *Option 1 (Recommended)*: Balanced Triad in Antigravity IDE (3 dedicated workspace windows, session-native models).
-   - *Option 2*: Balanced Triad in Claude Code CLI (3 dedicated terminal tabs, Claude models).
-   - *Option 3*: Balanced Triad in OpenCode (3 dedicated sessions, configured workspace models).
-   - *Option 4*: Focused Duo (2 Workers: Implementation Lead & Adversarial Auditor in preferred harness).
-   - *Option 5*: Custom / Mixed Harnesses (Operator specifies custom distribution).
+1. **Single Question: Execution Mode & Swarm Shape in <Detected Harness>**:
+   - *Option 1 (Recommended)*: Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Systems Architect `@<project>-architect`, Adversarial Auditor `@<project>-auditor`, DevEx Lead `@<project>-implementer`).
+   - *Option 2*: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
+   - *Option 3*: Single-Agent Inline (Execute sequentially within current chat session).
+   - *Option 4*: Custom Swarm (Operator specifies custom roles or cross-harness distribution).
 
 <CRITICAL>
-Sovereign Sessions Only (Universal Subagent Prohibition):
-Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs, CLI windows, or IDE sessions) bootstrapped via copy-paste prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY PROHIBITED as swarm workers across all harnesses. Internal subagents are ephemeral, cannot maintain continuous background listeners, and cause severe context poisoning. NEVER offer or present "subagents" as an option in Question 2 or any other intake question.
+Sovereign Dedicated Sessions Only (Universal Subagent & Tmux Prohibition):
+Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs or IDE windows) bootstrapped via copy-paste prompt cards wrapped in 10 backticks. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY PROHIBITED as swarm workers across all harnesses. Internal subagents are ephemeral, cannot maintain continuous background listeners, and cause severe context poisoning. Terminal multiplexers (tmux) are unsupported. NEVER offer or present "subagents" or "tmux" as options during intake.
 </CRITICAL>
 
 <CRITICAL>
-Standalone Foundation Model Pairing Quiz Prohibited:
-Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session (e.g., Gemini in Antigravity, Claude in Claude Code, provider settings in OpenCode). NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options (Claude, GPT, Gemini) that do not correspond to the chosen harness. In `garden-swarm.json` and prompt cards, model configuration defaults to `"Session Default (active in window/tab)"`.
+Session Default Models (Standalone Model Quizzes Prohibited):
+Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session (e.g., Gemini in Antigravity, Claude in Claude Code, configured workspace models in OpenCode). NEVER present a separate question asking the operator to choose "Foundation Model Pairings". In `garden-swarm.json` and prompt cards, model configuration defaults to `"Session Default (active in window/tab)"`.
 </CRITICAL>
 
 #### Automatic Fulfillment & 10-Backtick Prompt Generation:
-Upon receiving the operator's responses:
+Upon receiving the operator's response:
 1. Run `garden init` if `garden.toml` or `AGENTS.md` is not yet initialized.
-2. Generate `garden-swarm.json` reflecting the chosen workers, roles, harnesses, and models.
+2. Generate `garden-swarm.json` reflecting the chosen workers, roles, detected harness, and session-default models.
 3. Run `garden prompts` to generate the raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `).
 4. Present the operator with clear, numbered instructions:
    ```text
-   1. Open X terminal tabs or windows in your selected coding harnesses.
+   1. Open X terminal tabs or windows in your detected coding harness.
    2. Copy the raw block inside each 10-backtick pre block below and paste it into its corresponding session.
    3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
    ```

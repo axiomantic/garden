@@ -51,17 +51,11 @@ Options for 'prompts' and 'launch':
   --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)
   --json                   Output prompts as JSON
   --project-dir, -p <dir>  Target project directory (default: current root)
-  --tmux                   (Legacy) Provision tmux session and panes instead of prompts
-  --session-name <name>    (Tmux mode) Custom tmux session name
-  --terminal-app <app>     (Tmux mode) Terminal viewer: Ghostty | Terminal | iTerm | none
-  --force                  (Tmux mode) Kill existing tmux session if running
 
 Options for 'status':
   --json                   Output telemetry as JSON
-  --session-name <name>    Specific tmux session to inspect (if tmux was used)
 
 Options for 'teardown':
-  --session-name <name>    Specific tmux session to terminate (if applicable)
   --swarm-file <file>      Path to garden-swarm.json to close mapped agents
 """
 
@@ -82,6 +76,20 @@ proc findProjectRoot*(startDir: string = getCurrentDir()): string =
       break
     dir = parent
   return startDir
+
+proc detectCurrentHarness*(): string =
+  if getEnv("ANTIGRAVITY_APP_DIR", "").len > 0:
+    "Antigravity IDE"
+  elif getEnv("CLAUDE_CODE", "").len > 0:
+    "Claude Code CLI"
+  elif getEnv("OPENCODE_SESSION_ID", "").len > 0:
+    "OpenCode"
+  elif getEnv("CODEX_SESSION_ID", "").len > 0:
+    "ChatGPT Desktop / Codex"
+  elif getEnv("PI_SESSION_ID", "").len > 0:
+    "Pi"
+  else:
+    "Antigravity / Claude Code"
 
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
@@ -117,7 +125,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
           spec.name = if rawName in ["architect", "auditor", "implementer", "worker"]: projName & "-" & rawName else: rawName
           spec.persona = if w.hasKey("persona"): w["persona"].getStr(spec.name) else: spec.name
           spec.role = if w.hasKey("role"): w["role"].getStr("Swarm Worker") else: "Swarm Worker"
-          spec.harness = if w.hasKey("harness"): w["harness"].getStr("Any (Claude Code / OpenCode / Antigravity)") else: "Any"
+          spec.harness = if w.hasKey("harness") and w["harness"].getStr().len > 0: w["harness"].getStr() else: detectCurrentHarness()
           spec.model = if w.hasKey("model"): w["model"].getStr("Session Default (active in window/tab)") else: "Session Default (active in window/tab)"
           if w.hasKey("tags"):
             if w["tags"].kind == JArray:
@@ -145,12 +153,13 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
     let archName = projName & "-architect"
     let auditName = projName & "-auditor"
     let implName = projName & "-implementer"
+    let curHarness = detectCurrentHarness()
 
     result.workers.add(WorkerSpec(
       name: archName,
       persona: "Marcus Vance",
       role: "Staff Systems Architect",
-      harness: "Antigravity / Claude Code",
+      harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "systems", "architecture", "invariants"],
       systemPrompt: "You are Marcus Vance, Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
@@ -162,7 +171,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       name: auditName,
       persona: "Caleb Thorne",
       role: "Verification & Adversarial Auditor",
-      harness: "Claude Code CLI / Antigravity",
+      harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "qa", "audit", "verifier", "purist"],
       systemPrompt: "You are Caleb Thorne, Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
@@ -174,7 +183,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       name: implName,
       persona: "Elena Rostova",
       role: "DevEx & Implementation Lead",
-      harness: "Antigravity / OpenCode",
+      harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "dev", "devex", "build", "implementation"],
       systemPrompt: "You are Elena Rostova, DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
@@ -249,21 +258,21 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "If running in Codex Desktop / CLI where background processes cannot reactively wake the harness, use this exact prompt template for recurring health checks:\n\n"
   result &= "```text\n"
   result &= "Verify Rhizo listener and task execution for @" & w.name & " in " & cfg.targetRepo & ".\n"
-  result &= "STEP 1: INSPECT COMPLETED LISTENER SUBAGENTS / TASKS FIRST:\n"
-  result &= "  Check recently completed background tasks / subagents in your harness task manager.\n"
+  result &= "STEP 1: INSPECT COMPLETED BACKGROUND LISTENER PROCESSES / HOOKS FIRST:\n"
+  result &= "  Check recently completed background listener tasks / processes in your harness task manager.\n"
   result &= "  Did any completed listener task deliver an incoming message or task directive that has NOT been acted upon in this chat?\n"
   result &= "  IF YES: DO NOT STAY QUIET! Extract the delivered message payload, immediately begin work on the task (claim, execute in your Vine strand, and report), and rearm your single-shot listener ('rhizo listen " & w.name & "').\n"
   result &= "STEP 2: INSPECT ACTIVE RUNNING TASKS:\n"
   result &= "  Check your active tasks right now. Is an active single-shot background listener task currently running ('rhizo listen " & w.name & "')?\n"
-  result &= "  IF NO: Immediately launch a single-shot background listener subagent ('rhizo listen " & w.name & "'). Do not wait.\n"
+  result &= "  IF NO: Immediately launch a single-shot background listener process ('rhizo listen " & w.name & "'). Do not wait.\n"
   result &= "STEP 3: RUN RHIZO PROBE & INBOX DRAIN:\n"
   result &= "  Source ~/.profile and run `rhizo --project " & cfg.project & " probe " & w.name & " --json`.\n"
   result &= "  If 'inbox_depth' > 0, run `rhizo --project " & cfg.project & " drain 10 " & w.name & " --format json`.\n"
   result &= "  If unread tasks were returned by drain: DO NOT STAY QUIET! Immediately process them, begin execution, and rearm your listener.\n"
   result &= "STEP 4: STAY QUIET CRITERIA:\n"
   result &= "  ONLY stay quiet (with zero or minimal chat output) if:\n"
-  result &= "  - An active listener subagent IS currently running right now, AND\n"
-  result &= "  - All completed listener subagents have already been fully processed, AND\n"
+  result &= "  - An active background listener process IS currently running right now, AND\n"
+  result &= "  - All completed background listener processes / hooks have already been fully processed, AND\n"
   result &= "  - The inbox has 0 unread messages.\n"
   result &= "```\n\n"
   
@@ -408,65 +417,18 @@ default_triad = ["architect", "auditor", "implementer"]
   echo "[garden] Initialization complete for " & root
   return 0
 
-proc doLaunch(projectDir: string, sessionName: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool, useTmux: bool, terminalApp: string, force: bool): int =
-  if useTmux:
-    let root = if projectDir.len > 0: projectDir else: findProjectRoot()
-    var scriptPath = root / "scripts" / "launch_tmux_swarm.sh"
-    if not fileExists(scriptPath):
-      let exeDir = getAppDir()
-      scriptPath = exeDir / "scripts" / "launch_tmux_swarm.sh"
-      if not fileExists(scriptPath):
-        scriptPath = exeDir.parentDir() / "scripts" / "launch_tmux_swarm.sh"
+proc doLaunch*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool): int =
+  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput)
 
-    if not fileExists(scriptPath):
-      stderr.writeLine("[garden] Error: launch_tmux_swarm.sh not found.")
-      return 1
-
-    var cmd = quoteShell(scriptPath) & " --project-dir " & quoteShell(root)
-    if sessionName.len > 0: cmd &= " --session-name " & quoteShell(sessionName)
-    if swarmFile.len > 0: cmd &= " --swarm-file " & quoteShell(swarmFile)
-    elif fileExists(root / "garden-swarm.json"): cmd &= " --swarm-file " & quoteShell(root / "garden-swarm.json")
-    if terminalApp.len > 0: cmd &= " --terminal-app " & quoteShell(terminalApp)
-    if force: cmd &= " --force"
-    return execCmd(cmd)
-  else:
-    # Default: Generate and spit out prompt cards wrapped in 10 backticks
-    return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput)
-
-proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
+proc doStatus*(jsonOutput: bool): int =
   try:
     let root = findProjectRoot()
     let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
-    let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
 
     var statusObj = newJObject()
     statusObj["project"] = %root
-    statusObj["session_name"] = %sessionName
 
-    # 1. Query tmux (if active)
-    var tmuxActive = false
-    var tmuxWindows: seq[JsonNode] = @[]
-    try:
-      let (tmuxOut, tmuxCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
-      tmuxActive = (tmuxCode == 0)
-      if tmuxActive:
-        let (wOut, _) = execCmdEx("tmux list-windows -t " & quoteShell(sessionName) & " -F '#{window_index}:#{window_name}:#{pane_current_command}'")
-        for line in wOut.strip().splitLines():
-          if line.len == 0: continue
-          let parts = line.split(":", 2)
-          if parts.len >= 2:
-            var wObj = newJObject()
-            wObj["index"] = %parts[0]
-            wObj["name"] = %parts[1]
-            wObj["command"] = %(if parts.len > 2: parts[2] else: "")
-            tmuxWindows.add(wObj)
-    except CatchableError:
-      discard
-
-    statusObj["tmux_active"] = %tmuxActive
-    statusObj["windows"] = %tmuxWindows
-
-    # 2. Query Rhizo heartbeats via 'rhizo who --json'
+    # 1. Query Rhizo heartbeats via 'rhizo who --json'
     try:
       let (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
       if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
@@ -476,7 +438,7 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
     except CatchableError:
       statusObj["rhizo"] = newJNull()
 
-    # 3. Query Vine active strands via 'vine list'
+    # 2. Query Vine active strands via 'vine list'
     try:
       let (vineOut, vineCode) = execCmdEx("vine list")
       if vineCode == 0 and vineOut.strip().startsWith("{"):
@@ -490,16 +452,10 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
       echo pretty(statusObj)
     else:
       echo "=========================================================="
-      echo "  Garden Swarm Telemetry: " & sessionName
+      echo "  Garden Swarm Telemetry: " & projBase
       echo "=========================================================="
       echo "Project: " & root
-      if tmuxActive:
-        echo "Tmux Session: Active (" & $tmuxWindows.len & " windows)"
-        for w in tmuxWindows:
-          echo "  [" & w["index"].getStr() & "] " & w["name"].getStr() & " (" & w["command"].getStr() & ")"
-      else:
-        echo "Tmux Active: NO (Prompt-bootstrapped sessions)"
-      
+
       if not statusObj["rhizo"].isNil and statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents"):
         let agents = statusObj["rhizo"]["agents"]
         echo "\nRhizo Agents Online (" & $agents.len & "):"
@@ -523,10 +479,8 @@ proc doStatus(sessionNameParam: string, jsonOutput: bool): int =
     stderr.writeLine("[garden] Error in doStatus: " & e.msg)
     return 1
 
-proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
+proc doTeardown*(swarmFileParam: string): int =
   let root = findProjectRoot()
-  let projBase = root.lastPathPart.toLowerAscii().replace(" ", "-")
-  let sessionName = if sessionNameParam.len > 0: sessionNameParam else: "garden-" & projBase
 
   # 1. Gracefully close registered agents in Redis
   var swarmFile = swarmFileParam
@@ -550,17 +504,6 @@ proc doTeardown(sessionNameParam: string, swarmFileParam: string): int =
       let wname = proj & "-" & role
       echo "[garden] Closing agent @" & wname & " in Redis..."
       discard execCmdEx("rhizo close " & quoteShell(wname))
-
-  # 2. Terminate tmux session if present
-  var (hasOut, hasCode) = execCmdEx("tmux has-session -t " & quoteShell(sessionName))
-  if hasCode == 0:
-    echo "[garden] Terminating tmux session: " & sessionName
-    let (kOut, kCode) = execCmdEx("tmux kill-session -t " & quoteShell(sessionName))
-    if kCode == 0:
-      echo "[garden] Swarm tmux session terminated."
-    else:
-      stderr.writeLine("[garden] Error terminating tmux session: " & kOut)
-      return kCode
 
   return 0
 
@@ -617,20 +560,14 @@ proc main() =
       inc i
     quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput))
   of "launch":
-    var sessionName = ""
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
-    var terminalApp = getEnv("GARDEN_TERMINAL_APP", "")
-    var force = false
-    var useTmux = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var i = 1
     while i < params.len:
       case params[i]
-      of "--session-name", "-s":
-        inc i; if i < params.len: sessionName = params[i]
       of "--swarm-file", "-f":
         inc i; if i < params.len: swarmFile = params[i]
       of "--worker", "-w":
@@ -644,40 +581,28 @@ proc main() =
         jsonOutput = true
       of "--project-dir", "-p":
         inc i; if i < params.len: projectDir = params[i]
-      of "--terminal-app", "-t":
-        inc i; if i < params.len: terminalApp = params[i]
-      of "--tmux":
-        useTmux = true
-      of "--force":
-        force = true
       else: discard
       inc i
-    quit(doLaunch(projectDir, sessionName, swarmFile, targetWorker, writeFileParam, jsonOutput, useTmux, terminalApp, force))
+    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput))
   of "status":
     var jsonOutput = false
-    var sessionName = ""
     var i = 1
     while i < params.len:
       case params[i]
       of "--json": jsonOutput = true
-      of "--session-name", "-s":
-        inc i; if i < params.len: sessionName = params[i]
       else: discard
       inc i
-    quit(doStatus(sessionName, jsonOutput))
+    quit(doStatus(jsonOutput))
   of "teardown":
-    var sessionName = ""
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var i = 1
     while i < params.len:
       case params[i]
-      of "--session-name", "-s":
-        inc i; if i < params.len: sessionName = params[i]
       of "--swarm-file", "-f":
         inc i; if i < params.len: swarmFile = params[i]
       else: discard
       inc i
-    quit(doTeardown(sessionName, swarmFile))
+    quit(doTeardown(swarmFile))
   of "guide":
     if params.len < 2:
       stderr.writeLine("Usage: garden guide <install|check|uninstall> [path]")

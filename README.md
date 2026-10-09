@@ -27,7 +27,7 @@
 > ```text
 > "garden: I want to build [feature/system/project]"
 > ```
-> The session automatically acts as the **Lead Orchestrator**. It conducts a brief interactive intake interview to calibrate your desired team balance, coding harnesses, and model tiers. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
+> The session automatically acts as the **Lead Orchestrator**. It auto-detects your coding harness and conducts a single-question intake interview to calibrate your desired team shape and session-default models. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
 
 Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated Rift copy-on-write strands verified by Vine's Two-Key Gate.
 
@@ -148,8 +148,6 @@ garden guide install
    ```bash
    brew install redis && brew services start redis
    ```
-4. **`tmux`** (Optional):
-   Only required if explicitly running legacy headless panes via `garden launch --tmux`.
 
 ---
 
@@ -166,13 +164,12 @@ User: "garden: Implement high-throughput batch claim leases with Redis pipeline 
 
 Garden utilizes the **Active Swarm Fast-Path (First-Look Invariant)**:
 - **Existing Cluster Online**: Before asking intake questions, Garden runs `rhizo who --json`. If active, healthy workers already exist on the cluster, Garden skips all setup questions and prompt cards, automatically attaching to the active workers to proceed straight to task planning or execution!
-- **Cold Start (Zero Active Workers)**: If no workers are online, the Orchestrator conducts an interactive interview of at most **two concise questions**:
-  1. **Execution Mode**: Multi-Agent Swarm (Recommended) vs Single Session Inline.
-  2. **Swarm Shape & Harness Environment (Unified)**: Combines team structure with target harness (e.g., Balanced Triad in Antigravity IDE, Balanced Triad in Claude Code CLI, Balanced Triad in OpenCode, Focused Duo, or Custom).
+- **Cold Start (Zero Active Workers)**: If no workers are online, the Orchestrator auto-detects the active coding harness (`ANTIGRAVITY_APP_DIR`, `CLAUDE_CODE`, `OPENCODE_SESSION_ID`, `CODEX_SESSION_ID`, `PI_SESSION_ID`) and conducts a **single-question intake interview**:
+  1. **Execution Mode & Swarm Shape in <Detected Harness>**: Multi-Agent Swarm (Balanced Triad or Focused Duo in the detected harness) vs Single-Agent Inline.
 
 > [!IMPORTANT]
 > **Universal Sovereign Sessions & Model Inheritance**:
-> - **Sovereign Sessions Only**: Swarm workers are strictly independent sessions (separate terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks) are **strictly prohibited** from acting as cluster workers.
+> - **Sovereign Sessions Only (Universal Subagent & Tmux Prohibition)**: Swarm workers are strictly independent sessions (separate terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks) and terminal multiplexers (`tmux`) are **strictly prohibited**.
 > - **Session-Native Model Inheritance**: Swarm workers inherit whatever foundation model is active in that harness window (`Session Default (active in window/tab)`). Disconnected model pairing quizzes are eliminated.
 
 ### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
@@ -206,10 +203,10 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
 | `garden prompts` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate 10-backtick raw markdown prompt cards for pasting into worker sessions. |
-| `garden launch` | `[--worker <name>] [--write [file]] [--json] [--tmux] [--session-name <name>]` | Bootstrap swarm worker sessions (defaults to generating prompt cards). |
-| `garden status` | `[--json] [--session-name <name>]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |
+| `garden launch` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Bootstrap swarm worker sessions (defaults to generating prompt cards). |
+| `garden status` | `[--json]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |
 | `garden init` | `[<target_dir>] [--force]` | Initialize `garden.toml`, docs scaffold, and install guide in `AGENTS.md`. |
-| `garden teardown`| `[--session-name <name>] [--swarm-file <file>]` | Gracefully close registered swarm agents on the Redis bus. |
+| `garden teardown`| `[--swarm-file <file>]` | Gracefully close registered swarm agents on the Redis bus. |
 | `garden guide` | `<install\|check\|uninstall> [path]` | Install or manage Garden Multi-Agent Swarm Guide in `AGENTS.md`. |
 
 ---
@@ -226,7 +223,6 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 | `GARDEN_SWARM_FILE` | Path | `garden-swarm.json` | Explicit path to swarm manifest JSON file. |
 | `GARDEN_CONFIG` | Path | `garden.toml` | Explicit path to project `garden.toml`. |
 | `GARDEN_PROJECT_DIR`| Path | *Auto-detected* | Target repository root directory. |
-| `GARDEN_TERMINAL_APP`| String | `auto` | Preferred terminal viewer for tmux sessions (`Ghostty`, `Terminal`, `iTerm`, `none`). |
 
 ### Example `garden-swarm.json`
 

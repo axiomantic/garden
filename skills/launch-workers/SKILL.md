@@ -12,9 +12,9 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
 
 ## 1. System Philosophy & Invariants
 
-1. **Human-in-the-Loop Session Autonomy**:
-   - We do not blindly spawn tmux background processes or attempt to drive terminal multiplexers with fragile subshell scripting.
-   - The operator chooses the harness and model for each worker (e.g. Claude Code CLI in one tab, OpenCode in another, Antigravity in a third).
+1. **Human-in-the-Loop Sovereign Session Autonomy**:
+   - Terminal multiplexers (tmux) are unsupported. We do not blindly spawn tmux background processes or attempt to drive terminal multiplexers with fragile subshell scripting.
+   - Workers run in sovereign, independent interactive sessions (dedicated terminal tabs or IDE windows) in the operator's active coding harness.
 2. **Raw Markdown 10-Backtick Fencing**:
    <CRITICAL>
    When outputting prompt cards in stdout, artifacts, or chat, every prompt block MUST be wrapped in exactly 10 backticks:
@@ -111,10 +111,10 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
 5. **Scheduled Health Check Template (ONLY for OpenAI Codex / ChatGPT CLI)**:
    In Google Antigravity (using background `run_command`) and OpenCode (using background ear), DO NOT configure scheduled tasks; reactive background process completion handles wakeups natively.
    In Codex Desktop / CLI where sessions cannot wake from background process exits without external stimulation, prompts include the bulletproof 4-step template:
-   - STEP 1: Inspect completed subagents/tasks for unhandled delivered tasks and execute them immediately (never stay quiet with pending work).
+   - STEP 1: Inspect completed background listener processes / hooks for unhandled delivered tasks and execute them immediately (never stay quiet with pending work).
    - STEP 2: Inspect active tasks to verify a listener is currently running, and re-arm if missing.
    - STEP 3: Run `rhizo probe <name> --json` and drain any inbox backlog.
-   - STEP 4: Stay quiet ONLY when a listener is actively running AND no delivered tasks are pending.
+   - STEP 4: Stay quiet ONLY when a background listener process is actively running AND no delivered tasks are pending.
 6. **Readiness Prompt**:
    Instruct the operator: *"Once you have pasted these prompts and the sessions are listening, tell me here (or I will automatically detect them online via `rhizo who`), and we will proceed to Phase 3 (Dialectical Deliberation)."*
 
