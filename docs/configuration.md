@@ -30,7 +30,7 @@ All Garden-controlled environment variables use the canonical `GARDEN_` prefix.
 
 [project]
 # Canonical project identifier
-name = "locutus"
+name = "rhizo"
 
 # Preferred terminal application for session viewing (Ghostty | Terminal | iTerm | none)
 preferred_terminal = "Ghostty"
@@ -138,8 +138,8 @@ The `garden-swarm.json` manifest defines the multi-agent fleet: worker personas,
 
 ```json
 {
-  "project": "locutus",
-  "target_repo": "/Users/eek/Development/locutus",
+  "project": "rhizo",
+  "target_repo": "/Users/eek/Development/rhizo",
   "orchestrator": "orchestrator",
   "shared_workspace": false,
   "workers": [

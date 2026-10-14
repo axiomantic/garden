@@ -19,7 +19,7 @@ __pycache__/
 .pytest_cache/
 
 # Agent & Workspace State (Zero Dirty Commits Invariant)
-.locutus.agent
+.rhizo.agent
 .braid.agent
 .braid.json
 workspaces/
