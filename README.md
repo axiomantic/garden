@@ -76,6 +76,22 @@ Garden is organized into a clean, batteries-included catalog of self-explanatory
 | **[`plan-implementation`](skills/plan-implementation/SKILL.md)** | **Master Scheduling** | Authors `implementation_plan.md` defining task assignment matrices, `rhizo` distributed fencing locks, `vine` strand workflows, dynamic markdown checkboxes, harness To-Do integration, and emergent design addenda. |
 | **[`orchestrate-swarm`](skills/orchestrate-swarm/SKILL.md)** | **Main-Chat Governor** | Governs execution from the primary chat session: dispatches tasks over Redis, tracks heartbeats, ratifies emergent design addenda, verifies Two-Key gate passes, and triggers `vine weave`. |
 
+---
+
+## Documentation for Humans & AI Agents
+
+Garden provides comprehensive ceremony, manifest, and protocol specifications:
+
+### Ceremonies & Methodology
+* **[Ceremony Lifecycle Specification](docs/ceremony_lifecycle.md)**: The 6 sequential ceremony phases, quality gates, and sovereign session bootstrapping.
+* **[Swarm Manifest Schema](docs/swarm_manifest_schema.md)**: JSON/TOML specification for `garden-swarm.json` and `garden.toml`.
+* **[Dialectical Pump Protocol](docs/dialectical_pump_protocol.md)**: Grounded multi-perspective debate, Stage 1-3 deliverables, and the Emergent Design Addendum Protocol.
+* **[CLI Reference Manual](docs/cli_reference.md)**: Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`).
+* **[Configuration Architecture](docs/configuration.md)**: Project-level configuration, strand options, and test runner configurations.
+* **[Agent Constitution & Invariants (AGENTS.md)](AGENTS.md)**: Coordination invariants, sovereign session rules, and listener discipline.
+
+---
+
 ## Standalone Yet Designed for the Axiomantic Triad
 
 Garden is completely standalone and can direct multi-agent dialectics, persona selection, and prompt-bootstrapped worker swarms on any codebase.
@@ -234,7 +250,7 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
   "workers": [
     {
       "name": "architect",
-      "persona": "Dr. Marcus Vance (Systems Architect)",
+      "persona": "Bramblestitch (Systems Architect)",
       "role": "Systems Architect & Formal Invariant Specifier",
       "harness": "Claude Code",
       "model": "claude-3-5-sonnet",
@@ -243,7 +259,7 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
     },
     {
       "name": "auditor",
-      "persona": "Lyra Sterling (Adversarial Quality Auditor)",
+      "persona": "Prickle-Thistle (Adversarial Quality Auditor)",
       "role": "Adversarial Code Reviewer & Security Auditor",
       "harness": "OpenCode",
       "model": "gemini-3.8-flash",
@@ -252,7 +268,7 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
     },
     {
       "name": "implementer",
-      "persona": "Elena Rostova (Lead Implementation Engineer)",
+      "persona": "Moss-Weaver (Lead Implementation Engineer)",
       "role": "Polyglot Systems & Performance Engineer",
       "harness": "Antigravity",
       "model": "claude-3-5-sonnet",

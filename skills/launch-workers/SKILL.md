@@ -84,10 +84,10 @@ garden prompts --write garden-prompts.md
 garden prompts --worker <project>-architect  # (or suffix shorthand: --worker architect)
 ```
 
-If `garden-swarm.json` exists in the repository, Garden uses its configured personas, mandates, harnesses, and models. If missing, Garden automatically synthesizes the standard balanced triad:
-- `@<project>-architect` (Marcus Vance - Staff Systems Architect)
-- `@<project>-auditor` (Caleb Thorne - Verification & Adversarial Auditor)
-- `@<project>-implementer` (Elena Rostova - DevEx & Implementation Lead)
+If `garden-swarm.json` exists in the repository, Garden uses its configured personas, mandates, harnesses, and models. If missing, Garden automatically synthesizes the standard balanced triad with procedurally generated whimsical entities (e.g. botanical spirits, clockwork automatons, mythical cryptids):
+- `@<project>-architect` (e.g. Bramblestitch / Cogswell Pendulum - Staff Systems Architect)
+- `@<project>-auditor` (e.g. Prickle-Thistle / Grumblewick Snark - Verification & Adversarial Auditor)
+- `@<project>-implementer` (e.g. Moss-Weaver / Sprocket-Hop - DevEx & Implementation Lead)
 
 ### Step 2: Present & Paste Prompts into Sessions
 The Orchestrator presents the generated prompt blocks to the operator with clear, structured guidance:

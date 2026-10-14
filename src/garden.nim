@@ -1,11 +1,11 @@
 # /Users/eek/Development/garden/src/garden.nim
 # The Garden Multi-Agent Swarm Orchestration Engine CLI.
 
-import std/[os, osproc, strutils, json]
+import std/[os, osproc, strutils, json, times]
 import guide
 
 const
-  GardenVersion = "0.2.11"
+  GardenVersion = "0.2.12"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -25,6 +25,7 @@ type
     project*: string
     targetRepo*: string
     orchestrator*: string
+    orchestratorAgent*: string
     workers*: seq[WorkerSpec]
 
 proc printHelp() =
@@ -41,6 +42,8 @@ Subcommands:
   launch [options]         Bootstrap swarm worker sessions (generates prompts by default)
   status [options]         Unified cluster telemetry (Rhizo heartbeats, Vine strands)
   guide <action> [path]    Manage Garden Coordination Guide (install, check, uninstall)
+  roster-guard <sender>    Validate inbound message sender against swarm roster
+  session <action>         Manage compaction-immune session state (save, load, clear)
   teardown [options]       Gracefully close swarm agents in Redis
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
@@ -52,6 +55,15 @@ Options for 'prompts' and 'launch':
   --json                   Output prompts as JSON
   --project-dir, -p <dir>  Target project directory (default: current root)
 
+Options for 'roster-guard':
+  --swarm-file, -f <file>  Path to garden-swarm.json manifest
+  --json                   Output verification result as JSON
+
+Options for 'session':
+  save [--agent <name>] [--role <role>] [--orchestrator <orch>]
+  load [--json]
+  clear [--json]
+
 Options for 'status':
   --json                   Output telemetry as JSON
 
@@ -59,11 +71,11 @@ Options for 'teardown':
   --swarm-file <file>      Path to garden-swarm.json to close mapped agents
 """
 
-proc findProjectRoot*(startDir: string = getCurrentDir()): string =
+proc findProjectRoot*(startDir: string = ""): string =
   let envDir = getEnv("GARDEN_PROJECT_DIR", "")
   if envDir.len > 0 and dirExists(envDir):
     return envDir.normalizedPath
-  var dir = startDir
+  var dir = if startDir.len > 0: startDir else: getCurrentDir()
   while dir.len > 0:
     let envCfg = getEnv("GARDEN_CONFIG", "")
     if (envCfg.len > 0 and fileExists(envCfg)) or
@@ -91,7 +103,53 @@ proc detectCurrentHarness*(): string =
   else:
     "Antigravity / Claude Code"
 
-proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): SwarmConfig =
+type
+  WhimsicalTheme* = enum
+    wtBotanical, wtClockwork, wtCryptid, wtCosmic
+
+proc pickWhimsicalPersona*(roleKind: string, projName: string): string =
+  let lowerProj = projName.toLowerAscii()
+  let theme =
+    if lowerProj.contains("garden") or lowerProj.contains("vine") or lowerProj.contains("rhizo") or lowerProj.contains("plant") or lowerProj.contains("tree") or lowerProj.contains("leaf"):
+      wtBotanical
+    elif lowerProj.contains("gear") or lowerProj.contains("clock") or lowerProj.contains("engine") or lowerProj.contains("mulator") or lowerProj.contains("rust") or lowerProj.contains("metal"):
+      wtClockwork
+    elif lowerProj.contains("star") or lowerProj.contains("astro") or lowerProj.contains("cosmic") or lowerProj.contains("space") or lowerProj.contains("sky") or lowerProj.contains("orbit"):
+      wtCosmic
+    elif lowerProj.contains("crypto") or lowerProj.contains("dragon") or lowerProj.contains("wolf") or lowerProj.contains("beast") or lowerProj.contains("myth"):
+      wtCryptid
+    else:
+      var h: int = 0
+      for c in lowerProj: h = (h * 31 + ord(c)) and 0x7FFFFFFF
+      [wtBotanical, wtClockwork, wtCryptid, wtCosmic][h mod 4]
+
+  case theme
+  of wtBotanical:
+    case roleKind.toLowerAscii()
+    of "architect": "Bramblestitch"
+    of "auditor": "Prickle-Thistle"
+    of "implementer": "Moss-Weaver"
+    else: "Sprout-Surge"
+  of wtClockwork:
+    case roleKind.toLowerAscii()
+    of "architect": "Cogswell Pendulum"
+    of "auditor": "Grumblewick Snark"
+    of "implementer": "Sprocket-Hop"
+    else: "Whirly-Spindle"
+  of wtCryptid:
+    case roleKind.toLowerAscii()
+    of "architect": "Astral Gryphon"
+    of "auditor": "Iron Basilisk"
+    of "implementer": "Forge Salamander"
+    else: "Copper Goblin"
+  of wtCosmic:
+    case roleKind.toLowerAscii()
+    of "architect": "Nebula-Weaver"
+    of "auditor": "Quasar-Gaze"
+    of "implementer": "Pulsar-Spark"
+    else: "Starlight-Drifter"
+
+proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
   let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
   var swarmFile = if swarmFilePath.len > 0: swarmFilePath
@@ -109,14 +167,18 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
       
       let defaultOrch = projName & "-orchestrator"
       if sJson.hasKey("orchestrator"):
-        if sJson["orchestrator"].kind == JObject and sJson["orchestrator"].hasKey("name"):
-          result.orchestrator = sJson["orchestrator"]["name"].getStr(defaultOrch)
+        if sJson["orchestrator"].kind == JObject:
+          result.orchestrator = if sJson["orchestrator"].hasKey("name"): sJson["orchestrator"]["name"].getStr(defaultOrch) else: defaultOrch
+          result.orchestratorAgent = if sJson["orchestrator"].hasKey("agent"): sJson["orchestrator"]["agent"].getStr("") elif sJson["orchestrator"].hasKey("codename"): sJson["orchestrator"]["codename"].getStr("") else: ""
         elif sJson["orchestrator"].kind == JString:
           result.orchestrator = sJson["orchestrator"].getStr(defaultOrch)
         else:
           result.orchestrator = defaultOrch
       else:
         result.orchestrator = defaultOrch
+
+      if sJson.hasKey("orchestrator_agent"):
+        result.orchestratorAgent = sJson["orchestrator_agent"].getStr()
 
       if sJson.hasKey("workers") and sJson["workers"].kind == JArray:
         for w in sJson["workers"]:
@@ -155,41 +217,63 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = ""): Swar
     let implName = projName & "-implementer"
     let curHarness = detectCurrentHarness()
 
+    let archPersona = pickWhimsicalPersona("architect", projName)
+    let auditPersona = pickWhimsicalPersona("auditor", projName)
+    let implPersona = pickWhimsicalPersona("implementer", projName)
+
     result.workers.add(WorkerSpec(
       name: archName,
-      persona: "Marcus Vance",
+      persona: archPersona,
       role: "Staff Systems Architect",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "systems", "architecture", "invariants"],
-      systemPrompt: "You are Marcus Vance, Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
+      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
       startupCommand: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
     ))
 
     result.workers.add(WorkerSpec(
       name: auditName,
-      persona: "Caleb Thorne",
+      persona: auditPersona,
       role: "Verification & Adversarial Auditor",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "qa", "audit", "verifier", "purist"],
-      systemPrompt: "You are Caleb Thorne, Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
+      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
     ))
 
     result.workers.add(WorkerSpec(
       name: implName,
-      persona: "Elena Rostova",
+      persona: implPersona,
       role: "DevEx & Implementation Lead",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "dev", "devex", "build", "implementation"],
-      systemPrompt: "You are Elena Rostova, DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
+      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
       startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
     ))
+
+  if optOrchestratorAgent.len > 0:
+    result.orchestratorAgent = optOrchestratorAgent
+  elif result.orchestratorAgent.len == 0:
+    let envAgent = getEnv("RHIZO_AGENT_NAME", "")
+    if envAgent.len > 0 and envAgent != result.orchestrator:
+      result.orchestratorAgent = envAgent
+
+proc registerOrchestratorAlias*(cfg: SwarmConfig, quiet: bool = false) =
+  if cfg.orchestratorAgent.len > 0 and cfg.orchestratorAgent != cfg.orchestrator:
+    let cmd = "rhizo alias set " & quoteShell(cfg.orchestrator) & " " & quoteShell(cfg.orchestratorAgent)
+    let res = execCmdEx(cmd)
+    if res.exitCode == 0:
+      if not quiet:
+        echo "[garden] Auto-registered alias in Rhizo: @" & cfg.orchestrator & " -> @" & cfg.orchestratorAgent
+    else:
+      if not quiet:
+        stderr.writeLine("[garden] Warning: Failed to auto-register alias in Rhizo: " & res.output.strip())
 
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   let tagsStr = w.tags.join(",")
@@ -296,8 +380,9 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "- TARGET_REPO: " & cfg.targetRepo & "\n"
   result &= "<!-- END_SWARM_RUNTIME_STATE -->\n"
 
-proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool): int =
-  let cfg = loadSwarmConfig(projectDir, swarmFile)
+proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool, optOrchAgent: string = ""): int =
+  let cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent)
+  registerOrchestratorAlias(cfg, quiet = jsonOutput)
   
   var selectedWorkers: seq[WorkerSpec] = @[]
   if targetWorker.len > 0:
@@ -317,6 +402,8 @@ proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, wri
     jObj["project"] = %cfg.project
     jObj["target_repo"] = %cfg.targetRepo
     jObj["orchestrator"] = %cfg.orchestrator
+    if cfg.orchestratorAgent.len > 0:
+      jObj["orchestrator_agent"] = %cfg.orchestratorAgent
     jObj["count"] = %selectedWorkers.len
     var jPrompts = newJArray()
     for w in selectedWorkers:
@@ -375,10 +462,10 @@ proc doPrompts*(projectDir: string, swarmFile: string, targetWorker: string, wri
 
   return 0
 
-proc doInit(targetDir: string, force: bool): int =
+proc doInit(targetDir: string, force: bool, optOrchAgent: string = ""): int =
   let root = if targetDir.len > 0: targetDir else: getCurrentDir()
   createDir(root)
-  let projName = root.lastPathPart.toLowerAscii()
+  let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
   let configFile = root / DefaultConfigFileName
 
   if fileExists(configFile) and not force:
@@ -426,11 +513,20 @@ default_triad = ["architect", "auditor", "implementer"]
     writeFile(codexHooksFile, hooksContent)
     echo "[garden] Initialized Codex lifecycle Stop hook in " & codexHooksFile
 
+  # Auto-register orchestrator alias if configured or present in environment
+  let defaultOrch = projName & "-orchestrator"
+  let actualAgent = if optOrchAgent.len > 0: optOrchAgent else: getEnv("RHIZO_AGENT_NAME", "")
+  if actualAgent.len > 0 and actualAgent != defaultOrch:
+    let cmd = "rhizo alias set " & quoteShell(defaultOrch) & " " & quoteShell(actualAgent)
+    let res = execCmdEx(cmd)
+    if res.exitCode == 0:
+      echo "[garden] Auto-registered alias in Rhizo: @" & defaultOrch & " -> @" & actualAgent
+
   echo "[garden] Initialization complete for " & root
   return 0
 
-proc doLaunch*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool): int =
-  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput)
+proc doLaunch*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool, optOrchAgent: string = ""): int =
+  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent)
 
 proc doStatus*(jsonOutput: bool): int =
   try:
@@ -491,6 +587,117 @@ proc doStatus*(jsonOutput: bool): int =
     stderr.writeLine("[garden] Error in doStatus: " & e.msg)
     return 1
 
+proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
+  let normSender = sender.toLowerAscii.strip()
+  if normSender.len == 0: return false
+  if normSender == cfg.orchestrator.toLowerAscii.strip(): return true
+  if cfg.orchestratorAgent.len > 0 and normSender == cfg.orchestratorAgent.toLowerAscii.strip(): return true
+  for w in cfg.workers:
+    if normSender == w.name.toLowerAscii.strip(): return true
+  return false
+
+proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string = "", projectDir: string = ""): int =
+  let cfg = loadSwarmConfig(projectDir, swarmFile)
+  let normSender = sender.toLowerAscii.strip()
+  if normSender.len == 0:
+    stderr.writeLine("[garden roster] Error: Missing sender name to validate.")
+    return 1
+
+  let isMember = validateRosterSender(cfg, normSender)
+  if isMember:
+    if jsonOutput:
+      echo $(%*{"valid": true, "sender": normSender, "project": cfg.project, "status": "ROSTER_VERIFIED"})
+    else:
+      echo "[garden roster] OK: @" & normSender & " is an authorized member of project '" & cfg.project & "' roster."
+    return 0
+  else:
+    if jsonOutput:
+      echo $(%*{"valid": false, "sender": normSender, "project": cfg.project, "status": "ALIEN_QUARANTINED"})
+    else:
+      stderr.writeLine("[garden roster] ALIEN SENDER REJECTED: @" & normSender & " is NOT in project '" & cfg.project & "' roster. Quarantining message.")
+    return 1
+
+proc doSession*(action: string, agentName: string = "", role: string = "", orchestrator: string = "", projectDir: string = "", jsonOutput: bool = false): int =
+  let root = if projectDir.len > 0: findProjectRoot(projectDir) else: findProjectRoot()
+  let gardenDir = root / ".garden"
+  let sessionFile = gardenDir / "session.json"
+  let projName = if root.len > 0: root.splitPath.tail.toLowerAscii().replace(" ", "-") else: getCurrentDir().splitPath.tail.toLowerAscii().replace(" ", "-")
+
+  case action.toLowerAscii()
+  of "save", "set":
+    createDir(gardenDir)
+    var current = newJObject()
+    if fileExists(sessionFile):
+      try: current = parseJson(readFile(sessionFile)) except CatchableError: discard
+    let effectiveAgent = if agentName.len > 0: agentName
+                         elif current.hasKey("agent"): current["agent"].getStr()
+                         else: getEnv("RHIZO_AGENT_NAME", "")
+    let effectiveRole = if role.len > 0: role
+                        elif current.hasKey("role"): current["role"].getStr()
+                        else: "worker"
+    let effectiveOrch = if orchestrator.len > 0: orchestrator
+                        elif current.hasKey("orchestrator"): current["orchestrator"].getStr()
+                        else: projName & "-orchestrator"
+    let data = %*{
+      "agent": effectiveAgent,
+      "project": projName,
+      "role": effectiveRole,
+      "orchestrator": effectiveOrch,
+      "workspace": root,
+      "updated_at": now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+    }
+    writeFile(sessionFile, pretty(data))
+    if jsonOutput:
+      echo pretty(data)
+    else:
+      echo "[garden session] Saved active session state to " & sessionFile
+    return 0
+
+  of "load", "get", "show":
+    if not fileExists(sessionFile):
+      if jsonOutput:
+        echo $(%*{"status": "error", "message": "No active session file found at " & sessionFile})
+      else:
+        stderr.writeLine("[garden session] No active session file found at " & sessionFile)
+      return 1
+    let content = readFile(sessionFile)
+    if jsonOutput:
+      echo content
+    else:
+      try:
+        let j = parseJson(content)
+        echo "Active Garden Session:"
+        echo "  Agent       : @" & j.getOrDefault("agent").getStr("")
+        echo "  Project     : " & j.getOrDefault("project").getStr("")
+        echo "  Role        : " & j.getOrDefault("role").getStr("")
+        echo "  Orchestrator: @" & j.getOrDefault("orchestrator").getStr("")
+        echo "  Updated     : " & j.getOrDefault("updated_at").getStr("")
+      except CatchableError:
+        echo content
+    return 0
+
+  of "clear", "rm", "delete":
+    if fileExists(sessionFile):
+      try:
+        removeFile(sessionFile)
+        if jsonOutput:
+          echo $(%*{"status": "ok", "message": "Cleared session file"})
+        else:
+          echo "[garden session] Cleared session file: " & sessionFile
+      except CatchableError as e:
+        stderr.writeLine("[garden session] Failed to remove session file: " & e.msg)
+        return 1
+    else:
+      if jsonOutput:
+        echo $(%*{"status": "ok", "message": "No session file to clear"})
+      else:
+        echo "[garden session] No session file to clear."
+    return 0
+
+  else:
+    stderr.writeLine("[garden session] Error: Unknown session action '" & action & "'. Valid actions: save, load, clear.")
+    return 1
+
 proc doTeardown*(swarmFileParam: string): int =
   let root = findProjectRoot()
 
@@ -537,21 +744,25 @@ proc main() =
   of "init":
     var targetDir = ""
     var force = false
+    var optOrchAgent = ""
     var i = 1
     while i < params.len:
       case params[i]
       of "--force", "-f": force = true
+      of "--orchestrator", "-o", "--orchestrator-agent", "-a":
+        inc i; if i < params.len: optOrchAgent = params[i]
       else:
         if targetDir.len == 0 and not params[i].startsWith("-"):
           targetDir = params[i]
       inc i
-    quit(doInit(targetDir, force))
+    quit(doInit(targetDir, force, optOrchAgent))
   of "prompts":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var optOrchAgent = ""
     var i = 1
     while i < params.len:
       case params[i]
@@ -559,6 +770,8 @@ proc main() =
         inc i; if i < params.len: swarmFile = params[i]
       of "--worker", "-w":
         inc i; if i < params.len: targetWorker = params[i]
+      of "--orchestrator", "-a", "--orchestrator-agent":
+        inc i; if i < params.len: optOrchAgent = params[i]
       of "--write", "-o":
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
@@ -570,13 +783,14 @@ proc main() =
         inc i; if i < params.len: projectDir = params[i]
       else: discard
       inc i
-    quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput))
+    quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent))
   of "launch":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var optOrchAgent = ""
     var i = 1
     while i < params.len:
       case params[i]
@@ -584,6 +798,8 @@ proc main() =
         inc i; if i < params.len: swarmFile = params[i]
       of "--worker", "-w":
         inc i; if i < params.len: targetWorker = params[i]
+      of "--orchestrator", "-a", "--orchestrator-agent":
+        inc i; if i < params.len: optOrchAgent = params[i]
       of "--write", "-o":
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
@@ -595,7 +811,7 @@ proc main() =
         inc i; if i < params.len: projectDir = params[i]
       else: discard
       inc i
-    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput))
+    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent))
   of "status":
     var jsonOutput = false
     var i = 1
@@ -615,6 +831,59 @@ proc main() =
       else: discard
       inc i
     quit(doTeardown(swarmFile))
+  of "roster-guard", "validate-sender", "ingest-guard":
+    var sender = ""
+    var jsonOutput = false
+    var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var i = 1
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]: jsonOutput = true
+      elif (a in ["--swarm-file", "-f"]) and i + 1 < params.len:
+        inc i; swarmFile = params[i]
+      elif a.startsWith("--swarm-file="): swarmFile = a[13..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a.startsWith("--project-dir="): projectDir = a[14..^1]
+      elif not a.startsWith("-") and sender.len == 0:
+        sender = a
+      inc i
+    if sender.len == 0:
+      stderr.writeLine("Usage: garden roster-guard <sender> [--json] [--swarm-file <file>]")
+      quit(1)
+    quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir))
+  of "session":
+    if params.len < 2:
+      stderr.writeLine("Usage: garden session <save|load|clear> [options...]")
+      stderr.writeLine("  save   [--agent <name>] [--role <role>] [--orchestrator <orch>]")
+      stderr.writeLine("  load   [--json]")
+      stderr.writeLine("  clear  [--json]")
+      quit(1)
+    let action = params[1].toLowerAscii()
+    var agentName = ""
+    var role = ""
+    var orch = ""
+    var projectDir = ""
+    var jsonOutput = false
+    var i = 2
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]: jsonOutput = true
+      elif (a in ["--agent", "-a"]) and i + 1 < params.len:
+        inc i; agentName = params[i]
+      elif a.startsWith("--agent="): agentName = a[8..^1]
+      elif (a in ["--role", "-r"]) and i + 1 < params.len:
+        inc i; role = params[i]
+      elif a.startsWith("--role="): role = a[7..^1]
+      elif (a in ["--orchestrator", "-o"]) and i + 1 < params.len:
+        inc i; orch = params[i]
+      elif a.startsWith("--orchestrator="): orch = a[15..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a.startsWith("--project-dir="): projectDir = a[14..^1]
+      inc i
+    quit(doSession(action, agentName, role, orch, projectDir, jsonOutput))
   of "guide":
     if params.len < 2:
       stderr.writeLine("Usage: garden guide <install|check|uninstall> [path]")

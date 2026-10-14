@@ -31,9 +31,9 @@ The generated implementation plan must follow this exact template:
 ## 1. Swarm Roster & Role Mapping
 | Worker Name | Persona | Role | Assigned Subsystems |
 | :--- | :--- | :--- | :--- |
-| `<project>-architect` | Marcus Vance | Staff Systems Architect | Core data structures, API contracts |
-| `<project>-auditor` | Caleb Thorne | Refactoring Purist | Unit tests, negative controls, linter |
-| `<project>-implementer` | Elena Rostova | DevEx & Implementation Lead | CLI commands, adapters, docs |
+| `<project>-architect` | Bramblestitch (or topical spirit) | Staff Systems Architect | Core data structures, API contracts |
+| `<project>-auditor` | Prickle-Thistle (or topical spirit) | Refactoring Purist | Unit tests, negative controls, linter |
+| `<project>-implementer` | Moss-Weaver (or topical spirit) | DevEx & Implementation Lead | CLI commands, adapters, docs |
 
 ---
 

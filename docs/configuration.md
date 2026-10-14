@@ -96,7 +96,7 @@ The `garden-swarm.json` manifest defines the multi-agent fleet: worker personas,
           },
           "persona": {
             "type": "string",
-            "description": "Full persona description (e.g. Dr. Marcus Vance)"
+            "description": "Full whimsical persona description (e.g. Bramblestitch / Cogswell Pendulum)"
           },
           "role": {
             "type": "string",
@@ -145,7 +145,7 @@ The `garden-swarm.json` manifest defines the multi-agent fleet: worker personas,
   "workers": [
     {
       "name": "architect",
-      "persona": "Dr. Marcus Vance (Systems Architect)",
+      "persona": "Bramblestitch (Systems Architect)",
       "role": "Systems Architect & Formal Methods Specifier",
       "harness": "Claude Code",
       "model": "claude-3-5-sonnet",
@@ -155,7 +155,7 @@ The `garden-swarm.json` manifest defines the multi-agent fleet: worker personas,
     },
     {
       "name": "auditor",
-      "persona": "Lyra Sterling (Adversarial Quality Auditor)",
+      "persona": "Prickle-Thistle (Adversarial Quality Auditor)",
       "role": "Adversarial Reviewer & Invariant Verifier",
       "harness": "OpenCode",
       "model": "gemini-3.8-flash",
@@ -165,7 +165,7 @@ The `garden-swarm.json` manifest defines the multi-agent fleet: worker personas,
     },
     {
       "name": "implementer",
-      "persona": "Elena Rostova (Lead Implementation Engineer)",
+      "persona": "Moss-Weaver (Lead Implementation Engineer)",
       "role": "Polyglot Performance Engineer",
       "harness": "Antigravity",
       "model": "claude-3-5-sonnet",

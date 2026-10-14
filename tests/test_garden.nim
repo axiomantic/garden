@@ -3,6 +3,7 @@
 
 import std/[os, osproc, strutils, json, unittest]
 import ../src/guide
+import ../src/garden
 
 suite "Garden Guide Management & Marker Suite":
 
@@ -139,9 +140,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
     check pCode == 0
     check pOut.contains("auditor")
-    check pOut.contains("Caleb Thorne")
-    check not pOut.contains("Marcus Vance")
-    check not pOut.contains("Elena Rostova")
+    check pOut.contains("Prickle-Thistle")
+    check not pOut.contains("Bramblestitch")
+    check not pOut.contains("Moss-Weaver")
 
   test "Garden prompts --json outputs structured json telemetry":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -151,7 +152,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["count"].getInt() == 3
     check j["workers"].len == 3
     check j["workers"][0]["name"].getStr() == "garden-architect"
-    check j["workers"][0]["prompt"].getStr().contains("Marcus Vance")
+    check j["workers"][0]["prompt"].getStr().contains("Bramblestitch")
 
   test "Garden prompts --write outputs prompts to file":
     let tmpDir = getTempDir() / ("garden_test_prompts_write_" & $getCurrentProcessId())
@@ -173,7 +174,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
     check lCode == 0
-    check lOut.contains("Elena Rostova")
+    check lOut.contains("Moss-Weaver")
     check lOut.contains("``````````markdown")
 
   test "Garden respects GARDEN_SWARM_FILE and GARDEN_PROJECT_DIR environment variables":
@@ -259,5 +260,73 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let j5 = parseJson(pOut5.strip())
     check j5["workers"][0]["harness"].getStr() == "Pi"
     delEnv("PI_SESSION_ID")
+
+  test "Garden prompts automatically registers orchestrator alias in Rhizo":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (pOut, pCode) = execCmdEx(exePath & " prompts --json -a custom-orch-lead")
+    check pCode == 0
+    let j = parseJson(pOut.strip())
+    check j.hasKey("orchestrator")
+    check j.hasKey("orchestrator_agent")
+    check j["orchestrator_agent"].getStr() == "custom-orch-lead"
+
+    defer:
+      discard execCmdEx("rhizo alias del " & j["orchestrator"].getStr())
+
+    # Verify alias was registered in Rhizo
+    let (aOut, aCode) = execCmdEx("rhizo alias get " & j["orchestrator"].getStr())
+    if aCode == 0:
+      check aOut.strip() == "custom-orch-lead"
+
+  test "Garden roster-guard validates swarm members and quarantines alien agents":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (vOut, vCode) = execCmdEx(exePath & " roster-guard garden-architect --json")
+    check vCode == 0
+    let vJson = parseJson(vOut.strip())
+    check vJson["valid"].getBool() == true
+    check vJson["status"].getStr() == "ROSTER_VERIFIED"
+
+    let (aOut, aCode) = execCmdEx(exePath & " roster-guard totally-alien-agent --json")
+    check aCode != 0
+    let aJson = parseJson(aOut.strip())
+    check aJson["valid"].getBool() == false
+    check aJson["status"].getStr() == "ALIEN_QUARANTINED"
+
+  test "Garden session save, load, and clear lifecycle":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let tmpDir = getTempDir() / ("garden_session_test_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: removeDir(tmpDir)
+
+    let (sOut, sCode) = execCmdEx(exePath & " session save --agent test-gardener --role architect --project-dir " & quoteShell(tmpDir))
+    check sCode == 0
+    check fileExists(tmpDir / ".garden" / "session.json")
+
+    let (lOut, lCode) = execCmdEx(exePath & " session load --json --project-dir " & quoteShell(tmpDir))
+    check lCode == 0
+    let lJson = parseJson(lOut.strip())
+    check lJson["agent"].getStr() == "test-gardener"
+    check lJson["role"].getStr() == "architect"
+
+    let (cOut, cCode) = execCmdEx(exePath & " session clear --project-dir " & quoteShell(tmpDir))
+    check cCode == 0
+    check not fileExists(tmpDir / ".garden" / "session.json")
+
+  test "Garden procedural whimsical persona generation":
+    check pickWhimsicalPersona("architect", "garden") == "Bramblestitch"
+    check pickWhimsicalPersona("auditor", "garden") == "Prickle-Thistle"
+    check pickWhimsicalPersona("implementer", "garden") == "Moss-Weaver"
+
+    check pickWhimsicalPersona("architect", "gearmulator") == "Cogswell Pendulum"
+    check pickWhimsicalPersona("auditor", "gearmulator") == "Grumblewick Snark"
+    check pickWhimsicalPersona("implementer", "gearmulator") == "Sprocket-Hop"
+
+    check pickWhimsicalPersona("architect", "astro-station") == "Nebula-Weaver"
+    check pickWhimsicalPersona("auditor", "astro-station") == "Quasar-Gaze"
+    check pickWhimsicalPersona("implementer", "astro-station") == "Pulsar-Spark"
+
+    check pickWhimsicalPersona("architect", "dragon-vault") == "Astral Gryphon"
+    check pickWhimsicalPersona("auditor", "dragon-vault") == "Iron Basilisk"
+    check pickWhimsicalPersona("implementer", "dragon-vault") == "Forge Salamander"
 
 

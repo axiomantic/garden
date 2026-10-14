@@ -25,13 +25,13 @@ graph TD
     C <-->|Coherence Tension| A
 ```
 
-1. **The Systems Architect** (e.g., Marcus Vance):
+1. **The Systems Architect** (e.g., Bramblestitch / Cogswell Pendulum):
    - **Focus**: Global system topology, invariants, lifecycle management, failure modes, cross-component boundaries.
    - **Bias**: Prefers structural purity and comprehensive conceptual models.
-2. **The Purist Auditor / Refactoring Specialist** (e.g., Caleb Thorne / Dr. Vance):
+2. **The Purist Auditor / Refactoring Specialist** (e.g., Prickle-Thistle / Grumblewick Snark):
    - **Focus**: Single-source of truth (SSOT), ISO standards compliance, dead-code elimination, zero green mirages, edge-case failure proofs.
    - **Bias**: Adversarial skeptic. Assumes claims are unproven until verified by an automated test or compiler run.
-3. **The DevEx & Implementation Lead** (e.g., Elena Rostova):
+3. **The DevEx & Implementation Lead** (e.g., Moss-Weaver / Sprocket-Hop):
    - **Focus**: Developer experience, API ergonomics, ease of adoption, idiomatic conventions, pragmatic delivery.
    - **Bias**: Champions the human engineer using the tool; eliminates cognitive overhead and unnecessary friction.
 
@@ -55,6 +55,16 @@ Swarm workers are ALWAYS sovereign, independent interactive sessions (separate t
 <CRITICAL>
 Session Default Models (No Cross-Harness Model Quizzes):
 Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session. NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options that do not correspond to the chosen harness. In `garden-swarm.json` and prompt cards, models default to `"Session Default (active in window/tab)"`.
+</CRITICAL>
+
+<CRITICAL>
+Whimsical Personas & Anti-Anchoring Invariant (GVR-017):
+1. Strict Negative Constraints: Faux-human corporate or academic persona names (e.g. "Marcus Vance", "Elena Rostova", "Caleb Thorne", "Lyra Sterling", "Dr. Jane Doe") are STRICTLY FORBIDDEN. Personas MUST be whimsical, fantastical, mechanical, or botanical entities that could not possibly be confused with real human beings.
+2. Anti-Anchoring Protocol: When generating or recommending swarm personas, YOU MUST NOT COPY OR REUSE ANY EXAMPLE NAMES FROM THIS SKILL VERBATIM. Do not name agents "Bramblestitch", "Prickle-Thistle", "Cogswell", or "Moss-Weaver". Instead, dynamically INVENT fresh, topical, whimsical names tailored specifically to the target project's character and domain:
+   - Botanical / Biological: Briar-Weaver, Sprout-Surge, Root-Tender, Bark-Scraper, Mycelium-Mender
+   - Clockwork / Artificer: Gear-Whisperer, Escapement-Caliber, Ratcheteer, Piston-Spark, Clocksmith-Spindle
+   - Mythical / Cryptid: Astral-Gryphon, Iron-Basilisk, Forge-Salamander, Chimera-Mason, Gargoyle-Gaze
+   - Celestial / Nautical: Nebula-Drifter, Solar-Flare, Coral-Carver, Deep-Current, Tide-Warden
 </CRITICAL>
 
 | Role Mandate | Recommended Harness | Model Alignment | Rationale |
@@ -111,9 +121,9 @@ Auto-detect the orchestrator's active harness from environment variables:
 
 Synthesize the primary triad targeting the detected harness with session-default models:
 - **Primary Triad**:
-  - Persona 1: Marcus Vance, Staff Systems Architect (Invariants, boundaries, structure)
-  - Persona 2: Caleb Thorne, Verification & Adversarial Auditor (Negative controls, purism)
-  - Persona 3: Elena Rostova, DevEx & Implementation Lead (Velocity, ergonomics)
+  - Persona 1: Bramblestitch (or invented spirit/automaton), Staff Systems Architect (Invariants, boundaries, structure)
+  - Persona 2: Prickle-Thistle (or invented spirit/automaton), Verification & Adversarial Auditor (Negative controls, purism)
+  - Persona 3: Moss-Weaver (or invented spirit/automaton), DevEx & Implementation Lead (Velocity, ergonomics)
 
 ### Step 3: Interactive Operator Ratification (`ask_question`)
 Invoke `ask_question` with a SINGLE concise question combining execution mode and swarm shape in the detected harness:
@@ -134,32 +144,32 @@ Once ratified, write `garden-swarm.json` to the target project directory with wo
   "workers": [
     {
       "name": "my-project-architect",
-      "persona": "Marcus Vance",
+      "persona": "Bramblestitch",
       "role": "Staff Systems Architect",
       "harness": "Antigravity IDE",
       "model": "Session Default (active in window/tab)",
       "tags": ["my-project", "systems", "architecture", "invariants"],
-      "system_prompt": "You are Marcus Vance, Staff Systems Architect for project my-project...",
+      "system_prompt": "You are Bramblestitch, Staff Systems Architect for project my-project...",
       "opposing_priority": "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes."
     },
     {
       "name": "my-project-auditor",
-      "persona": "Caleb Thorne",
+      "persona": "Prickle-Thistle",
       "role": "Verification & Adversarial Auditor",
       "harness": "Claude Code CLI / Antigravity",
       "model": "Session Default (active in window/tab)",
       "tags": ["my-project", "qa", "audit", "verifier", "purist"],
-      "system_prompt": "You are Caleb Thorne, Verification & Adversarial Auditor for project my-project...",
+      "system_prompt": "You are Prickle-Thistle, Verification & Adversarial Auditor for project my-project...",
       "opposing_priority": "Adversarial skepticism, rigorous negative controls, and proof over convenience."
     },
     {
       "name": "my-project-implementer",
-      "persona": "Elena Rostova",
+      "persona": "Moss-Weaver",
       "role": "DevEx & Implementation Lead",
       "harness": "Antigravity / OpenCode",
       "model": "Session Default (active in window/tab)",
       "tags": ["my-project", "dev", "devex", "build", "implementation"],
-      "system_prompt": "You are Elena Rostova, DevEx & Implementation Lead for project my-project...",
+      "system_prompt": "You are Moss-Weaver, DevEx & Implementation Lead for project my-project...",
       "opposing_priority": "High-velocity implementation, pragmatic delivery, and developer ergonomics."
     }
   ]

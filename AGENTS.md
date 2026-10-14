@@ -315,6 +315,97 @@ Never weave a strand into the canonical trunk without passing both keys:
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
 <!-- END GARDEN GUIDE -->
 
+---
+
+## 4. Garden Ceremony Pipeline & Orchestration Architecture
+
+Garden orchestrates heterogeneous coding agent teams across terminals, editors, and hosts using Rhizo as the transport bus and Vine as the workspace virtualization layer.
+
+```mermaid
+flowchart TD
+    subgraph Ceremony["Garden Swarm Ceremony Pipeline"]
+        Phase0["Phase 0: Interactive Intake Interview (Fast-Path / Single-Question)"]
+        Phase1["Phase 1: choose-personas (Ratify garden-swarm.json)"]
+        Phase2["Phase 2: launch-workers (10-Backtick Raw Markdown Cards)"]
+        Phase3["Phase 3: dialectical-pump (Research ➔ Design ➔ Audit)"]
+        Phase4["Phase 4: plan-implementation (Locks & Strands)"]
+        Phase5["Phase 5: orchestrate-swarm (Live Conductor & Trunk Weaving)"]
+    end
+
+    subgraph Infrastructure["Coordination Infrastructure"]
+        Rhizo["Rhizo (Redis Transport, Fencing Mutexes, Work Queues)"]
+        Vine["Vine (APFS CoW Strands, Two-Key Gate, Fast-Forward Weave)"]
+    end
+
+    Phase0 --> Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
+    Phase2 -.-> Rhizo
+    Phase3 -.-> Rhizo
+    Phase4 -.-> Rhizo & Vine
+    Phase5 -.-> Rhizo & Vine
+```
+
+---
+
+## 5. Garden Machine Constitution & Core Invariants
+
+All agents operating within the Garden ceremony engine MUST adhere to these strict invariants:
+
+<INVARIANT>
+Zero Theatrical Dialogue:
+Every statement, critique, or assertion made by an agent during the Dialectical Pump MUST be grounded in empirical evidence obtained via tool calls (file citations, AST analysis, test suite runs, compiler output). Unsubstantiated conversational affirmations are strictly prohibited.
+</INVARIANT>
+
+<INVARIANT>
+Sovereign Session & Subagent Prohibition:
+Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's 'invoke_subagent', Claude Code's 'Task', OpenCode subagents) are STRICTLY PROHIBITED from acting as cluster swarm workers across all harnesses.
+</INVARIANT>
+
+<INVARIANT>
+Session Default Models:
+Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session. Standalone model pairing questionnaires are strictly prohibited. Prompt cards specify 'Model: Session Default (active in window/tab)'.
+</INVARIANT>
+
+<INVARIANT>
+Orchestrator Non-Implementation Invariant:
+When acting as an Orchestrator (or in any session with active cluster workers), you are a CONDUCTOR, NOT A CODER. When the operator presents a task, feature request, bugfix, or asks to work on something, the orchestrator MUST NEVER directly write code or edit files. It MUST STOP and prompt the operator to choose routing (Enqueue to cluster queue, Dispatch to worker, or Execute inline).
+</INVARIANT>
+
+<INVARIANT>
+Worker Autonomous Execution Invariant:
+When 'rhizo listen' unblocks and exits, a task has been delivered! Swarm workers operate as sovereign, autonomous implementers, not passive chatbots. Workers MUST NOT wait for an operator prompt or ask "Shall I start?". They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Two-Key Gate, report results, and re-arm the single-shot listener.
+</INVARIANT>
+
+<INVARIANT>
+Emergent Design Addendum Protocol:
+Workers discovering architectural discrepancies are strictly forbidden from unilaterally altering 'docs/design.md' or deviating silently from the plan. They MUST author 'docs/addenda/addendum_<topic>.md', dispatch it to the Lead Orchestrator for ratification, update 'docs/design.md', and refresh 'implementation_plan.md'.
+</INVARIANT>
+
+---
+
+## 6. Dynamic Documentation Sync & Verification
+
+To verify that all ceremony definitions, manifest schemas, and prompt templates remain synchronized with code:
+
+```bash
+# Verify test suite & ceremony logic
+nimble test
+```
+
+---
+
+## 7. Documentation Directory & Reading Paths
+
+Agents and human engineers operating in this repository must consult the dedicated documentation modules:
+
+| Document | Path | Description |
+| :--- | :--- | :--- |
+| **Ceremony Lifecycle** | [`docs/ceremony_lifecycle.md`](docs/ceremony_lifecycle.md) | The 6 sequential ceremony phases, quality gates, and sovereign session bootstrapping. |
+| **Swarm Manifest Schema** | [`docs/swarm_manifest_schema.md`](docs/swarm_manifest_schema.md) | JSON/TOML specification for `garden-swarm.json` and `garden.toml`. |
+| **Dialectical Pump Protocol** | [`docs/dialectical_pump_protocol.md`](docs/dialectical_pump_protocol.md) | Grounded multi-perspective debate, Stage 1-3 deliverables, and the Addendum Protocol. |
+| **CLI Reference Manual** | [`docs/cli_reference.md`](docs/cli_reference.md) | Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`). |
+| **Configuration Architecture** | [`docs/configuration.md`](docs/configuration.md) | Project-level configuration, strand options, and test runner configurations. |
+
+
 
 
 
