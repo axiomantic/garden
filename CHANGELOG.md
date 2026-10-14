@@ -22,16 +22,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.12] - 2026-10-13
 
 ### Added
-- **Procedural Whimsical Personas & Anti-Anchoring**:
-  - Added 4 thematic naming palettes (Botanical Spirits, Clockwork Automatons, Mythical Cryptids, Deep Sea Cephalopods) with hash-seeded deterministic generation.
-- **Swarm Session Mirroring & Comprehensive Dual-Onboarding Docs**:
-  - Added full architectural guides and AGENTS.md documentation suite.
+- **Procedural Whimsical Persona Generator (`src/garden.nim`)**:
+  - Replaced static faux-human placeholder names with a deterministic, project-hash-seeded procedural persona generator across 4 thematic palettes: *Botanical Spirits* (`Bramblestitch`, `Prickle-Thistle`, `Moss-Weaver`), *Clockwork Automatons* (`Cogswell Pendulum`, `Grumblewick Snark`, `Sprocket-Hop`), *Mythical Cryptids* (`Mothman-Prime`, `Chupacabra-Zero`, `Jackalope-Swift`), and *Deep Sea Cephalopods* (`Architeuthis-Rex`, `Nautilus-Vex`, `Cuttlefish-Lux`).
+- **Anti-Anchoring Persona Synthesis Invariant (`choose-personas`, `launch-workers`, `plan-implementation`)**:
+  - Codified strict anti-anchoring rules prohibiting LLMs from verbatim copying example persona names from skill templates and requiring fresh thematic persona generation per project.
+- **Swarm Roster Guard & Alien Agent Quarantine (`garden roster-guard`)**:
+  - Implemented `garden roster-guard [--fix] [--json]` to audit active Redis cluster agents against `garden-swarm.json`, identifying unauthorized or cross-project agents and automatically closing/quarantining them when `--fix` is passed.
+- **Compaction-Immune Session State Mirroring (`garden session`)**:
+  - Implemented `garden session save`, `garden session load`, and `garden session clear` to persist and recover `SWARM_RUNTIME_STATE` metadata on disk (`.garden/session.json`) across context window compactions.
+- **Comprehensive Dual-Onboarding Documentation Suite (`AGENTS.md`, `README.md`, `docs/`)**:
+  - Authored `docs/ceremony_lifecycle.md` (Phase 0–5 workflow & gates), `docs/dialectical_pump_protocol.md` (3-stage empirical deliberation & fact-check gates), `docs/swarm_manifest_schema.md` (`garden-swarm.json` & `garden.toml` schema reference), and `docs/cli_reference.md` (complete CLI command taxonomy).
+  - Updated `AGENTS.md` and `README.md` with structured onboarding maps for both human developers and LLM agents.
+- **Test Suite Expansion (`tests/test_garden.nim`)**:
+  - Added tests for `garden roster-guard`, `garden session` save/load/clear lifecycle, and procedural whimsical persona generation.
 
 ## [0.2.11] - 2026-10-10
 
 ### Added
-- **Human Operator Absolute Override & ARM NOW Mandate (Garden Guide v2.0)**:
-  - Codified first-turn listener arming and immediate operator override discipline.
+- **Human Operator Absolute Override & "ARM NOW" Mandate (Garden Guide v2.0)**:
+  - Upgraded `src/guide.nim` to `v2.0` and updated worker prompt card generation in `src/garden.nim` to enforce that human operator prompts and slash commands in the interactive chat window take immediate, absolute precedence over in-flight cluster tasks.
+  - Codified Turn-1 Quiescence: newly bootstrapped worker sessions must execute `rhizo open` and `rhizo listen` as their immediate first tool call before any conversational greeting or planning.
+  - Established the "ARM NOW" invariant forbidding workers from deferring listener arming when instructed by the operator.
 
 ## [0.2.10] - 2026-10-09
 
