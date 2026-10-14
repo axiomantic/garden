@@ -37,6 +37,16 @@ This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "
 </CRITICAL>
 
 <CRITICAL>
+Closed-Circuit Call-Site & Replacement Audit Invariant:
+The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, and dead code accumulation.
+Before executing `vine weave` on any worker strand, the Orchestrator MUST verify:
+1. Two-Point Diff: The branch modifies both a Provider and an active Consumer call-site (live router, CLI command dispatcher, UI, or event loop). Unwired modules tested solely by their own test suites are strictly rejected back to the worker as incomplete shelfware.
+2. Holistic Integration (Anti-Stub / Anti-Toy): Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, or shallow heuristics pretending to be integrated.
+3. Replacement Purge: All legacy or obsolete code targeted for replacement is completely deleted in the strand diff. Preserving dead code as "fallbacks" or leaving commented-out blocks is prohibited.
+Contract Exception: Only foundational tasks explicitly contracted as `[STAGED - NOT WIRED]` in `implementation_plan.md` may defer consumer wiring to a scheduled follow-up wiring task in the subsequent wave.
+</CRITICAL>
+
+<CRITICAL>
 Compaction Preservation Rider & Post-Compact Invariant (GVR-010):
 Context compaction purges detailed operational invariants, ceremony rules, and protocol mechanics from working memory.
 
@@ -305,7 +315,12 @@ When a worker replies indicating task completion:
 }
 ```
 
-The Orchestrator verifies and integrates:
+The Orchestrator conducts the **Closed-Circuit Call-Site & Replacement Audit** before weaving:
+1. **Two-Point Diff Audit**: Inspect the strand diff against `origin/main` (`git -C "$strand_path" diff --name-only origin/main...HEAD`). Confirm that the diff touches BOTH the provider (new module/logic) AND at least one live consumer call-site (application entrypoint, router, CLI dispatcher, UI view). If the diff only contains the new module and unit tests (and was not contracted as `[STAGED - NOT WIRED]`), reject the strand back to the worker:
+   `rhizo reply --to <worker> --subject "Weave Blocked: Missing Consumer Call-Site" --body "Your deliverable lacks an active consumer call-site. Wire your provider into the live system before requesting weave."`
+2. **Holistic Integration Audit**: Verify that the integration uses real data flow and handles runtime state (no hollow stubs, fake data mocks, or superficial heuristic shortcuts).
+3. **Aggressive Replacement Purge**: Verify that any existing code, obsolete configurations, or vestigial fallbacks meant to be replaced by the feature were deleted in the strand diff.
+4. **Weave & Unlock**:
 ```bash
 # 1. Weave the verified strand into main
 vine weave

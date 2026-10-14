@@ -41,6 +41,10 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    <CRITICAL>
    Swarm workers are ALWAYS sovereign, independent interactive sessions (separate terminal tabs or IDE windows) bootstrapped via Garden 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY FORBIDDEN from acting as swarm workers. Prompt cards are generated strictly for human operators to paste into separate sessions. The orchestrator must NEVER attempt to automate prompt cards by feeding them into internal subagents.
    </CRITICAL>
+7. **Closed-Circuit & Holistic Integration Invariant**:
+   <CRITICAL>
+   Swarm workers must never produce isolated shelfware or mock toys. Every task must implement both the Provider and an active Consumer call-site in live entrypoints, must holistically integrate with real application state and events, and must aggressively delete any legacy code it replaces in the same strand.
+   </CRITICAL>
 
 ---
 

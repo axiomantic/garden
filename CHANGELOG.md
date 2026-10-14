@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2026-10-14
+
+### Added
+- **Closed-Circuit Two-Point Diff Mandate (Garden Guide v2.1)**:
+  - Codified the invariant that every task deliverable must exhibit a Two-Point Diff: the Provider (new capability) and an active Consumer call-site in live entrypoints, routers, CLI dispatchers, or UI. Hermetic modules tested solely by their own test suites are strictly rejected as incomplete shelfware.
+- **Holistic Production Integration (Anti-Stub / Anti-Toy)**:
+  - Producer and consumer must actually holistically integrate with the system, handling real application state, live events, and production errors.
+- **Aggressive Replacement Purge (Zero Dead Code)**:
+  - Obsolete code, deprecated functions, and vestigial fallbacks targeted for replacement MUST be deleted in the same strand diff.
+- **Pre-Weave Closed-Circuit Audit**:
+  - Lead Orchestrator (`orchestrate-swarm`) audits the strand git diff for the active consumer call-site and replacement deletion before executing `vine weave`.
+- **Worker Prompt Card Invariant**:
+  - Injected Section 6 into `garden prompts` so all bootstrapped sessions receive this invariant on turn 1.
+
+## [0.2.12] - 2026-10-13
+
+### Added
+- **Procedural Whimsical Personas & Anti-Anchoring**:
+  - Added 4 thematic naming palettes (Botanical Spirits, Clockwork Automatons, Mythical Cryptids, Deep Sea Cephalopods) with hash-seeded deterministic generation.
+- **Swarm Session Mirroring & Comprehensive Dual-Onboarding Docs**:
+  - Added full architectural guides and AGENTS.md documentation suite.
+
+## [0.2.11] - 2026-10-10
+
+### Added
+- **Human Operator Absolute Override & ARM NOW Mandate (Garden Guide v2.0)**:
+  - Codified first-turn listener arming and immediate operator override discipline.
+
 ## [0.2.10] - 2026-10-09
 
 ### Added

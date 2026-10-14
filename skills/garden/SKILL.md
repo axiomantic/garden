@@ -56,8 +56,8 @@ Execute phases sequentially. Never skip phases or invert the order.
 | **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize and write `garden-swarm.json` reflecting detected harness and chosen shape. | Valid JSON written to repo root. |
 | **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
 | **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
-| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules and strands. | Complete `implementation_plan.md` with task-locking matrix. |
-| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, trunk weaving. | All plan tasks woven via `vine weave` after passing Two-Key Gate. |
+| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules, strands, and Two-Point Diff contracts (Provider, Consumer, Replacement deletion). | Complete `implementation_plan.md` with task-locking matrix. |
+| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, Closed-Circuit & Two-Key gate verification, trunk weaving. | All plan tasks woven via `vine weave` after passing Two-Key Gate. |
 
 ---
 
@@ -250,6 +250,11 @@ Worker Autonomous Execution Invariant (GVR-017):
 Swarm workers are sovereign, autonomous implementers, not passive chatbots.
 When 'rhizo listen' delivers an incoming task and exits, workers MUST NOT wait for an operator prompt or ask "Shall I begin?".
 They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Two-Key Gate, report results, and re-arm the single-shot listener before concluding their turn.
+</CRITICAL>
+
+<CRITICAL>
+Closed-Circuit & Holistic Integration Invariant:
+Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation. If the deliverable is intended to replace, upgrade, or obsolete existing code or configuration, the legacy code MUST be deleted immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
 </CRITICAL>
 
 <INVARIANT>

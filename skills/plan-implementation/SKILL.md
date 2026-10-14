@@ -18,6 +18,7 @@ The Orchestrator authors `implementation_plan.md` adhering to four core invarian
 2. **Resource Fencing Before Mutation**: Any non-mergeable resource (e.g. database schemas, configuration files, migration scripts) must have an explicit `rhizo lock file:<path> --fencing` lease scheduled before modification begins.
 3. **Workspace Isolation via Vine**: Complex, multi-file changes must occur in isolated Rift strands (`vine new <task_id>`). Strands cannot be woven until passing the Two-Key Gate (`vine gate`).
 4. **Zero Silent Architectural Drift**: If an implementer encounters an unforeseen constraint during coding, it cannot unilaterally alter the architecture. It must submit a formal design addendum.
+5. **Closed-Circuit Two-Point Diff & Holistic Integration**: Every task specification must declare both the **Provider** (new capability) and the active **Consumer Call-Site** (runtime entrypoint, router, UI canvas, or CLI loop). Modules tested only by isolated unit tests are strictly prohibited as incomplete shelfware. The implementation must holistically integrate with real application state and live events (no toys, stubs, mocks, or hollow approximations). Any code intended to be replaced must be explicitly scheduled for **immediate deletion** in the same strand—never kept as a vestigial fallback or commented-out logic.
 
 ---
 
@@ -77,22 +78,27 @@ For all parallel development tracks:
 - [ ] **Task 1.1: Core Data Structures** (`<project>-architect`)
   - *Strand*: `strand/task-core-ds`
   - *Lock*: `rhizo lock file:src/types.nim 300 --fencing`
-  - *Actions*: Define AST node kinds and message serializers.
-  - *Verification*: `nim c -r tests/test_types.nim`
+  - *Provider*: `src/types.nim` (AST node kinds and serializers)
+  - *Consumer / Call-Site*: Wire into `src/parser.nim` parse loop and `src/eval.nim`
+  - *Replacement Deletion*: Delete deprecated ad-hoc string tuples in `src/legacy_types.nim`
+  - *Holistic Verification*: Real AST nodes evaluate in full parser pipeline (no dummy mocks)
   - *Weave*: `vine gate && vine weave && rhizo unlock file:src/types.nim`
 
 - [ ] **Task 1.2: Test Harness & Negative Controls** (`<project>-auditor`)
   - *Strand*: `strand/task-test-harness`
-  - *Actions*: Implement negative assertion tests for malformed JSON.
-  - *Verification*: `pytest tests/test_harness.py`
+  - *Provider*: `tests/test_harness.py`
+  - *Consumer / Call-Site*: Wire test runner into CI workflow and `tests/all.py`
+  - *Verification*: `pytest tests/test_harness.py` (proves negative controls catch malformed JSON)
   - *Weave*: `vine gate && vine weave`
 
 ### Phase 2: High-Level CLI & Integration
 - [ ] **Task 2.1: CLI Subcommand Wiring** (`implementer`)
   - *Dependency*: Task 1.1, Task 1.2
   - *Strand*: `strand/task-cli-wiring`
-  - *Actions*: Expose new subcommands in CLI parser.
-  - *Verification*: `garden --help` and tripwire tests.
+  - *Provider*: `src/commands/generate.nim`
+  - *Consumer / Call-Site*: Wire into `src/main.nim` CLI argument dispatcher table
+  - *Replacement Deletion*: Delete old prototype script `scripts/gen_proto.sh`
+  - *Holistic Verification*: Run compiled binary `app generate --input data.json` and verify live output
   - *Weave*: `vine gate && vine weave`
 
 ---

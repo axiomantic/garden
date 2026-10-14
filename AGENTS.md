@@ -2,7 +2,7 @@
 
 This repository guide establishes the runtime invariants, directory hygiene, and coordination protocols for AI coding agents operating across projects.
 
-<!-- BEGIN RHIZO GUIDE [v1.5] -->
+<!-- BEGIN RHIZO GUIDE [v1.7] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `rhizo guide install` -->
 
 ## Rhizo Multi-Agent Coordination Guide
@@ -84,9 +84,25 @@ Worker Autonomous Execution Invariant: When an incoming task or directive is del
 4. Verify changes against the Two-Key Gate ('vine gate') before reporting completion.
 5. Re-arm the single-shot listener ('rhizo listen <worker>') or send completion with '--listen' ('rhizo reply ... --listen') before completing the turn.
 </CRITICAL>
+
+### 10. Human Operator Absolute Override & Listener "ARM NOW" Invariant
+<CRITICAL>
+Human Operator Absolute Override Invariant: A prompt, command, or slash command from the human operator in the interactive chat window ALWAYS takes absolute precedence over in-flight tasks, background execution, or autonomous worker mandates. Agents must NEVER ignore, defer, or deprioritize an operator directive.
+Furthermore, the Rhizo listener is an ARM NOW primitive, NEVER an "ARM WHEN I'M DONE" afterthought:
+1. Operator Listen Mandate: When the human operator issues any listen instruction ('/rhizo listen', 'arm listener', 'listen now', 'make sure you listen', 'bro arm it now'), it is an IMMEDIATE TOOL CALL MANDATE in the current turn. You are STRICTLY FORBIDDEN from deferring it ("I will arm it after tests" or "I will do that later"). You MUST invoke 'rhizo listen <agent>' immediately.
+2. First-Turn Quiescence: Upon receiving a bootstrap prompt card, your very first action in Turn 1 MUST be to execute 'rhizo open <name>' and 'rhizo listen <name>'. You MUST NOT output conversational greetings or ask "How can I help?" before arming.
+3. Default Quiescent State: A cluster worker's natural state is LISTENING. If you are waiting on background verification or have concluded active tasks, your listener must be armed immediately.
+</CRITICAL>
+
+### 11. Closed-Circuit Two-Point Diff & Holistic Integration
+<CRITICAL>
+Two-Point Diff Mandate: Every task deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Code tested only by its own unit tests is strictly prohibited as incomplete shelfware.
+Holistic Integration: The producer and consumer must actually holistically integrate with the system. It must NOT be a toy, stub, mock, or heuristic approximation of the feature.
+Aggressive Replacement Purge: Any existing code, configurations, or fallbacks that the feature is intended to replace or upgrade MUST BE DELETED in the same strand. Never keep obsolete logic as a fallback or dead shim.
+</CRITICAL>
 <!-- END RHIZO GUIDE -->
 
-<!-- BEGIN VINE GUIDE [v1.3] -->
+<!-- BEGIN VINE GUIDE [v1.4] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `vine guide install` -->
 
 ## Vine Workspace & Strand Coordination Guide
@@ -114,6 +130,8 @@ npm install -g @axiomantic/rhizo @axiomantic/vine
   vine list 2>/dev/null || rift list 2>/dev/null || ls -la ~/Development/workspaces/ 2>/dev/null || true
   ```
   If an assigned task has an active `.vine.json`, re-anchor to that directory instead of touching the canonical repository root.
+* **Closed-Circuit Two-Point Diff & Holistic Integration Mandate**:
+  Never construct isolated code in a vacuum. Every strand deliverable must contain both a Provider (new capability) and an active Consumer call-site (live entrypoint, router, CLI dispatcher, or UI). Modules tested solely by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the integration must be holistic (no toys, stubs, mocks, or shallow heuristics). Any legacy or obsolete code targeted for replacement MUST be deleted in the same strand—never preserved as a vestigial fallback or commented out.
 
 ---
 
@@ -248,6 +266,9 @@ vine gate -- <custom-test-command>
 ```
 *Never bypass this gate. `git merge-tree` only verifies text mergeability, not compilation or semantic correctness.*
 
+#### Closed-Circuit Audit: Holistic Production Integration
+Verify that the strand diff introduces an active Consumer call-site, actually integrates with the system without stubs or toys, and purges all replaced legacy code.
+
 #### Step 3: Weave into Canonical Trunk
 Once Key 1 and Key 2 pass 100% green:
 ```bash
@@ -265,7 +286,7 @@ command -v rift >/dev/null 2>&1 && rift prune >/dev/null 2>&1 || true
 ```
 <!-- END VINE GUIDE -->
 
-<!-- BEGIN GARDEN GUIDE [v2.0] -->
+<!-- BEGIN GARDEN GUIDE [v2.1] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -285,6 +306,8 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
   All tasks, locks, and strands must be coordinated via `implementation_plan.md`. Dynamic progress must be tracked in lockstep with plan checkboxes (`- [ ]` to `- [x]`) and harness To-Do tracking.
 * **Emergent Design Addendum Protocol**:
   Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
+* **Closed-Circuit & Holistic Integration Invariant**:
+  Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation. If the deliverable is intended to replace, upgrade, or obsolete existing code or configuration, the legacy code MUST be deleted immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
 
 ### 2. Fleet Lifecycle & Session Coordination
 * **Human Operator Absolute Override & ARM-NOW Invariant**:
@@ -312,6 +335,7 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
 Never weave a strand into the canonical trunk without passing both keys:
 * **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
 * **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
+* **Closed-Circuit Audit**: Verified active consumer call-site, holistic production integration (no stubs/toys), and obsolete legacy code completely purged.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
 <!-- END GARDEN GUIDE -->
 
@@ -404,6 +428,9 @@ Agents and human engineers operating in this repository must consult the dedicat
 | **Dialectical Pump Protocol** | [`docs/dialectical_pump_protocol.md`](docs/dialectical_pump_protocol.md) | Grounded multi-perspective debate, Stage 1-3 deliverables, and the Addendum Protocol. |
 | **CLI Reference Manual** | [`docs/cli_reference.md`](docs/cli_reference.md) | Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`). |
 | **Configuration Architecture** | [`docs/configuration.md`](docs/configuration.md) | Project-level configuration, strand options, and test runner configurations. |
+
+
+
 
 
 

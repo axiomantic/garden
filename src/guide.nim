@@ -5,13 +5,13 @@
 import std/[os, strutils]
 
 const
-  GuideVersion* = "v2.0"
+  GuideVersion* = "v2.1"
   BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
   EndMarker* = "<!-- END GARDEN GUIDE -->"
   MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN GARDEN GUIDE [v2.0] -->
+<!-- BEGIN GARDEN GUIDE [v2.1] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -31,6 +31,8 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
   All tasks, locks, and strands must be coordinated via `implementation_plan.md`. Dynamic progress must be tracked in lockstep with plan checkboxes (`- [ ]` to `- [x]`) and harness To-Do tracking.
 * **Emergent Design Addendum Protocol**:
   Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
+* **Closed-Circuit & Holistic Integration Invariant**:
+  Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation. If the deliverable is intended to replace, upgrade, or obsolete existing code or configuration, the legacy code MUST be deleted immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
 
 ### 2. Fleet Lifecycle & Session Coordination
 * **Human Operator Absolute Override & ARM-NOW Invariant**:
@@ -58,6 +60,7 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
 Never weave a strand into the canonical trunk without passing both keys:
 * **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
 * **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
+* **Closed-Circuit Audit**: Verified active consumer call-site, holistic production integration (no stubs/toys), and obsolete legacy code completely purged.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
 <!-- END GARDEN GUIDE -->
 """

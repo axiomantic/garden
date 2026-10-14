@@ -345,11 +345,16 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "  `vine gate`\n"
   result &= "- **Reporting & Acknowledging**:\n"
   result &= "  Send status updates or gate reports back to the Orchestrator:\n"
-  result &= "  `rhizo send " & cfg.orchestrator & " --subject \"Task <task_id> Done\" --body \"<status_report>\"`\n"
-  result &= "  Acknowledge queue tasks once verified:\n"
   result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
 
-  result &= "### 6. Scheduled Watchdog & Health Check Protocol (ONLY for OpenAI Codex / ChatGPT CLI)\n"
+  result &= "### 6. Closed-Circuit & Holistic Integration Invariant (No Shelfware / No Stubs)\n"
+  result &= "<CRITICAL>\n"
+  result &= "- Two-Point Diff Mandate: Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Code tested only by its own unit tests is strictly prohibited as incomplete shelfware.\n"
+  result &= "- Holistic Integration (No Stubs / No Toys): The producer and consumer must actually holistically integrate with the system. It must NOT be a toy, stub, mock, or heuristic approximation of the feature. It must handle real application state, live events, and production errors.\n"
+  result &= "- Aggressive Replacement Purge (Zero Dead Code): Any existing code, configurations, or fallbacks that your feature is intended to replace or upgrade MUST BE DELETED in the same strand. Do not preserve obsolete logic as a fallback, and do not leave commented-out shims in the codebase.\n"
+  result &= "</CRITICAL>\n\n"
+
+  result &= "### 7. Scheduled Watchdog & Health Check Protocol (ONLY for OpenAI Codex / ChatGPT CLI)\n"
   result &= "NOTE: If running in Google Antigravity or OpenCode: DO NOT set up recurring scheduled tasks. Antigravity's native background listener task (`run_command`) and OpenCode's background ear reactively wake the session on message receipt without timers.\n\n"
   result &= "If running in Codex Desktop / CLI where background processes cannot reactively wake the harness, use this exact prompt template for recurring health checks:\n\n"
   result &= "```text\n"
@@ -372,7 +377,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "  - The inbox has 0 unread messages.\n"
   result &= "```\n\n"
   
-  result &= "### 7. Compaction State Rider\n"
+  result &= "### 8. Compaction State Rider\n"
   result &= "Whenever context summarization or compaction occurs, preserve this block verbatim:\n"
   result &= "<!-- SWARM_RUNTIME_STATE: DO NOT DISCARD OR ABBREVIATE IN COMPACTION -->\n"
   result &= "- AGENT_NAME: " & w.name & " (Role: " & w.role & ")\n"
