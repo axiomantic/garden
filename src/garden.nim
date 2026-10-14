@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json, times]
 import guide
 
 const
-  GardenVersion = "0.2.12"
+  GardenVersion = "0.2.13"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -267,13 +267,17 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
 proc registerOrchestratorAlias*(cfg: SwarmConfig, quiet: bool = false) =
   if cfg.orchestratorAgent.len > 0 and cfg.orchestratorAgent != cfg.orchestrator:
     let cmd = "rhizo alias set " & quoteShell(cfg.orchestrator) & " " & quoteShell(cfg.orchestratorAgent)
-    let res = execCmdEx(cmd)
-    if res.exitCode == 0:
+    try:
+      let res = execCmdEx(cmd)
+      if res.exitCode == 0:
+        if not quiet:
+          echo "[garden] Auto-registered alias in Rhizo: @" & cfg.orchestrator & " -> @" & cfg.orchestratorAgent
+      else:
+        if not quiet:
+          stderr.writeLine("[garden] Warning: Failed to auto-register alias in Rhizo: " & res.output.strip())
+    except CatchableError as e:
       if not quiet:
-        echo "[garden] Auto-registered alias in Rhizo: @" & cfg.orchestrator & " -> @" & cfg.orchestratorAgent
-    else:
-      if not quiet:
-        stderr.writeLine("[garden] Warning: Failed to auto-register alias in Rhizo: " & res.output.strip())
+        stderr.writeLine("[garden] Warning: Could not invoke rhizo to register alias: " & e.msg)
 
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   let tagsStr = w.tags.join(",")
@@ -523,9 +527,12 @@ default_triad = ["architect", "auditor", "implementer"]
   let actualAgent = if optOrchAgent.len > 0: optOrchAgent else: getEnv("RHIZO_AGENT_NAME", "")
   if actualAgent.len > 0 and actualAgent != defaultOrch:
     let cmd = "rhizo alias set " & quoteShell(defaultOrch) & " " & quoteShell(actualAgent)
-    let res = execCmdEx(cmd)
-    if res.exitCode == 0:
-      echo "[garden] Auto-registered alias in Rhizo: @" & defaultOrch & " -> @" & actualAgent
+    try:
+      let res = execCmdEx(cmd)
+      if res.exitCode == 0:
+        echo "[garden] Auto-registered alias in Rhizo: @" & defaultOrch & " -> @" & actualAgent
+    except CatchableError:
+      discard
 
   echo "[garden] Initialization complete for " & root
   return 0
@@ -727,7 +734,10 @@ proc doTeardown*(swarmFileParam: string): int =
     for role in ["architect", "auditor", "implementer"]:
       let wname = proj & "-" & role
       echo "[garden] Closing agent @" & wname & " in Redis..."
-      discard execCmdEx("rhizo close " & quoteShell(wname))
+      try:
+        discard execCmdEx("rhizo close " & quoteShell(wname))
+      except CatchableError:
+        discard
 
   return 0
 

@@ -62,6 +62,7 @@ Never weave a strand into the canonical trunk without passing both keys:
 * **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
 * **Closed-Circuit Audit**: Verified active consumer call-site, holistic production integration (no stubs/toys), and obsolete legacy code completely purged.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
+* **Post-Push CI Verification**: After weaving and pushing to remote when CI is running, if your coding harness supports native timers/schedules, set a periodic check (default: every 5m, max 12 checks / 1h) to verify CI completion (`gh run list` / `gh run view`) and cancel the timer once CI passes or fails.
 <!-- END GARDEN GUIDE -->
 """
 

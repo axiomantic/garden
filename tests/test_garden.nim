@@ -271,12 +271,18 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["orchestrator_agent"].getStr() == "custom-orch-lead"
 
     defer:
-      discard execCmdEx("rhizo alias del " & j["orchestrator"].getStr())
+      try:
+        discard execCmdEx("rhizo alias del " & j["orchestrator"].getStr())
+      except CatchableError:
+        discard
 
-    # Verify alias was registered in Rhizo
-    let (aOut, aCode) = execCmdEx("rhizo alias get " & j["orchestrator"].getStr())
-    if aCode == 0:
-      check aOut.strip() == "custom-orch-lead"
+    # Verify alias was registered in Rhizo (when rhizo binary is installed)
+    try:
+      let (aOut, aCode) = execCmdEx("rhizo alias get " & j["orchestrator"].getStr())
+      if aCode == 0:
+        check aOut.strip() == "custom-orch-lead"
+    except CatchableError:
+      discard
 
   test "Garden roster-guard validates swarm members and quarantines alien agents":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"

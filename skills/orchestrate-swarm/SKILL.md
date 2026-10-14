@@ -328,6 +328,11 @@ vine weave
 # 2. Release any held fencing locks if applicable
 rhizo unlock file:src/types.nim
 ```
+5. **Post-Push CI Verification Timer (Loose Guideline)**:
+   Whenever woven changes or releases are pushed to a remote (`git push`) and trigger remote CI pipelines (e.g. GitHub Actions, Forgejo Actions, GitLab CI):
+   - If your coding harness supports native timers or scheduled tasks (e.g. `schedule`), set a periodic timer to check CI status (`gh run list` / `gh run view`).
+   - **Default Cadence**: Check every **5 minutes** (`DurationSeconds=300` or `CronExpression="*/5 * * * *"`), up to a **maximum of 12 checks (1 hour total)** (`MaxIterations=12`).
+   - **Early Termination**: As soon as CI reaches a terminal state (`success` or `failure`), immediately cancel any remaining recurring timer (`manage_task(Action="kill", ...)`). If CI failed, inspect failure logs (`gh run view --log-failed`) and remediate.
 
 ### SOP 4: Updating Dynamic Progress Checklists
 Immediately after weaving:

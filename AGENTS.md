@@ -278,6 +278,7 @@ git fetch "$STRAND_DIR" <branch>:<branch>
 # Fast-forward merge
 git merge --ff-only <branch>
 ```
+* **Post-Push CI Verification (Loose Guideline)**: After weaving and pushing (`git push`) when remote CI is running, if your coding harness supports timers/scheduling (e.g. `schedule`), set a periodic timer to check CI status (`gh run list`) — defaulting to every **5 minutes** for a maximum of **12 checks (1 hour total)**, cancelling early once CI completes.
 
 #### Step 4: Prune & Cleanup
 ```bash
@@ -337,6 +338,7 @@ Never weave a strand into the canonical trunk without passing both keys:
 * **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
 * **Closed-Circuit Audit**: Verified active consumer call-site, holistic production integration (no stubs/toys), and obsolete legacy code completely purged.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
+* **Post-Push CI Verification**: After weaving and pushing to remote when CI is running, if your coding harness supports native timers/schedules, set a periodic check (default: every 5m, max 12 checks / 1h) to verify CI completion (`gh run list` / `gh run view`) and cancel the timer once CI passes or fails.
 <!-- END GARDEN GUIDE -->
 
 ---
@@ -428,6 +430,9 @@ Agents and human engineers operating in this repository must consult the dedicat
 | **Dialectical Pump Protocol** | [`docs/dialectical_pump_protocol.md`](docs/dialectical_pump_protocol.md) | Grounded multi-perspective debate, Stage 1-3 deliverables, and the Addendum Protocol. |
 | **CLI Reference Manual** | [`docs/cli_reference.md`](docs/cli_reference.md) | Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`). |
 | **Configuration Architecture** | [`docs/configuration.md`](docs/configuration.md) | Project-level configuration, strand options, and test runner configurations. |
+
+
+
 
 
 

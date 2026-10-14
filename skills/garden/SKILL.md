@@ -319,6 +319,10 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
    - **Codex / ChatGPT Watchdog Only**: In OpenAI Codex Desktop / CLI where background processes cannot reactively wake the harness, arm a scheduled watchdog timer or cron job with stepped backoff (15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m $\rightarrow$ Stand Down at check 4).
    - **Reset Invariant**: Resets immediately to base 15m (streak 0) on any listener failure, unread inbox backlog, outbound task dispatch (`rhizo send`/`enqueue`), worker reply, or user chat prompt.
    - When the timer fires in Codex, execute the short check: `rhizo watchdog check --agent <orchestrator> --json` and follow `next_action` (`SCHEDULE_TIMER` or `STAND_DOWN`).
+4. **Post-Push Remote CI Verification Timer (Loose Guideline)**:
+   - After weaving (`vine weave`) and pushing (`git push`) to a remote repository where CI workflows run, if the coding harness supports timers/scheduling (e.g., `schedule`), set a periodic timer to check CI status (`gh run list --limit 3`):
+     - **Default Cadence**: Every 5 minutes (`DurationSeconds=300` or `CronExpression="*/5 * * * *"`).
+     - **Max Checks**: Maximum 12 checks (1 hour total, `MaxIterations=12`), cancelling the timer early as soon as all CI workflows finish (pass or fail).
 
 ---
 
