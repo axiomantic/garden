@@ -119,6 +119,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
     if sCode == 0:
       let j = parseJson(sOut.strip())
       check j.hasKey("project")
+      check j.hasKey("rhizo")
+      check j.hasKey("vine_strands")
+      # When rhizo is active, it must parse as JArray or JObject, not JNull
+      if j["rhizo"].kind == JArray:
+        check j["rhizo"].len >= 0
+        if j["rhizo"].len > 0:
+          let first = j["rhizo"][0]
+          check first.hasKey("agent") or first.hasKey("name")
 
   test "Garden prompts generates 10-backtick raw markdown blocks for default triad":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -297,6 +305,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let aJson = parseJson(aOut.strip())
     check aJson["valid"].getBool() == false
     check aJson["status"].getStr() == "ALIEN_QUARANTINED"
+
+    # Cluster audit mode
+    let (auditOut, _) = execCmdEx(exePath & " roster-guard --json")
+    let auditJson = parseJson(auditOut.strip())
+    check auditJson.hasKey("audit")
+    check auditJson["audit"].getStr() == "ROSTER_AUDIT"
+    check auditJson.hasKey("verified_count")
+    check auditJson.hasKey("alien_count")
 
   test "Garden session save, load, and clear lifecycle":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"

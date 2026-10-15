@@ -554,8 +554,9 @@ proc doStatus*(jsonOutput: bool): int =
     # 1. Query Rhizo heartbeats via 'rhizo who --json'
     try:
       let (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
-      if rhizoCode == 0 and rhizoOut.strip().startsWith("{"):
-        statusObj["rhizo"] = parseJson(rhizoOut.strip())
+      let trimmed = rhizoOut.strip()
+      if rhizoCode == 0 and (trimmed.startsWith("{") or trimmed.startsWith("[")):
+        statusObj["rhizo"] = parseJson(trimmed)
       else:
         statusObj["rhizo"] = newJNull()
     except CatchableError:
@@ -564,8 +565,9 @@ proc doStatus*(jsonOutput: bool): int =
     # 2. Query Vine active strands via 'vine list'
     try:
       let (vineOut, vineCode) = execCmdEx("vine list")
-      if vineCode == 0 and vineOut.strip().startsWith("{"):
-        statusObj["vine_strands"] = parseJson(vineOut.strip())
+      let trimmed = vineOut.strip()
+      if vineCode == 0 and (trimmed.startsWith("{") or trimmed.startsWith("[")):
+        statusObj["vine_strands"] = parseJson(trimmed)
       else:
         statusObj["vine_strands"] = newJNull()
     except CatchableError:
@@ -579,14 +581,41 @@ proc doStatus*(jsonOutput: bool): int =
       echo "=========================================================="
       echo "Project: " & root
 
-      if not statusObj["rhizo"].isNil and statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents"):
-        let agents = statusObj["rhizo"]["agents"]
+      var agents: JsonNode = nil
+      if not statusObj["rhizo"].isNil:
+        if statusObj["rhizo"].kind == JArray:
+          agents = statusObj["rhizo"]
+        elif statusObj["rhizo"].kind == JObject and statusObj["rhizo"].hasKey("agents") and statusObj["rhizo"]["agents"].kind == JArray:
+          agents = statusObj["rhizo"]["agents"]
+
+      if not agents.isNil and agents.len > 0:
         echo "\nRhizo Agents Online (" & $agents.len & "):"
         for a in agents:
-          let aname = if a.hasKey("name"): a["name"].getStr() else: "unknown"
+          let aname = if a.hasKey("agent"): a["agent"].getStr() elif a.hasKey("name"): a["name"].getStr() else: "unknown"
+          let astatus = if a.hasKey("status"): a["status"].getStr() else: "ACTIVE"
           let astate = if a.hasKey("state"): a["state"].getStr() else: "active"
-          let atags = if a.hasKey("tags"): a["tags"].getStr() else: ""
-          echo "  @" & aname & " [" & astate & "] tags: " & atags
+          let alistener = if a.hasKey("listener"): a["listener"].getStr() else: ""
+          var atags = ""
+          if a.hasKey("tags"):
+            if a["tags"].kind == JArray:
+              var tList: seq[string] = @[]
+              for t in a["tags"]:
+                tList.add(t.getStr())
+              atags = tList.join(", ")
+            elif a["tags"].kind == JString:
+              atags = a["tags"].getStr()
+
+          var parts: seq[string] = @[astate]
+          if alistener.len > 0:
+            parts.add(alistener.toLowerAscii())
+          if astatus.len > 0 and astatus.toUpperAscii() != "ACTIVE":
+            parts.add(astatus.toLowerAscii())
+
+          let infoStr = parts.join(" | ")
+          let tagStr = if atags.len > 0: " tags: " & atags else: ""
+          echo "  @" & aname & " [" & infoStr & "]" & tagStr
+      elif not agents.isNil and agents.len == 0:
+        echo "\nRhizo Agents Online (0): None"
 
       if not statusObj["vine_strands"].isNil and statusObj["vine_strands"].kind == JObject and statusObj["vine_strands"].hasKey("strands"):
         let strands = statusObj["vine_strands"]["strands"]
@@ -611,26 +640,91 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
     if normSender == w.name.toLowerAscii.strip(): return true
   return false
 
-proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string = "", projectDir: string = ""): int =
+proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string = "", projectDir: string = "", fix: bool = false): int =
   let cfg = loadSwarmConfig(projectDir, swarmFile)
   let normSender = sender.toLowerAscii.strip()
-  if normSender.len == 0:
-    stderr.writeLine("[garden roster] Error: Missing sender name to validate.")
+
+  if normSender.len > 0 and normSender != "audit":
+    let isMember = validateRosterSender(cfg, normSender)
+    if isMember:
+      if jsonOutput:
+        echo $(%*{"valid": true, "sender": normSender, "project": cfg.project, "status": "ROSTER_VERIFIED"})
+      else:
+        echo "[garden roster] OK: @" & normSender & " is an authorized member of project '" & cfg.project & "' roster."
+      return 0
+    else:
+      if jsonOutput:
+        echo $(%*{"valid": false, "sender": normSender, "project": cfg.project, "status": "ALIEN_QUARANTINED"})
+      else:
+        stderr.writeLine("[garden roster] ALIEN SENDER REJECTED: @" & normSender & " is NOT in project '" & cfg.project & "' roster. Quarantining message.")
+      return 1
+
+  # Cluster audit mode: query active Redis cluster agents via rhizo who --json
+  var aliens: seq[string] = @[]
+  var verified: seq[string] = @[]
+  var quarantined: seq[string] = @[]
+
+  try:
+    let (whoOut, whoCode) = execCmdEx("rhizo who --json")
+    if whoCode == 0 and whoOut.strip().len > 0:
+      let trimmed = whoOut.strip()
+      var parsedList: JsonNode = nil
+      if trimmed.startsWith("["):
+        parsedList = parseJson(trimmed)
+      elif trimmed.startsWith("{"):
+        let obj = parseJson(trimmed)
+        if obj.hasKey("agents") and obj["agents"].kind == JArray:
+          parsedList = obj["agents"]
+
+      if not parsedList.isNil and parsedList.kind == JArray:
+        for item in parsedList:
+          let ag = if item.hasKey("agent"): item["agent"].getStr() elif item.hasKey("name"): item["name"].getStr() else: ""
+          if ag.len == 0: continue
+          if validateRosterSender(cfg, ag):
+            verified.add(ag)
+          else:
+            aliens.add(ag)
+            if fix:
+              let (cOut, cCode) = execCmdEx("rhizo close " & quoteShell(ag))
+              if cCode == 0:
+                quarantined.add(ag)
+  except CatchableError as e:
+    stderr.writeLine("[garden roster] Error querying cluster agents: " & e.msg)
     return 1
 
-  let isMember = validateRosterSender(cfg, normSender)
-  if isMember:
-    if jsonOutput:
-      echo $(%*{"valid": true, "sender": normSender, "project": cfg.project, "status": "ROSTER_VERIFIED"})
-    else:
-      echo "[garden roster] OK: @" & normSender & " is an authorized member of project '" & cfg.project & "' roster."
-    return 0
+  if jsonOutput:
+    var jObj = %*{
+      "project": cfg.project,
+      "audit": "ROSTER_AUDIT",
+      "verified_count": verified.len,
+      "alien_count": aliens.len,
+      "verified": verified,
+      "aliens": aliens
+    }
+    if fix:
+      jObj["quarantined"] = %quarantined
+    echo pretty(jObj)
   else:
-    if jsonOutput:
-      echo $(%*{"valid": false, "sender": normSender, "project": cfg.project, "status": "ALIEN_QUARANTINED"})
+    echo "=========================================================="
+    echo "  Garden Swarm Roster Audit: " & cfg.project
+    echo "=========================================================="
+    echo "Verified Swarm Members (" & $verified.len & "):"
+    for v in verified:
+      echo "  ✓ @" & v
+    if aliens.len > 0:
+      echo "\nAlien / Unauthorized Agents (" & $aliens.len & "):"
+      for a in aliens:
+        let qStatus = if a in quarantined: " [QUARANTINED/CLOSED]" else: " [UNAUTHORIZED]"
+        echo "  ✗ @" & a & qStatus
+      if not fix:
+        echo "\nRun 'garden roster-guard --fix' to close unauthorized agents."
     else:
-      stderr.writeLine("[garden roster] ALIEN SENDER REJECTED: @" & normSender & " is NOT in project '" & cfg.project & "' roster. Quarantining message.")
+      echo "\nNo alien agents detected. Cluster roster 100% clean."
+    echo "=========================================================="
+
+  if aliens.len > 0 and not fix:
     return 1
+  return 0
 
 proc doSession*(action: string, agentName: string = "", role: string = "", orchestrator: string = "", projectDir: string = "", jsonOutput: bool = false): int =
   let root = if projectDir.len > 0: findProjectRoot(projectDir) else: findProjectRoot()
@@ -852,12 +946,15 @@ proc main() =
   of "roster-guard", "validate-sender", "ingest-guard":
     var sender = ""
     var jsonOutput = false
+    var fix = false
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var i = 1
     while i < params.len:
       let a = params[i]
       if a in ["--json", "-j"]: jsonOutput = true
+      elif a in ["--fix", "-F"]: fix = true
+      elif a in ["--audit", "-a"]: discard
       elif (a in ["--swarm-file", "-f"]) and i + 1 < params.len:
         inc i; swarmFile = params[i]
       elif a.startsWith("--swarm-file="): swarmFile = a[13..^1]
@@ -867,10 +964,7 @@ proc main() =
       elif not a.startsWith("-") and sender.len == 0:
         sender = a
       inc i
-    if sender.len == 0:
-      stderr.writeLine("Usage: garden roster-guard <sender> [--json] [--swarm-file <file>]")
-      quit(1)
-    quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir))
+    quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir, fix))
   of "session":
     if params.len < 2:
       stderr.writeLine("Usage: garden session <save|load|clear> [options...]")
