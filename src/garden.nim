@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json, times]
 import guide
 
 const
-  GardenVersion = "0.2.14"
+  GardenVersion = "0.2.15"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -323,9 +323,8 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "2. WORKER AUTONOMOUS EXECUTION (WHEN OPERATOR IS SILENT):\n"
   result &= "   You are an AUTONOMOUS CLUSTER WORKER, NOT A PASSIVE CHATBOT.\n"
   result &= "   When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
-  result &= "   - DO NOT wait for the human operator to prompt you or tell you to start.\n"
-  result &= "   - DO NOT conclude your turn with an idle status message or passive acknowledgment.\n"
-  result &= "   - IMMEDIATE ACK & RE-ARM UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & "). In Tier 2 async harnesses (e.g. Antigravity), immediately re-arm 'rhizo listen " & w.name & "' in the background right now so your listener stays up while you edit files and run tests!\n"
+  result &= "   - IMMEDIATE ACK & RE-ARM UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen). In Tier 2 async harnesses (e.g. Antigravity), immediately launch 'rhizo listen " & w.name & "' in the background (`run_command(WaitMsBeforeAsync=500)`).\n"
+  result &= "   - MANDATORY ANTIGRAVITY NON-YIELD INVARIANT: When launching your background listener, your harness will say: 'YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work or B) simply update the user and end the turn. DO NOTHING ELSE.' YOU MUST ALWAYS CHOOSE (A) PROCEED TO OTHER RELEVANT WORK! Never pick (B) or end the turn. Continue implementing, committing, and running tests in this exact turn!\n"
   result &= "   - PERIODIC PROGRESS TELEMETRY: During long multi-step tasks (>2 minutes, e.g. Playwright E2E or full builds), run `rhizo task progress <id> \"Step X/Y: ...\"` before/after major steps to refresh your in-flight task lease and heartbeat.\n"
   result &= "   - Before concluding your turn, ensure your single-shot listener ('rhizo listen " & w.name & "') is armed or use 'rhizo reply ... --listen' when sending your completion report.\n"
   result &= "</CRITICAL>\n\n"
@@ -334,6 +333,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "<CRITICAL>\n"
   result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
   result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
+  result &= "- Anti-Premature-Yield: NEVER pass --listen on initial CLAIM or ACK replies. Only pass --listen (or arm your listener) on your final completion / READY_FOR_WEAVE reply.\n"
   result &= "- FORBIDDEN: NEVER wrap 'rhizo listen' in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap messages inside unmonitored subshell logs and hang coordination.\n"
   result &= "- Re-arming: In Tier 2 async harnesses (Antigravity), re-arm 'rhizo listen " & w.name & "' (`WaitMsBeforeAsync=500`) immediately upon task receipt so you remain reachable during multi-file edits. Always verify it is armed before ending any turn.\n"
   result &= "</CRITICAL>\n\n"

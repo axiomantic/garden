@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-10-14
+
+### Added
+- **Antigravity Non-Yield Invariant in Worker Prompts (`src/garden.nim`, `garden prompts`)**:
+  - Embedded explicit instructions in Section 3 warning workers against passive turn yields when launching background listeners in Google Antigravity. When the harness prompts `A) proceed to other relevant work or B) simply update the user... DO NOTHING ELSE`, workers are strictly mandated to always choose (A) and continue implementation.
+  - Added strict anti-premature-yield rule in Section 4 forbidding `--listen` on initial CLAIM or ACK replies.
+
 ## [0.2.14] - 2026-10-14
 
 ### Added
