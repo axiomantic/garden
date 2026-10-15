@@ -5,7 +5,7 @@
 **Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.13%2B-red.svg)](https://github.com/axiomantic/rhizo)
+[![Rhizo](https://img.shields.io/badge/Rhizo-0.2.14%2B-red.svg)](https://github.com/axiomantic/rhizo)
 [![Vine](https://img.shields.io/badge/Vine-0.2.4%2B-purple.svg)](https://github.com/axiomantic/vine)
 [![Swarm](https://img.shields.io/badge/Swarm-Prompt--Bootstrapped-brightgreen.svg)](README.md)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-blue.svg)](README.md)

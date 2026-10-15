@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2026-10-14
+
+### Added
+- **Worker Bootstrap Prompt Cards (`src/garden.nim`, `garden prompts`)**:
+  - Added Section 2/3 mandates for immediate task ACK/claim and immediate background listener re-arming upon receipt in Tier 2 async harnesses (Antigravity) so workers remain reachable during multi-file edits and test runs.
+  - Added periodic in-flight progress telemetry guidelines (`rhizo task progress <id> \"Step X/Y: ...\"`) for operations taking >2 minutes.
+- **In-Flight Task Liveness Probe & Watchdog Protocol (`skills/orchestrate-swarm/SKILL.md`)**:
+  - Added one-shot conditional watchdog timer guidelines (`schedule(DurationSeconds=300, TimerCondition="any")` + `rhizo probe <worker>`) allowing orchestrators to detect deadlocks without blocking indefinitely.
+- **Post-Push CI Verification Timer Guideline (`src/guide.nim`, `skills/garden/SKILL.md`)**:
+  - Embedded loose guidelines to schedule periodic CI status checks (default every 5m, max 1hr) after weaving and pushing to remote trunk.
+- **Nomenclature Cleanup**:
+  - Renamed remaining `Locutus` references across prompt templates, configuration docs, and `.gitignore`.
+
 ## [0.2.13] - 2026-10-14
 
 ### Added

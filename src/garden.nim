@@ -5,7 +5,7 @@ import std/[os, osproc, strutils, json, times]
 import guide
 
 const
-  GardenVersion = "0.2.13"
+  GardenVersion = "0.2.14"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
