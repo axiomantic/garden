@@ -24,7 +24,7 @@
     "url": "git+https://github.com/axiomantic/garden.git"
   },
   "scripts": {
-    "test": "nim c -r tests/test_garden.nim && nim c -r tests/test_seed.nim",
+    "test": "nim c -r tests/test_garden.nim && nim c -r tests/test_seed.nim && nim c -r tests/test_germinate.nim",
     "build": "nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim"
   },
   "keywords": [

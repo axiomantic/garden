@@ -13,6 +13,7 @@ requires "nim >= 2.0.0"
 task test, "Run the Garden test suite":
   exec "nim r tests/test_garden.nim"
   exec "nim r tests/test_seed.nim"
+  exec "nim r tests/test_germinate.nim"
 
 after build:
   when defined(macosx) or defined(darwin):

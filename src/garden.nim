@@ -4,6 +4,7 @@
 import std/[os, osproc, strutils, json, times]
 import guide
 import seed
+import germinate
 
 const
   GardenVersion = "0.2.15"
@@ -40,6 +41,7 @@ Usage:
 Subcommands:
   init [dir]               Initialize Garden configuration and install guides
   plant <title> [options]  Sow a new botanical task/roadmap seed into .garden/seeds/
+  germinate <act> <seed>   Germinate a seed (dispatch, prompt, inline, status)
   prompts [options]        Generate copy-pasteable bootstrap prompts for worker sessions
   launch [options]         Bootstrap swarm worker sessions (generates prompts by default)
   status [options]         Unified cluster telemetry (Rhizo heartbeats, Vine strands)
@@ -57,6 +59,11 @@ Options for 'plant':
   --id <id>                Explicit custom seed identifier
   --project-dir, -p <dir>  Target project directory
   --list, -l               List all sown seeds
+  --json                   Output result as structured JSON
+
+Options for 'germinate':
+  --worker, -w <name>      Filter prompt generation to target worker (for 'prompt')
+  --project-dir, -p <dir>  Target project directory
   --json                   Output result as structured JSON
 
 Options for 'prompts' and 'launch':
@@ -981,6 +988,37 @@ proc main() =
           title &= " " & a
       inc i
     quit(doPlant(title, season, sunlight, tagsCsv, customId, projectDir, listMode, jsonOutput))
+  of "germinate":
+    if params.len < 2:
+      stderr.writeLine("Usage: garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]")
+      quit(1)
+    let action = params[1].toLowerAscii()
+    var seedId = ""
+    var targetWorker = ""
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var jsonOutput = false
+    var i = 2
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]:
+        jsonOutput = true
+      elif (a in ["--worker", "-w"]) and i + 1 < params.len:
+        inc i; targetWorker = params[i]
+      elif a.startsWith("--worker="):
+        targetWorker = a[9..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a.startsWith("--project-dir="):
+        projectDir = a[14..^1]
+      elif not a.startsWith("-") and seedId.len == 0:
+        seedId = a
+      inc i
+
+    if seedId.len == 0 and action in ["dispatch", "prompt", "inline", "status"]:
+      stderr.writeLine("Usage: garden germinate " & action & " <seed_id> [options...]")
+      quit(1)
+
+    quit(doGerminate(action, seedId, targetWorker, projectDir, jsonOutput))
   of "init":
     var targetDir = ""
     var force = false
