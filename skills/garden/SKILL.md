@@ -1,6 +1,6 @@
 ---
 name: garden
-description: "Master entrypoint and end-to-end ceremony director for multi-agent swarms operating on top of Rhizo (transport) and Vine (workspace integrator). Guides the user and orchestrator session through the full lifecycle: conversational project intake interview, persona selection with harness/model pairing, prompt-based worker fleet bootstrapping with 10-backtick copy-paste prompt cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning with locking/strand schedules, and live swarm execution with Two-Key gate verification and fast-forward trunk weaving. Triggers: 'garden', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony', 'start a project with garden', 'start a project with rhizo', 'set up a multi-agent team', 'use rhizo for this project', 'set up a swarm', 'coordinate multiple agents on this project', 'set up agents for this project'."
+description: "Master entrypoint and umbrella conductor for the Axiomantic Multi-Agent Swarm Triad (Garden + Rhizo + Vine). Activating Garden automatically coordinates Rhizo for transport/concurrency and Vine for Rift workspace virtualization. Guides the user through feature sowing (garden plant), deterministic germination (garden germinate dispatch|prompt|inline|status), conversational intake, persona selection, prompt-based worker fleet bootstrapping with 10-backtick copy-paste cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning, and Two-Key gate trunk weaving. Triggers: 'garden', 'swarm', 'multi-agent', 'agent team', 'coordinate agents', 'parallel agents', 'run swarm', 'start swarm', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony', 'start a project with garden', 'start a project with rhizo', 'set up a multi-agent team', 'use rhizo for this project', 'set up a swarm', 'coordinate multiple agents on this project', 'set up agents for this project', 'garden plant', 'garden germinate', 'sow seed', 'germinate', 'roadmap'."
 ---
 
 # Garden: Multi-Agent Swarm Ceremony & Orchestration Engine
@@ -17,7 +17,13 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
 
 ---
 
-## 1. Architecture & Layering
+## 1. Architecture, Layering & The Master Umbrella Conductor
+
+<CRITICAL>
+Master Umbrella Conductor Invariant:
+Garden is the capstone framework and single front-door of the Axiomantic Triad (Unix philosophy: Garden = Orchestration/Workflow, Rhizo = Transport/IPC, Vine = Git/Workspaces).
+Whenever Garden is invoked (via 'garden', 'swarm', 'agent team', 'plant', 'germinate', or multi-agent feature requests), the agent MUST treat Garden as the parent umbrella. The operator NEVER needs to manually recite 'use garden/rhizo/vine'—activating Garden automatically mandates reading `garden`, `rhizo`, and `vine` skills.
+</CRITICAL>
 
 Garden directs multi-agent swarms using Rhizo for transport and Vine for workspace virtualization:
 
@@ -46,7 +52,35 @@ flowchart TD
 
 ---
 
-## 2. The End-to-End Ceremony Workflow
+## 2. Macro-Lifecycle: Sowing (`garden plant`) & Germination (`garden germinate`)
+
+Before launching multi-agent ceremonies, features and roadmap items are captured organically as **Seeds** organized into roadmap **Seasons**:
+
+### A. Sowing Seeds (`garden plant`)
+Add new roadmap items or feature requests to `.garden/seeds/<id>.toml`:
+```bash
+garden plant "Real-time SSE event stream for cluster telemetry" \
+  --season "v0.3.0" \
+  --sunlight high \
+  --tags "telemetry,sse,web"
+```
+Options:
+- `--season <name>`: Target roadmap release or milestone (e.g. `v0.3.0`).
+- `--sunlight <low|medium|high|blazing>`: Priority level.
+- `--tags <csv>`: Domain classification tags.
+- `--json`: Structured machine-parseable JSON output.
+- `--list`: Displays all sown seeds and their dynamic lifecycle status.
+
+### B. Deterministic Germination (`garden germinate <subcommand> <seed>`)
+To prevent LLM tool-calling omissions, germination uses dedicated positional subcommands:
+1. **`garden germinate dispatch <seed>`**: Enqueues the seed directly to Rhizo cluster work queues (`queue:<project>:tasks`) with dialectical pump specifications.
+2. **`garden germinate prompt <seed>`**: Emits copy-pasteable **10-backtick raw markdown prompt cards** for bootstrapping dedicated worker sessions.
+3. **`garden germinate inline <seed>`**: Runs the 3-stage dialectical pump (Research ➔ Design ➔ Audit) within the active chat session.
+4. **`garden germinate status <seed>`**: Inspects dynamic lifecycle progress (`SOWN` ➔ `DISPATCHED` ➔ `GERMINATED` ➔ `WOVEN`).
+
+---
+
+## 3. The End-to-End Ceremony Workflow
 
 Execute phases sequentially. Never skip phases or invert the order.
 
