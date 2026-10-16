@@ -30,3 +30,4 @@ workspaces/
 *.log
 .agora/
 tests/test_garden
+tests/test_seed

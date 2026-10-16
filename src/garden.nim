@@ -3,6 +3,7 @@
 
 import std/[os, osproc, strutils, json, times]
 import guide
+import seed
 
 const
   GardenVersion = "0.2.15"
@@ -38,6 +39,7 @@ Usage:
 
 Subcommands:
   init [dir]               Initialize Garden configuration and install guides
+  plant <title> [options]  Sow a new botanical task/roadmap seed into .garden/seeds/
   prompts [options]        Generate copy-pasteable bootstrap prompts for worker sessions
   launch [options]         Bootstrap swarm worker sessions (generates prompts by default)
   status [options]         Unified cluster telemetry (Rhizo heartbeats, Vine strands)
@@ -47,6 +49,15 @@ Subcommands:
   teardown [options]       Gracefully close swarm agents in Redis
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
+
+Options for 'plant':
+  --season <name>          Seasonal allocation (e.g. spring, summer, autumn, winter)
+  --sunlight <level>       Priority sunlight requirement (low, medium, high, blazing)
+  --tags <csv>             Comma-separated taxonomy tags
+  --id <id>                Explicit custom seed identifier
+  --project-dir, -p <dir>  Target project directory
+  --list, -l               List all sown seeds
+  --json                   Output result as structured JSON
 
 Options for 'prompts' and 'launch':
   --swarm-file, -f <file>  Path to garden-swarm.json manifest
@@ -81,7 +92,8 @@ proc findProjectRoot*(startDir: string = ""): string =
     if (envCfg.len > 0 and fileExists(envCfg)) or
        fileExists(dir / "garden.toml") or 
        fileExists(dir / "garden-swarm.json") or 
-       dirExists(dir / ".git"):
+       dirExists(dir / ".git") or
+       fileExists(dir / ".git"):
       return dir
     let parent = dir.parentDir()
     if parent == dir:
@@ -838,6 +850,79 @@ proc doTeardown*(swarmFileParam: string): int =
 
   return 0
 
+proc doPlant*(
+  title: string,
+  season: string,
+  sunlight: string,
+  tagsCsv: string,
+  customId: string,
+  projectDir: string,
+  listMode: bool,
+  jsonOutput: bool
+): int =
+  let root = if projectDir.len > 0: projectDir else: findProjectRoot()
+
+  if listMode:
+    let seeds = listSeeds(root)
+    if jsonOutput:
+      var jArr = newJArray()
+      for s in seeds:
+        jArr.add(s.toJson())
+      echo pretty(jArr)
+    else:
+      if seeds.len == 0:
+        echo "[garden plant] No seeds sown yet in " & root / ".garden" / "seeds"
+      else:
+        echo "=========================================================="
+        echo "  Garden Sown Seeds (" & $seeds.len & ")"
+        echo "=========================================================="
+        for s in seeds:
+          echo "- [" & s.status & "] " & s.title & " (" & s.id & ")"
+          echo "    Season: " & s.season & " | Sunlight: " & s.sunlight & " | Tags: " & s.tags.join(", ")
+          echo "    File:   " & s.filePath
+    return 0
+
+  if title.strip().len == 0:
+    stderr.writeLine("Usage: garden plant <title> [--season <name>] [--sunlight <low|medium|high|blazing>] [--tags <csv>] [--json]")
+    return 1
+
+  let normSunlight = sunlight.toLowerAscii().strip()
+  if sunlight.len > 0 and not isValidSunlight(normSunlight):
+    stderr.writeLine("[garden] Error: Invalid sunlight level '" & sunlight & "'. Valid levels: low, medium, high, blazing.")
+    return 1
+
+  var tags: seq[string] = @[]
+  if tagsCsv.len > 0:
+    for t in tagsCsv.split(','):
+      let trimmed = t.strip()
+      if trimmed.len > 0:
+        tags.add(trimmed)
+
+  try:
+    let seed = plantSeed(
+      title = title,
+      projectRoot = root,
+      season = if season.len > 0: season else: "spring",
+      sunlight = if normSunlight.len > 0: normSunlight else: "medium",
+      tags = tags,
+      customId = customId
+    )
+
+    if jsonOutput:
+      echo pretty(seed.toJson())
+    else:
+      echo "[garden] Sowed seed '" & seed.title & "' (" & seed.id & ")"
+      echo "  Status:   " & seed.status
+      echo "  Season:   " & seed.season
+      echo "  Sunlight: " & seed.sunlight
+      if seed.tags.len > 0:
+        echo "  Tags:     " & seed.tags.join(", ")
+      echo "  File:     " & seed.filePath
+    return 0
+  except CatchableError as e:
+    stderr.writeLine("[garden] Error planting seed: " & e.msg)
+    return 1
+
 proc main() =
   let params = commandLineParams()
   if params.len == 0:
@@ -853,6 +938,49 @@ proc main() =
   of "version", "-v", "--version":
     echo "garden v" & GardenVersion
     quit(0)
+  of "plant":
+    var title = ""
+    var season = ""
+    var sunlight = ""
+    var tagsCsv = ""
+    var customId = ""
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var listMode = false
+    var jsonOutput = false
+    var i = 1
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]:
+        jsonOutput = true
+      elif a in ["--list", "-l"]:
+        listMode = true
+      elif (a in ["--season", "-s"]) and i + 1 < params.len:
+        inc i; season = params[i]
+      elif a.startsWith("--season="):
+        season = a[9..^1]
+      elif (a in ["--sunlight", "-S"]) and i + 1 < params.len:
+        inc i; sunlight = params[i]
+      elif a.startsWith("--sunlight="):
+        sunlight = a[11..^1]
+      elif (a in ["--tags", "-t"]) and i + 1 < params.len:
+        inc i; tagsCsv = params[i]
+      elif a.startsWith("--tags="):
+        tagsCsv = a[7..^1]
+      elif a in ["--id"] and i + 1 < params.len:
+        inc i; customId = params[i]
+      elif a.startsWith("--id="):
+        customId = a[5..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a.startsWith("--project-dir="):
+        projectDir = a[14..^1]
+      elif not a.startsWith("-"):
+        if title.len == 0:
+          title = a
+        else:
+          title &= " " & a
+      inc i
+    quit(doPlant(title, season, sunlight, tagsCsv, customId, projectDir, listMode, jsonOutput))
   of "init":
     var targetDir = ""
     var force = false
