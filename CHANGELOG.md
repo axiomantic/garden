@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2026-10-15
+
+### Added
+- **Macro-Lifecycle Sowing (`garden plant`, `src/seed.nim`)**:
+  - Added `garden plant "<description>"` to capture roadmap ideas, features, and technical debt items as persistent **Seeds** stored in `.garden/seeds/<id>.toml`.
+  - Supports `--season <name>` (e.g. `v0.3.0`), `--sunlight <low|medium|high|blazing>`, `--tags <csv>`, `--json`, and `--list` catalog views.
+- **Deterministic Germination Subcommands (`garden germinate`, `src/germinate.nim`)**:
+  - Implemented explicit, dedicated subcommands to guarantee reliable LLM tool-calling:
+    - `garden germinate dispatch <seed_id>`: Enqueues the seed directly to Rhizo cluster work queues (`queue:<project>:tasks`) with dialectical pump specifications.
+    - `garden germinate prompt <seed_id>`: Emits copy-pasteable 10-backtick raw markdown prompt cards for bootstrapping dedicated worker sessions.
+    - `garden germinate inline <seed_id>`: Initiates the 3-stage dialectical pump within the active session.
+    - `garden germinate status <seed_id>`: Reports dynamic lifecycle progression (`SOWN` -> `DISPATCHED` -> `GERMINATED` -> `WOVEN`).
+- **Master Umbrella Conductor Invariant (`skills/garden/SKILL.md`)**:
+  - Codified the principle that Garden is the sovereign high-level entrypoint of the Axiomantic Triad. Invoking Garden automatically obligates reading `garden`, `rhizo`, and `vine` skills without requiring manual recitation from the human operator.
+- **Rift CoW Terminology Normalization**:
+  - Modernized all APFS copy-on-write references across guides and prompt templates to generic, polyglot Rift CoW snapshotting (`rift-snapshot`).
+
 ## [0.2.15] - 2026-10-14
 
 ### Added

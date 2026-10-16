@@ -218,6 +218,8 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
+| `garden plant` | `"<description>" [--season <name>] [--sunlight <level>] [--tags <csv>] [--list] [--json]` | Sow a roadmap seed to `.garden/seeds/<id>.toml` or list sown seeds. |
+| `garden germinate` | `<dispatch\|prompt\|inline\|status> <seed_id>` | Deterministically germinate a seed via Rhizo work queues, prompt cards, inline pump, or status query. |
 | `garden prompts` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate 10-backtick raw markdown prompt cards for pasting into worker sessions. |
 | `garden launch` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Bootstrap swarm worker sessions (defaults to generating prompt cards). |
 | `garden status` | `[--json]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |

@@ -20,6 +20,25 @@ All `garden` commands accept the following global flags:
 
 ## 2. Command Catalog
 
+### `garden plant`
+Sows a new roadmap seed or lists active seeds in `.garden/seeds/`.
+```bash
+garden plant "<description>" [--season <name>] [--sunlight <low|medium|high|blazing>] [--tags <csv>] [--json] [--list]
+```
+- Creates `.garden/seeds/<id>.toml` with metadata: description, season, sunlight priority, and domain tags.
+- `--list`: Formats and displays all currently sown seeds and their dynamic lifecycle status.
+- `--json`: Outputs structured JSON for automated pipelines and AI tools.
+
+### `garden germinate`
+Deterministically transitions a sown seed into active execution via dedicated subcommands:
+```bash
+garden germinate <dispatch|prompt|inline|status> <seed_id>
+```
+- `garden germinate dispatch <seed_id>`: Enqueues the seed directly to Rhizo cluster work queues (`queue:<project>:tasks`) for autonomous workers.
+- `garden germinate prompt <seed_id>`: Generates copy-pasteable 10-backtick raw markdown prompt cards to bootstrap dedicated worker sessions for this seed.
+- `garden germinate inline <seed_id>`: Launches the 3-stage dialectical pump directly in the active chat session.
+- `garden germinate status <seed_id>`: Queries dynamic lifecycle progress (`SOWN` -> `DISPATCHED` -> `GERMINATED` -> `WOVEN`).
+
 ### `garden init`
 Initializes a repository for Garden swarm coordination.
 ```bash
