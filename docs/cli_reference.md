@@ -55,7 +55,7 @@ garden status [--json]
 *Output includes:*
 - Active worker codenames and elapsed heartbeat times.
 - Current WISM task states (`QUEUED`, `CLAIMED`, `IN_PROGRESS`, `READY_TO_WEAVE`).
-- Active Vine APFS strands and uncommitted commit deltas.
+- Active Vine Rift strands and uncommitted commit deltas.
 - Open distributed lock leases.
 
 ### `garden teardown`

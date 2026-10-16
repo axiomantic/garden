@@ -97,7 +97,7 @@ Drives multi-perspective deliberation across workers. Roleplay without empirical
 Authors `implementation_plan.md` mapping:
 1. Exact task distribution across personas.
 2. Distributed locking schedules via Rhizo monotonic fencing tokens.
-3. Workspace virtualization via Vine APFS Copy-on-Write strands.
+3. Workspace virtualization via Vine Rift Copy-on-Write strands.
 4. Dynamic markdown task checklists synchronized with native coding harness To-Do tracking.
 5. Emergent Design Addendum Protocol (`addendum_<topic>.md`).
 

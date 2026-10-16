@@ -102,12 +102,12 @@ Aggressive Replacement Purge: Any existing code, configurations, or fallbacks th
 </CRITICAL>
 <!-- END RHIZO GUIDE -->
 
-<!-- BEGIN VINE GUIDE [v1.4] -->
+<!-- BEGIN VINE GUIDE [v1.5] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `vine guide install` -->
 
 ## Vine Workspace & Strand Coordination Guide
 
-Vine manages zero-cost APFS copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
+Vine manages zero-cost Rift copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
 
 ### 0. Self-Bootstrapping Prerequisite
 This project requires `rhizo` and `vine`. If `command -v rhizo` or `command -v vine` fails, install them via npm:
@@ -161,9 +161,9 @@ mkdir -p "$(dirname "$STRAND_DIR")"
      echo "WARNING: Canonical repository has uninitialized submodules. Initialize first before cloning!"
    fi
    ```
-2. **Clone Workspace via APFS Copy-on-Write**:
+2. **Clone Workspace via Rift Copy-on-Write**:
    - **Repositories with Submodules (e.g. PebbleOS)**:
-     Use `rift` (native APFS CoW cloning of working tree + `.git/modules` in ~9s with 0 extra blocks):
+     Use `rift` (polyglot CoW cloning of working tree + `.git/modules` in ~9s with 0 extra blocks):
      ```bash
      rift create --into "$(dirname "$STRAND_DIR")" --name "<repo>"
      ```
@@ -173,12 +173,12 @@ mkdir -p "$(dirname "$STRAND_DIR")"
      git worktree add "$STRAND_DIR" -b "<branch>"
      ```
 3. **Stat Cache Warmup**:
-   Silences APFS inode change time (`ctime`) differences in <15ms:
+   Silences inode change time (`ctime`) differences in <15ms:
    ```bash
    git -C "$STRAND_DIR" update-index --refresh >/dev/null 2>&1 || true
    ```
 
-#### Step 3: The Universal APFS CoW Vendoring Fast-Path
+#### Step 3: The Universal Reflink & Cache Vendoring Fast-Path
 Clone pre-built dependency caches from the canonical repository in <80ms without consuming physical disk space:
 ```bash
 CANONICAL_REPO="$HOME/Development/<project>"
@@ -186,16 +186,16 @@ VENDORED_DIRS=("deps" "nimbledeps" "vendor" "node_modules" ".zig-cache")
 
 for vdir in "${VENDORED_DIRS[@]}"; do
   if [ -d "$CANONICAL_REPO/$vdir" ] && [ ! -d "$STRAND_DIR/$vdir" ]; then
-    cp -c -R "$CANONICAL_REPO/$vdir" "$STRAND_DIR/$vdir"
+    cp -c -R "$CANONICAL_REPO/$vdir" "$STRAND_DIR/$vdir" 2>/dev/null || cp -a --reflink=auto "$CANONICAL_REPO/$vdir" "$STRAND_DIR/$vdir" 2>/dev/null || cp -R "$CANONICAL_REPO/$vdir" "$STRAND_DIR/$vdir"
   fi
 done
 ```
 
 #### Step 4: Python Virtual Environment (`.venv`) Policy
 1. Inspect `$CANONICAL_REPO/.venv/pyvenv.cfg`.
-2. **If `relocatable = true`**: Safe to APFS clone:
+2. **If `relocatable = true`**: Safe to clone:
    ```bash
-   cp -c -R "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv"
+   cp -c -R "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv" 2>/dev/null || cp -a --reflink=auto "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv" 2>/dev/null || cp -R "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv"
    ```
 3. **If NOT relocatable**: **Do not blind-copy** (prevents mutating parent environment via absolute shebangs).
    - Check `vine.toml` for `venv_policy`:
@@ -360,7 +360,7 @@ flowchart TD
 
     subgraph Infrastructure["Coordination Infrastructure"]
         Rhizo["Rhizo (Redis Transport, Fencing Mutexes, Work Queues)"]
-        Vine["Vine (APFS CoW Strands, Two-Key Gate, Fast-Forward Weave)"]
+        Vine["Vine (Rift CoW Strands, Two-Key Gate, Fast-Forward Weave)"]
     end
 
     Phase0 --> Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
@@ -430,6 +430,7 @@ Agents and human engineers operating in this repository must consult the dedicat
 | **Dialectical Pump Protocol** | [`docs/dialectical_pump_protocol.md`](docs/dialectical_pump_protocol.md) | Grounded multi-perspective debate, Stage 1-3 deliverables, and the Addendum Protocol. |
 | **CLI Reference Manual** | [`docs/cli_reference.md`](docs/cli_reference.md) | Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`). |
 | **Configuration Architecture** | [`docs/configuration.md`](docs/configuration.md) | Project-level configuration, strand options, and test runner configurations. |
+
 
 
 
