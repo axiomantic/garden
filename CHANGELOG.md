@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.18] - 2026-10-17
 
 ### Added
+- **Three-Key Gate & Pre-Weave Adversarial Code Audit Pump (Garden Guide v2.2, `dialectical-pump`)**:
+  - Expanded Two-Key Gate into the **Three-Key Gate**: Key 1 Mechanical Mergeability (`git merge-tree`), Key 2 Semantic Test Suite (`vine gate`), and Key 3 Adversarial Code Audit Pump.
+  - Codified Stage 4 in `skills/dialectical-pump/SKILL.md` under the presumption of guilt across 5 pillars: Closed-Circuit Two-Point Diff, Holistic Integration, Literal Fidelity & Reference Parity, Aggressive Replacement Purge, and Structural Assertion Rigor.
+  - Iterative **Delta Re-Pump Loop**: audits `git diff` deltas until 0 open defects remain before weaving.
+- **Literal Fidelity & Reference Parity Mandate (Anti-Approximation)**:
+  - Strict requirement rejecting "looks right" or "heuristic for happy paths" approximations. Enforces exact fidelity to operator specifications, characterization tests, and edge-case parity.
+- **Structural Assertion Rigor (Anti-Green-Mirage)**:
+  - Strictly prohibits loose assertions (`assert "foo" in bar`); mandates full structural equality (`assert actual == expected`) and negative controls.
 - **Triad Update Subsystem & Shared Cadence Cache (`src/update.nim`, `garden update`)**:
   - Automatically queries registry updates for all three Axiomantic Triad packages (`garden`, `rhizo`, `vine`) on a 24-hour cadence.
   - Shares a single unified cache file (`~/.config/axiomantic/updates.json`) across the triad to prevent redundant network requests and duplicate update notices.
