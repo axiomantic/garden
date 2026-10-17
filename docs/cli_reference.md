@@ -49,12 +49,14 @@ garden init [--harness <harness>] [--shape <shape>]
 - Ensures `.gitignore_global` ignores ephemeral coordination metadata.
 
 ### `garden prompts`
-Generates copy-pasteable bootstrap prompt cards for worker fleet sessions.
+Generates bootstrap prompt cards for worker fleet sessions.
 ```bash
-garden prompts [--output <dir>]
+garden prompts [--worker <name>] [--inline] [--write <file>] [--json]
 ```
 - Reads `garden-swarm.json`.
-- Outputs distinct prompt cards wrapped in **10 backticks** (` ``````````markdown `) to prevent premature rendering or truncation across coding harnesses (Claude Code, OpenCode, Antigravity, Cursor, Pi).
+- By default, writes each prompt card to `/tmp/garden-<project>/<worker-name>.md` and a combined roster to `/tmp/garden-<project>/all-workers.md` to prevent flooding chat with raw text.
+- Emits ready-to-run copy commands (e.g. `pbcopy < /tmp/garden-<project>/<worker-name>.md`).
+- Pass `--inline` to output raw 10-backtick markdown blocks directly to stdout.
 - Configures agent identity (`rhizo open <name>`), single-shot listener discipline (`rhizo listen <name>`), and isolated Vine strand directories.
 
 ### `garden launch`

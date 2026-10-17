@@ -128,20 +128,35 @@ suite "Garden CLI Compilation & Telemetry Suite":
           let first = j["rhizo"][0]
           check first.hasKey("agent") or first.hasKey("name")
 
-  test "Garden prompts generates 10-backtick raw markdown blocks for default triad":
+  test "Garden prompts generates prompt cards in tmp directory and supports --inline":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (pOut, pCode) = execCmdEx(exePath & " prompts")
     check pCode == 0
     check pOut.contains("GARDEN SWARM BOOTSTRAP")
-    check pOut.contains("``````````markdown")
     check pOut.contains("architect")
     check pOut.contains("auditor")
     check pOut.contains("implementer")
-    check pOut.contains("export RHIZO_AGENT_NAME=")
-    check pOut.contains("rhizo open")
-    check pOut.contains("rhizo listen")
-    check pOut.contains("Single-Shot Blocking")
-    check pOut.contains("SWARM_RUNTIME_STATE")
+    check pOut.contains(".md")
+
+    # Verify temp directory and worker files were created
+    let tmpGarden = (if dirExists("/tmp"): "/tmp" else: getTempDir()) / "garden-garden"
+    check dirExists(tmpGarden)
+    check fileExists(tmpGarden / "garden-architect.md")
+    check fileExists(tmpGarden / "garden-auditor.md")
+    check fileExists(tmpGarden / "garden-implementer.md")
+    check fileExists(tmpGarden / "all-workers.md")
+
+    let archContent = readFile(tmpGarden / "garden-architect.md")
+    check archContent.contains("export RHIZO_AGENT_NAME=")
+    check archContent.contains("rhizo open")
+    check archContent.contains("rhizo listen")
+    check archContent.contains("Single-Shot Blocking")
+
+    # Verify --inline flag produces raw 10-backtick fence blocks in stdout
+    let (iOut, iCode) = execCmdEx(exePath & " prompts --inline")
+    check iCode == 0
+    check iOut.contains("``````````markdown")
+    check iOut.contains("SWARM_RUNTIME_STATE")
 
   test "Garden prompts --worker filters output to target worker":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -160,6 +175,10 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["count"].getInt() == 3
     check j["workers"].len == 3
     check j["workers"][0]["name"].getStr() == "garden-architect"
+    check j.hasKey("temp_dir")
+    check j["workers"][0].hasKey("file_path")
+    check j["workers"][0].hasKey("copy_command")
+    check fileExists(j["workers"][0]["file_path"].getStr())
     check j["workers"][0]["prompt"].getStr().contains("Bramblestitch")
 
   test "Garden prompts --write outputs prompts to file":
@@ -183,7 +202,12 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
     check lCode == 0
     check lOut.contains("Moss-Weaver")
-    check lOut.contains("``````````markdown")
+    check lOut.contains(".md")
+
+    let (iOut, iCode) = execCmdEx(exePath & " launch --worker implementer --inline")
+    check iCode == 0
+    check iOut.contains("Moss-Weaver")
+    check iOut.contains("``````````markdown")
 
   test "Garden respects GARDEN_SWARM_FILE and GARDEN_PROJECT_DIR environment variables":
     let tmpDir = getTempDir() / ("garden_test_env_" & $getCurrentProcessId())

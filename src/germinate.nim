@@ -73,7 +73,15 @@ proc germinateDispatch*(seedId: string, projectRoot: string = ""): (bool, string
 
   return (true, "Dispatched seed '" & s.title & "' (" & s.id & ") to " & queue, resJson)
 
-proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: string = ""): (bool, string, JsonNode) =
+proc getCopyCommand*(filePath: string): string =
+  when defined(macosx) or defined(darwin):
+    result = "pbcopy < " & filePath
+  elif defined(windows):
+    result = "clip < " & filePath
+  else:
+    result = "xclip -selection clipboard < " & filePath
+
+proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: string = "", inlineOutput: bool = false): (bool, string, JsonNode) =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
   var s: Seed
   try:
@@ -82,6 +90,8 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
     return (false, "Seed not found: '" & seedId & "' (" & e.msg & ")", nil)
 
   let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
+  let tempBaseDir = (if dirExists("/tmp"): "/tmp" else: getTempDir()) / ("garden-" & proj)
+  createDir(tempBaseDir)
   
   type WorkerInfo = tuple[name: string, role: string]
   var workers: seq[WorkerInfo] = @[
@@ -103,14 +113,47 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
 
   var promptBlocks: seq[string] = @[]
   var jPrompts = newJArray()
-  for w in workers:
+  var summaryMsg = "================================================================================\n"
+  summaryMsg &= "  GARDEN GERMINATION: Seed '" & s.title & "' (" & s.id & ")\n"
+  summaryMsg &= "================================================================================\n"
+  summaryMsg &= "Generated " & $workers.len & " worker bootstrap prompt card(s) in:\n"
+  summaryMsg &= "  " & tempBaseDir & "/\n\n"
+
+  var allPromptsBuf = "# Germination Prompts: " & s.title & " (" & s.id & ")\n\n"
+
+  for idx, w in workers:
     let p = generateGerminatePrompt(s, w.name, w.role, proj)
     promptBlocks.add(p)
+
+    let workerFilePath = tempBaseDir / ("germinate-" & s.id & "-" & w.name & ".md")
+    writeFile(workerFilePath, p)
+
+    allPromptsBuf &= "## @" & w.name & " (" & w.role & ")\n\n"
+    allPromptsBuf &= p & "\n\n"
+
+    let copyCmd = getCopyCommand(workerFilePath)
+    summaryMsg &= "  " & $(idx + 1) & ". @" & w.name & " (" & w.role & ")\n"
+    summaryMsg &= "     File: " & workerFilePath & "\n"
+    summaryMsg &= "     Copy: " & copyCmd & "\n\n"
+
     var jw = newJObject()
     jw["worker"] = %w.name
     jw["role"] = %w.role
+    jw["file_path"] = %workerFilePath
+    jw["copy_command"] = %copyCmd
     jw["prompt"] = %p
     jPrompts.add(jw)
+
+  let allFilePath = tempBaseDir / ("germinate-" & s.id & "-all.md")
+  writeFile(allFilePath, allPromptsBuf)
+
+  summaryMsg &= "  All Cards Combined:\n"
+  summaryMsg &= "     File: " & allFilePath & "\n\n"
+  summaryMsg &= "Instructions for operator:\n"
+  summaryMsg &= "  1. Open a new terminal tab / session for each worker in your detected harness.\n"
+  summaryMsg &= "  2. Copy each prompt card (using the copy command or opening the file) and paste into the session.\n"
+  summaryMsg &= "  3. Once pasted, verify cluster registration: rhizo who\n"
+  summaryMsg &= "================================================================================"
 
   s.status = "PROMPTED"
   discard saveSeed(s, root)
@@ -120,10 +163,13 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
   resJson["action"] = %"prompt"
   resJson["seed_id"] = %s.id
   resJson["count"] = %workers.len
+  resJson["temp_dir"] = %tempBaseDir
+  resJson["all_file_path"] = %allFilePath
   resJson["prompts"] = jPrompts
   resJson["seed"] = s.toJson()
 
-  return (true, promptBlocks.join("\n"), resJson)
+  let finalMsg = if inlineOutput: promptBlocks.join("\n") else: summaryMsg
+  return (true, finalMsg, resJson)
 
 proc germinateInline*(seedId: string, projectRoot: string = ""): (bool, string, JsonNode) =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
@@ -203,7 +249,8 @@ proc doGerminate*(
   seedId: string,
   targetWorker: string = "",
   projectDir: string = "",
-  jsonOutput: bool = false
+  jsonOutput: bool = false,
+  inlineOutput: bool = false
 ): int =
   let normAction = action.toLowerAscii().strip()
   var ok = false
@@ -214,7 +261,7 @@ proc doGerminate*(
   of "dispatch":
     (ok, msg, jNode) = germinateDispatch(seedId, projectDir)
   of "prompt":
-    (ok, msg, jNode) = germinatePrompt(seedId, targetWorker, projectDir)
+    (ok, msg, jNode) = germinatePrompt(seedId, targetWorker, projectDir, inlineOutput)
   of "inline":
     (ok, msg, jNode) = germinateInline(seedId, projectDir)
   of "status":

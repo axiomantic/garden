@@ -129,11 +129,11 @@ Swarm workers operate in sovereign interactive sessions and inherit whatever fou
 Upon receiving the operator's response:
 1. Run `garden init` if `garden.toml` or `AGENTS.md` is not yet initialized.
 2. Generate `garden-swarm.json` reflecting the chosen workers, roles, detected harness, and session-default models.
-3. Run `garden prompts` to generate the raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `).
-4. Present the operator with clear, numbered instructions:
+3. Run `garden prompts` which writes individual prompt cards to `/tmp/garden-<project>/<worker>.md` and all cards to `/tmp/garden-<project>/all-workers.md`.
+4. Present the operator with concise setup instructions and copy commands (NEVER paste prompt cards inline in chat):
    ```text
    1. Open X terminal tabs or windows in your detected coding harness.
-   2. Copy the raw block inside each 10-backtick pre block below and paste it into its corresponding session.
+   2. Copy each worker's prompt card from its file (e.g. `pbcopy < /tmp/garden-<project>/<worker>.md`) and paste into its session.
    3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
    ```
 5. Register the orchestrator's presence (`rhizo open <project>-orchestrator`) and arm the listener.

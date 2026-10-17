@@ -189,11 +189,11 @@ Garden utilizes the **Active Swarm Fast-Path (First-Look Invariant)**:
 > - **Session-Native Model Inheritance**: Swarm workers inherit whatever foundation model is active in that harness window (`Session Default (active in window/tab)`). Disconnected model pairing quizzes are eliminated.
 
 ### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
-Garden writes `garden-swarm.json` and runs `garden prompts` to emit raw markdown prompt cards wrapped in **10 backticks** (` ``````````markdown `):
-- The Orchestrator presents ready-to-paste prompt cards to the operator:
-  1. Open **Tab 1 / Window 1**: Launch your preferred harness session $\to$ Paste Prompt 1 (`@auditor`)
-  2. Open **Tab 2 / Window 2**: Launch your preferred harness session $\to$ Paste Prompt 2 (`@architect`)
-  3. Open **Tab 3 / Window 3**: Launch your preferred harness session $\to$ Paste Prompt 3 (`@implementer`)
+Garden writes `garden-swarm.json` and runs `garden prompts` to write prompt cards directly to temporary files (`/tmp/garden-<project>/<worker>.md`) rather than flooding the chat window with thousands of lines of raw text:
+- The Orchestrator displays concise session assignments with clickable file links and OS copy commands:
+  1. Open **Tab 1 / Window 1**: Paste Prompt 1 (`pbcopy < /tmp/garden-<project>/<project>-auditor.md`)
+  2. Open **Tab 2 / Window 2**: Paste Prompt 2 (`pbcopy < /tmp/garden-<project>/<project>-architect.md`)
+  3. Open **Tab 3 / Window 3**: Paste Prompt 3 (`pbcopy < /tmp/garden-<project>/<project>-implementer.md`)
 - Each session enters the project directory, exports `RHIZO_AGENT_NAME`, registers on the Redis bus (`rhizo open`), and arms its single-shot listener (`rhizo listen`).
 - The Orchestrator confirms all workers are live via `rhizo who --json` before dispatching tasks!
 
@@ -220,8 +220,8 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 | :--- | :--- | :--- |
 | `garden plant` | `"<description>" [--season <name>] [--sunlight <level>] [--tags <csv>] [--list] [--json]` | Sow a roadmap seed to `.garden/seeds/<id>.toml` or list sown seeds. |
 | `garden germinate` | `<dispatch\|prompt\|inline\|status> <seed_id>` | Deterministically germinate a seed via Rhizo work queues, prompt cards, inline pump, or status query. |
-| `garden prompts` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate 10-backtick raw markdown prompt cards for pasting into worker sessions. |
-| `garden launch` | `[--worker <name>] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Bootstrap swarm worker sessions (defaults to generating prompt cards). |
+| `garden prompts` | `[--worker <name>] [--inline] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate bootstrap prompt cards (written to /tmp/garden-<project>/ by default; pass --inline for stdout). |
+| `garden launch` | `[--worker <name>] [--inline] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Bootstrap swarm worker sessions (writes prompt cards to /tmp/garden-<project>/). |
 | `garden status` | `[--json]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |
 | `garden init` | `[<target_dir>] [--force]` | Initialize `garden.toml`, docs scaffold, and install guide in `AGENTS.md`. |
 | `garden teardown`| `[--swarm-file <file>]` | Gracefully close registered swarm agents on the Redis bus. |

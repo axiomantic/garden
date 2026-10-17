@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] - 2026-10-17
+
+### Added
+- **Prompt Card Tmp File Delivery (`src/garden.nim`, `src/germinate.nim`)**:
+  - `garden prompts`, `garden launch`, and `garden germinate prompt` now automatically write prompt cards to temporary files (`/tmp/garden-<project>/<worker-name>.md` and a combined roster in `/tmp/garden-<project>/all-workers.md`) instead of dumping thousands of lines of raw text inline into chat.
+  - Prevents token budget exhaustion, UI scrolling fatigue, and chat markdown rendering corruption across coding harnesses.
+- **OS-Calibrated Clipboard Copy Commands**:
+  - CLI output automatically emits ready-to-run copy commands tailored to the host platform (`pbcopy < ...` on macOS, `xclip ...` on Linux, `clip < ...` on Windows).
+- **Optional `--inline, -i` Flag**:
+  - Added `--inline` to `garden prompts`, `garden launch`, and `garden germinate prompt` for scripts and operators who explicitly request raw 10-backtick output in stdout.
+- **Updated Orchestration Protocols & Skills**:
+  - Updated `skills/launch-workers/SKILL.md`, `skills/garden/SKILL.md`, and `src/guide.nim` with the **Temp File Delivery Invariant (Zero Chat Flooding)**, directing orchestrator agents to output concise lists with file links and copy commands rather than inline prompt walls.
+
 ## [0.2.16] - 2026-10-15
 
 ### Added

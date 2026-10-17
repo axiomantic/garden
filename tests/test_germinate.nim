@@ -24,7 +24,7 @@ suite "Garden Germinate Core Engine Suite":
     check jNode["seed_id"].getStr() == s.id
     check jNode["lifecycle_stage"].getStr() == "SOWN"
 
-  test "germinatePrompt generates 10-backtick prompt cards and updates status":
+  test "germinatePrompt generates prompt cards in tmp directory and supports --inline":
     let tmpDir = getTempDir() / ("garden_germ_prompt_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
@@ -32,18 +32,26 @@ suite "Garden Germinate Core Engine Suite":
     let s = plantSeed("Gossip Bus", projectRoot = tmpDir, season = "autumn", sunlight = "blazing", tags = @["p2p", "bus"])
     let (ok, msg, jNode) = germinatePrompt(s.id, targetWorker = "architect", projectRoot = tmpDir)
     check ok == true
-    check msg.contains("``````````markdown")
-    check msg.contains("Swarm Germination Card: Gossip Bus")
+    check msg.contains("GARDEN GERMINATION: Seed 'Gossip Bus'")
     check msg.contains("Gossip Bus")
-    check msg.contains("``````````")
+    check msg.contains(".md")
 
     check jNode["action"].getStr() == "prompt"
     check jNode["count"].getInt() == 1
     check jNode["prompts"][0]["prompt"].getStr().contains("``````````markdown")
+    check jNode.hasKey("temp_dir")
+    check jNode["prompts"][0].hasKey("file_path")
+    check fileExists(jNode["prompts"][0]["file_path"].getStr())
 
     # Verify seed status was transitioned to PROMPTED
     let reloaded = loadSeed(s.id, tmpDir)
     check reloaded.status == "PROMPTED"
+
+    # Test inline mode
+    let (iOk, iMsg, _) = germinatePrompt(s.id, targetWorker = "architect", projectRoot = tmpDir, inlineOutput = true)
+    check iOk == true
+    check iMsg.contains("``````````markdown")
+    check iMsg.contains("Swarm Germination Card: Gossip Bus")
 
   test "germinateDispatch enqueues task and updates status to DISPATCHED":
     let tmpDir = getTempDir() / ("garden_germ_disp_" & $getCurrentProcessId())
@@ -137,15 +145,23 @@ suite "Garden CLI 'garden germinate' Integration Suite":
 
     let (pOut, pCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --worker auditor -p " & quoteShell(tmpDir))
     check pCode == 0
-    check pOut.contains("``````````markdown")
     check pOut.contains("CLI Prompt Seed")
     check pOut.contains("Auditor")
+    check pOut.contains(".md")
+
+    # Verify --inline flag
+    let (iOut, iCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --worker auditor --inline -p " & quoteShell(tmpDir))
+    check iCode == 0
+    check iOut.contains("``````````markdown")
+    check iOut.contains("CLI Prompt Seed")
 
     let (jOut, jCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --json -p " & quoteShell(tmpDir))
     check jCode == 0
     let j = parseJson(jOut.strip())
     check j["action"].getStr() == "prompt"
     check j["prompts"].len > 0
+    check j["prompts"][0].hasKey("file_path")
+    check fileExists(j["prompts"][0]["file_path"].getStr())
 
   test "CLI garden germinate dispatch and inline execution":
     let tmpDir = getTempDir() / ("garden_cli_germ_exec_" & $getCurrentProcessId())
