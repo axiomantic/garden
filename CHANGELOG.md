@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18] - 2026-10-17
+
+### Added
+- **Triad Update Subsystem & Shared Cadence Cache (`src/update.nim`, `garden update`)**:
+  - Automatically queries registry updates for all three Axiomantic Triad packages (`garden`, `rhizo`, `vine`) on a 24-hour cadence.
+  - Shares a single unified cache file (`~/.config/axiomantic/updates.json`) across the triad to prevent redundant network requests and duplicate update notices.
+  - Configurable settings via CLI:
+    - `garden update`: Check update status across the triad.
+    - `garden update --apply`: Automatically run detected upgrade commands.
+    - `garden update --skip <pkg@version>`: Suppress notifications for a specific release.
+    - `garden update --disable`: Silence update check riders permanently.
+    - `garden update --enable`: Re-enable daily update notifications.
+    - `garden update --json`: Machine-readable telemetry of versions, install mechanisms, and available deltas.
+- **Smart Installation Mechanism Auto-Detection**:
+  - Dynamically inspects binary execution paths and symlinks (`expandSymlink`) to tailor upgrade commands to the exact environment:
+    - `dev_source`: Dev repo checkout (`git pull && nimble build`) instead of destructive global npm overwrites.
+    - `local_npm`: Project `./node_modules` (`npm/pnpm/yarn/bun update`).
+    - `global_pnpm` / `global_yarn` / `global_bun` / `global_npm`.
+    - `homebrew`: Homebrew Cellar (`brew upgrade`).
+    - `standalone_binary`: Precompiled binary in `~/.local/bin`.
+- **Autonomous Mode Suppression & AI Prompt Rider**:
+  - Injects actionable `<!-- TRIAD_UPDATE_RIDER -->` block into `garden status` directing interactive AI assistants to prompt the operator with the auto-detected update command.
+  - Automatically suppresses prompt riders when **Autonomous Mode** is active (`AUTONOMOUS_MODE=1` or `.autonomous` present in workspace) to guarantee zero interruptions during unattended execution.
+
 ## [0.2.17] - 2026-10-17
 
 ### Added

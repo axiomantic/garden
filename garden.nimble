@@ -1,5 +1,5 @@
 # Package
-version       = "0.2.17"
+version       = "0.2.18"
 author        = "Axiomantic"
 description   = "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine"
 license       = "MIT"
@@ -14,6 +14,7 @@ task test, "Run the Garden test suite":
   exec "nim r tests/test_garden.nim"
   exec "nim r tests/test_seed.nim"
   exec "nim r tests/test_germinate.nim"
+  exec "nim r tests/test_update.nim"
 
 after build:
   when defined(macosx) or defined(darwin):

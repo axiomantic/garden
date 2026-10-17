@@ -5,9 +5,10 @@ import std/[os, osproc, strutils, json, times]
 import guide
 import seed
 import germinate
+import update
 
 const
-  GardenVersion = "0.2.17"
+  GardenVersion = "0.2.18"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -48,9 +49,18 @@ Subcommands:
   guide <action> [path]    Manage Garden Coordination Guide (install, check, uninstall)
   roster-guard <sender>    Validate inbound message sender against swarm roster
   session <action>         Manage compaction-immune session state (save, load, clear)
+  update [options]         Manage Triad updates across Garden, Rhizo, and Vine
   teardown [options]       Gracefully close swarm agents in Redis
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
+
+Options for 'update':
+  --apply, -a              Install latest triad packages via npm
+  --skip <pkg@version>     Skip notifications for a specific package version
+  --disable, -d, --never   Disable triad update prompts completely
+  --enable, -e             Enable daily triad update prompts
+  --check, -c              Force a fresh network check immediately
+  --json                   Output update status as JSON
 
 Options for 'plant':
   --season <name>          Seasonal allocation (e.g. spring, summer, autumn, winter)
@@ -1176,7 +1186,15 @@ proc main() =
       of "--json": jsonOutput = true
       else: discard
       inc i
-    quit(doStatus(jsonOutput))
+    let code = doStatus(jsonOutput)
+    if not jsonOutput:
+      let rider = getUpdatePromptRider(GardenVersion)
+      if rider.len > 0:
+        echo "\n" & rider
+    quit(code)
+  of "update", "upgrade":
+    let code = doUpdateCommand(params[1..^1], GardenVersion)
+    quit(code)
   of "teardown":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var i = 1
