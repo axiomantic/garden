@@ -1,12 +1,12 @@
 ---
 name: dialectical-pump
-description: "Drives empirical multi-perspective deliberation and synthesis across agent personas. Enforces the strict invariant that dialectical exchanges are NOT theatrical dialogue: every turn must be grounded in tool calls (reading file lines, executing tests, running benchmarks, checking git history). Operates across three sequential stages: (1) Research & Understanding Doc with automated Fact-Check Gate, (2) Product & System Architecture Design Doc, and (3) Adversarial Design Review, Audit Report generation, and finding remediation. Triggers: 'dialectical pump', 'run dialectical pump', 'pump perspectives', 'triadic deliberation', 'dialectical research', 'dialectical design', 'dialectical review'."
+description: "Drives empirical multi-perspective deliberation and synthesis across agent personas. Enforces the strict invariant that dialectical exchanges are NOT theatrical dialogue: every turn must be grounded in tool calls (reading file lines, executing tests, running benchmarks, checking git history). Operates across four sequential stages: (1) Research & Understanding Doc with automated Fact-Check Gate, (2) Product & System Architecture Design Doc, (3) Adversarial Design Review and Audit Report remediation, and (4) Pre-Weave Adversarial Code Audit Pump (The Third Key Gate: Shelfware, Heuristic Hand-Waves, Literal Fidelity & Parity, Carcass Purge, Green Mirage elimination, and Delta Re-Pump). Triggers: 'dialectical pump', 'run dialectical pump', 'pump perspectives', 'triadic deliberation', 'adversarial code audit', 'code audit pump', 'pre-weave audit', 'literal fidelity audit'."
 ---
 
 # `dialectical-pump`: Grounded Multi-Persona Deliberation Engine
 
 > **Thesis $\times$ Antithesis $\to$ Empirical Synthesis**  
-> *The Dialectical Pump is an epistemic machine. It prevents hallucinated consensus and green mirages by forcing opposing personas to prove every assertion through real tool execution.*
+> *The Dialectical Pump is an epistemic machine. It prevents hallucinated consensus, superficial approximations, and green mirages by forcing opposing personas to prove every assertion through real tool execution.*
 
 ---
 
@@ -29,36 +29,31 @@ Every turn taken by a persona in the Dialectical Pump must follow the **Empirica
 
 ---
 
-## 2. The Three Dialectical Stages
+## 2. The Four Dialectical Stages
 
-The Dialectical Pump executes across three distinct stages of a project:
+The Dialectical Pump executes across four distinct project gates:
 
 ```mermaid
 flowchart TD
-    subgraph Stage1["Stage 1: Grounded Research"]
-        S1A["1. Triad plans research questions"]
-        S1B["2. Workers explore code & tests"]
-        S1C["3. Synthesize understanding.md"]
-        S1D["4. Automated Fact-Check Gate"]
-        S1A --> S1B --> S1C --> S1D
+    subgraph DesignPhase["Design Dialectics (Pre-Implementation)"]
+        Stage1["Stage 1: Grounded Research (understanding.md + Fact-Check Gate)"]
+        Stage2["Stage 2: Architecture & Design (design.md)"]
+        Stage3["Stage 3: Adversarial Design Audit (audit_report.md)"]
+        Stage1 --> Stage2 --> Stage3
     end
 
-    subgraph Stage2["Stage 2: Architecture & Design"]
-        S2A["1. Systems Architect drafts thesis"]
-        S2B["2. Purist Auditor attacks failure modes"]
-        S2C["3. DevEx Lead balances ergonomics"]
-        S2D["4. Synthesize design.md"]
-        S2A --> S2B --> S2C --> S2D
+    subgraph ImplementationPhase["Implementation Dialectics (Pre-Weave)"]
+        Stage4["Stage 4: Adversarial Code Audit Pump (The Third Key Gate)"]
+        Stage4A["4.1 Deliverable Claim Bundle (Thesis)"]
+        Stage4B["4.2 Presumption of Guilt Audit (Antithesis)"]
+        Stage4C["4.3 Remediation inside Strand (Synthesis)"]
+        Stage4D["4.4 Delta Re-Pump Loop (Until 0 Findings)"]
+        Stage4 --> Stage4A --> Stage4B --> Stage4C --> Stage4D
+        Stage4D -.->|"Findings > 0"| Stage4B
     end
 
-    subgraph Stage3["Stage 3: Adversarial Review & Audit"]
-        S3A["1. Auditor files audit_report.md"]
-        S3B["2. Personas resolve findings"]
-        S3C["3. Ratified design.md"]
-        S3A --> S3B --> S3C
-    end
-
-    Stage1 --> Stage2 --> Stage3
+    Stage3 --> ImplementationPhase
+    Stage4D -->|"0 Findings"| Weave["vine weave (Trunk Fast-Forward)"]
 ```
 
 ---
@@ -127,11 +122,141 @@ The triad meets to address every finding in `audit_report.md`:
 
 ---
 
-## 6. Output Artifacts
+## 6. Stage 4: Pre-Weave Adversarial Code Audit Pump (The Third Key Gate)
+
+Before any strand is woven into canonical trunk (`vine weave`), it must pass the **Adversarial Code Audit Pump**. Passing Key 1 (mechanical merge-tree) and Key 2 (semantic test runner) is necessary but insufficient: tests may be green mirages, and code may be disconnected shelfware or heuristic hand-waves.
+
+<CRITICAL>
+The Presumption-of-Guilt Invariant:
+The Adversarial Auditor approaches every deliverable with the active operational presumption that the code IS disconnected shelfware, IS a half-baked heuristic hand-wave, DOES contain hollow mocks, DOES rely on loose partial assertions, and FAILS true fidelity until mathematically and empirically disproven through tool execution.
+</CRITICAL>
+
+### Step 4.1: Assembling the Thesis (The Deliverable Claim Bundle)
+
+The Thesis in a code review is neither a raw dump of files nor vague conversational prose. The implementer must formulate a structured **Deliverable Claim Bundle**:
+
+```markdown
+# DELIVERABLE CLAIM BUNDLE (Thesis)
+- Task ID: <task-id>
+- Strand Path: <strand-path>
+- Base Commit: origin/main (<sha>)
+
+## 1. Contract & Deliverables
+- Target Deliverables: List of files created/modified
+- Operator Directive: Exact prompt requirements & references
+
+## 2. Closed-Circuit Two-Point Diff
+- Provider: Primary new logic / capability modules
+- Consumer Call-Sites: Live production callers (CLI parser, HTTP router, UI canvas, event loop)
+- Replacement Purge: Explicit list of obsolete files, functions, or fallbacks deleted in this diff
+
+## 3. Test Evidence & Assertion Rigor
+- Test Suite Executed: Exact command and execution time
+- Assertion Style: Complete structural equality (`assert actual == expected`) or tripwire snapshots
+- Negative Controls: List of tests asserting failure under invalid/adversarial inputs
+```
+
+### Step 4.2: The Five-Pillar Forensic Code Audit (Antithesis)
+
+The Auditor executes the following five rigorous checks against the Claim Bundle and the strand diff (`git diff origin/main...HEAD`):
+
+#### Pillar 1: Disconnected Shelfware & Closed-Circuit Consumer Audit
+- [ ] **Live Consumer Call-Site Verification**: Does the new capability plug directly into the production entrypoint, router, CLI dispatcher, or UI?
+- [ ] **Import Audit**: Is the provider module imported and exercised outside of its own unit test files?
+- [ ] **Hermetic Shelfware Rejection**: Code tested only by its own unit tests is rejected back to the worker as incomplete shelfware (unless explicitly contracted as `[STAGED - NOT WIRED]` in `implementation_plan.md`).
+
+#### Pillar 2: Holistic Integration vs. Heuristic Hand-Waves & Hollow Stubs
+- [ ] **Anti-Stub & Anti-Toy Check**: Does the implementation handle real application state, real network/file I/O, and real concurrent events?
+- [ ] **No Hollow Mocks in Production**: Reject artificial `sleep()` calls, hardcoded success responses, or fake test doubles in production paths.
+- [ ] **Brittle String-Split Hacks**: Reject naive string splits (`str.split(" ")[0]`) pretending to parse structured protocols or payloads; compliant lexers/parsers must be used.
+- [ ] **Swallowed Exceptions**: Reject empty `except: pass` or `catch: discard` blocks that sweep real error conditions under the rug.
+
+#### Pillar 3: Literal Fidelity & Reference Parity Mandate (Anti-Approximation)
+<CRITICAL>
+Literal Fidelity & True-Fidelity Mandate:
+When a deliverable is recreating, porting, reverse-engineering, duplicating functionality from an existing reference, or executing an operator directive where fidelity is expected:
+1. Anti-Approximation Rule: "Approximate", "looks right", "heuristic shortcut", "gist-level", or "good enough for happy paths" implementations are STRICTLY REJECTED.
+2. Literal Specification Adherence: The implementation must be literally and precisely the thing that was asked for. The auditor must verify compliance against every specified edge case, type boundary, flag interaction, return semantic, and error flow of the original reference or operator prompt.
+3. Zero Corner-Cutting: Tedious, difficult, or complex cases cannot be hand-waved away or substituted with shallow shortcuts.
+4. Empirical Parity Testing: Wherever a reference implementation or specification exists, the audit requires characterization tests, golden file outputs, or structural round-trip comparisons proving exact functional parity.
+</CRITICAL>
+
+#### Pillar 4: Aggressive Replacement Purge (Zero Dead-Code Carcasses)
+- [ ] **Zero Vestigial Fallbacks**: Any existing code, configurations, or legacy paths meant to be upgraded or superseded by this feature MUST be deleted in the same strand.
+- [ ] **No Zombie Shims**: Commented-out legacy code, dead helper functions, or deprecated fallback branches are strictly prohibited.
+
+#### Pillar 5: Green Mirage Elimination & Structural Assertion Rigor
+<CRITICAL>
+Assertion Rigor & Anti-Green-Mirage Mandate:
+1. Complete Object Equality: Partial or loose assertions ("loosey goosey" tests) are strictly forbidden:
+   - ❌ FORBIDDEN: `assert "foo" in response`
+   - ❌ FORBIDDEN: `assert len(result) > 0`
+   - ❌ FORBIDDEN: `assert obj.status == "ok"` (ignoring payload fields)
+   - ✅ MANDATED: `assert actual == expected` comparing the complete expected parent object, schema, or full deterministic string.
+2. Structural Snapshotting: Prefer Nim's `tripwire` library or Python's `pytest-tripwire` to assert complete structural integrity without brittle manual mocks.
+3. Mandatory Negative Controls: Tests must explicitly assert that invalid inputs, expired leases, missing files, or corrupted data fail deterministically with expected error codes.
+4. Zero Happy-Path-Only Testing: Boundary values (empty, 0, 1, max, unicode, timeout, disconnection) must be explicitly exercised.
+</CRITICAL>
+
+### Step 4.3: The Delta Re-Pump Loop (Iterative until Zero Findings)
+
+A single review pass is never sufficient. The Adversarial Code Audit executes as an **iterative dialectical pump**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Worker (Strand)
+    participant A as Adversarial Auditor
+    participant G as Gate (Vine / Garden)
+
+    W->>A: Submit Deliverable Claim Bundle (Thesis)
+    A->>A: Five-Pillar Presumption-of-Guilt Audit (Antithesis)
+    
+    alt Findings > 0 (CRIT / HIGH / MED)
+        A-->>W: Emit audit_report.md with empirical citations
+        Note over W: Worker remediates findings inside Strand
+        W->>A: Re-pump: Submit Delta Claim Bundle (Fixes + git diff against last audit commit)
+        A->>A: Delta Audit: Verify fix + full test regression sweep
+        Note over A,W: Loop repeats until 0 open defects
+    else Findings == 0
+        A->>G: Issue GATE_AUDIT_PASSED token
+        G->>G: Execute vine weave (Trunk Fast-Forward)
+    end
+```
+
+1. **Defect Issuance**: The Auditor records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
+2. **In-Strand Remediation**: The worker fixes findings strictly inside the isolated Vine strand.
+3. **The Delta Re-Pump**: When resubmitting, the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
+4. **Exit Condition**: The pump loops until **ZERO open defects of severity CRIT, HIGH, or MED remain**, and all low/nit items are resolved or empirically justified.
+
+### Step 4.4: Gate Clearance & Cryptographic Token
+
+When all findings reach 0, the auditor stamps a verification receipt:
+```json
+{
+  "status": "GATE_AUDIT_PASSED",
+  "task_id": "<task-id>",
+  "audit_iterations": 2,
+  "five_pillars": {
+    "closed_circuit": "VERIFIED",
+    "holistic_integration": "VERIFIED",
+    "literal_fidelity": "VERIFIED",
+    "replacement_purge": "VERIFIED",
+    "structural_assertions": "VERIFIED"
+  },
+  "gate_token": "AUDIT_PASS_SHA256_..."
+}
+```
+Only strands with this verified clearance are permitted to weave into trunk.
+
+---
+
+## 7. Output Artifacts
 
 At the conclusion of the Dialectical Pump:
-1. `understanding.md` (Grounded and fact-checked).
-2. `design.md` (Debated, hardened, and synthesized).
-3. `audit_report.md` (All findings addressed and closed).
+1. `understanding.md` (Stage 1: Grounded and fact-checked).
+2. `design.md` (Stage 2: Debated, hardened, and synthesized).
+3. `design_audit_report.md` (Stage 3: Design findings addressed and closed).
+4. `code_audit_report.md` (Stage 4: Pre-weave Five-Pillar audit cleared with 0 open defects).
 
-Proceed immediately to [`plan-implementation`](../plan-implementation/SKILL.md).
+Proceed to [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) for trunk weaving.

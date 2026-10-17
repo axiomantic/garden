@@ -91,7 +91,7 @@ Execute phases sequentially. Never skip phases or invert the order.
 | **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
 | **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
 | **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules, strands, and Two-Point Diff contracts (Provider, Consumer, Replacement deletion). | Complete `implementation_plan.md` with task-locking matrix. |
-| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, Closed-Circuit & Two-Key gate verification, trunk weaving. | All plan tasks woven via `vine weave` after passing Two-Key Gate. |
+| **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, Closed-Circuit & Three-Key gate verification, trunk weaving. | All plan tasks woven via `vine weave` after passing Three-Key Gate (Mechanical, Semantic, Adversarial Audit). |
 
 ---
 
@@ -287,12 +287,18 @@ They MUST immediately transition to active execution: claim the task, enter the 
 </CRITICAL>
 
 <CRITICAL>
-Closed-Circuit & Holistic Integration Invariant:
-Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation. If the deliverable is intended to replace, upgrade, or obsolete existing code or configuration, the legacy code MUST be deleted immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
+Closed-Circuit Two-Point Diff, Literal Fidelity & Holistic Integration Invariant:
+1. Two-Point Diff Mandate: Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware.
+2. Holistic Integration (Anti-Stub / Anti-Toy): The implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation.
+3. Literal Fidelity & True-Fidelity Mandate (Anti-Approximation): When recreating, porting, reverse-engineering, duplicating functionality from an existing reference, or executing an operator directive where fidelity is expected:
+   - "Approximate", "looks right", "heuristic shortcut", "gist-level", or "good enough for happy paths" implementations are STRICTLY REJECTED.
+   - The implementation must be literally and precisely the thing that was asked for, matching all edge cases, type boundaries, flags, and error flows.
+4. Aggressive Replacement Purge: Any existing code, configurations, or fallbacks meant to be replaced or upgraded MUST BE DELETED immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
+5. Structural Assertion Rigor: Partial or loose assertions ("loosey goosey" tests like `assert 'foo' in bar`) are strictly forbidden. Tests must assert complete object equality (`assert actual == expected`) and cover negative controls.
 </CRITICAL>
 
 <INVARIANT>
-Never merge code into the canonical trunk without a verified Two-Key Gate pass ('vine gate' exit code 0) inside an isolated Rift strand.
+Never merge code into the canonical trunk without passing the Three-Key Gate: Key 1 (mechanical merge-tree 'git merge-tree'), Key 2 (semantic test runner 'vine gate'), and Key 3 (Pre-Weave Adversarial Code Audit Pump with 0 open defects under the presumption of guilt) inside an isolated Rift strand.
 </INVARIANT>
 
 <FORBIDDEN>

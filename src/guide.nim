@@ -5,13 +5,13 @@
 import std/[os, strutils]
 
 const
-  GuideVersion* = "v2.1"
+  GuideVersion* = "v2.2"
   BeginMarker* = "<!-- BEGIN GARDEN GUIDE [" & GuideVersion & "] -->"
   EndMarker* = "<!-- END GARDEN GUIDE -->"
   MarkerPrefix* = "<!-- BEGIN GARDEN GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN GARDEN GUIDE [v2.1] -->
+<!-- BEGIN GARDEN GUIDE [v2.2] -->
 <!-- DO NOT EDIT DIRECTLY: Managed by `garden guide install` -->
 
 ## Garden Multi-Agent Swarm & Ceremony Guide
@@ -33,6 +33,10 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
   Workers discovering architectural discrepancies cannot unilaterally deviate from `design.md`. They must submit a formal `addendum_<topic>.md` with rationale, await Orchestrator ratification, update `design.md`, and refresh `implementation_plan.md`.
 * **Closed-Circuit & Holistic Integration Invariant**:
   Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Modules that are only imported by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the implementation must holistically integrate into the live application—it must never be a toy, stub, mock, or hollow heuristic approximation. If the deliverable is intended to replace, upgrade, or obsolete existing code or configuration, the legacy code MUST be deleted immediately in the same strand; hoarding dead code, maintaining vestigial fallbacks, or leaving commented-out logic in the codebase is strictly prohibited.
+* **Literal Fidelity & Reference Parity Mandate (Anti-Approximation)**:
+  When recreating, porting, reverse-engineering, duplicating functionality from an existing reference, or executing an operator directive where fidelity is expected, the deliverable must exhibit literal, true fidelity. Approximations ("looks right", "good enough for happy paths", or "approximate heuristic") are STRICTLY REJECTED. The implementation must literally be the thing that was asked for, matching all edge cases, type boundaries, flags, and error flows.
+* **Structural Assertion Rigor (Anti-Green-Mirage)**:
+  Partial or loose assertions ("loosey goosey" tests like `assert "foo" in bar` or `assert len(arr) > 0`) are strictly forbidden. Tests must assert complete object equality (`assert actual == expected`) and cover negative controls.
 
 ### 2. Fleet Lifecycle & Session Coordination
 * **Human Operator Absolute Override & ARM-NOW Invariant**:
@@ -54,13 +58,13 @@ npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapsh
 * **Post-Compaction Ceremony Restoration**:
   Whenever context compaction occurs in a session that used Garden, Rhizo, or Vine, the compaction summary MUST include an explicit directive commanding the resurrected agent to re-read the active coordination skills (`garden`, `orchestrate-swarm`, `rhizo`, `vine`) before executing any further tools. Upon waking from compaction, the agent MUST immediately re-read those skills to restore ceremony, gate protocols, and listener discipline. This directive must remain intact across all future compactions.
 * **Worker Autonomous Execution Invariant**:
-  When 'rhizo listen' unblocks and exits, a task has been delivered! Swarm workers operate as sovereign, autonomous implementers, not passive chatbots. Workers MUST NOT wait for an operator prompt or ask "Shall I start?". They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Two-Key Gate, report results, and re-arm the single-shot listener.
+  When 'rhizo listen' unblocks and exits, a task has been delivered! Swarm workers operate as sovereign, autonomous implementers, not passive chatbots. Workers MUST NOT wait for an operator prompt or ask "Shall I start?". They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Three-Key Gate, report results, and re-arm the single-shot listener.
 
-### 3. The Two-Key Gate & Strand Weaving
-Never weave a strand into the canonical trunk without passing both keys:
+### 3. The Three-Key Gate & Strand Weaving
+Never weave a strand into the canonical trunk without passing all three keys:
 * **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
-* **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand.
-* **Closed-Circuit Audit**: Verified active consumer call-site, holistic production integration (no stubs/toys), and obsolete legacy code completely purged.
+* **Key 2 (Semantic)**: Automated compiler and test suite run inside the strand (`vine gate`).
+* **Key 3 (Adversarial Code Audit Pump)**: Five-pillar adversarial audit under the presumption of guilt (Two-point diff, holistic integration, literal fidelity, carcass purge, structural assertions) with iterative Delta Re-Pump loop until 0 open defects remain.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
 * **Post-Push CI Verification**: After weaving and pushing to remote when CI is running, if your coding harness supports native timers/schedules, set a periodic check (default: every 5m, max 12 checks / 1h) to verify CI completion (`gh run list` / `gh run view`) and cancel the timer once CI passes or fails.
 <!-- END GARDEN GUIDE -->

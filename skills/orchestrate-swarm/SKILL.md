@@ -37,12 +37,14 @@ This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "
 </CRITICAL>
 
 <CRITICAL>
-Closed-Circuit Call-Site & Replacement Audit Invariant:
-The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, and dead code accumulation.
-Before executing `vine weave` on any worker strand, the Orchestrator MUST verify:
+Pre-Weave Adversarial Audit & Literal Fidelity Invariant:
+The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, superficial heuristics, and green mirages.
+Before executing `vine weave` on any worker strand, the Orchestrator MUST enforce the Five-Pillar Pre-Weave Adversarial Audit (Key 3 of the Three-Key Gate):
 1. Two-Point Diff: The branch modifies both a Provider and an active Consumer call-site (live router, CLI command dispatcher, UI, or event loop). Unwired modules tested solely by their own test suites are strictly rejected back to the worker as incomplete shelfware.
-2. Holistic Integration (Anti-Stub / Anti-Toy): Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, or shallow heuristics pretending to be integrated.
-3. Replacement Purge: All legacy or obsolete code targeted for replacement is completely deleted in the strand diff. Preserving dead code as "fallbacks" or leaving commented-out blocks is prohibited.
+2. Holistic Integration (Anti-Stub / Anti-Toy): Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, naive string splits, or shallow heuristics pretending to be integrated.
+3. Literal Fidelity & Reference Parity Mandate (Anti-Approximation): If the task ports, reverse-engineers, duplicates functionality from a reference, or executes a specific operator directive, it must exhibit literal, true fidelity. Approximations ("looks right", "good enough for happy paths") are strictly rejected. All edge cases, flags, type boundaries, and error flows must match the specification precisely.
+4. Replacement Purge: All legacy or obsolete code targeted for replacement is completely deleted in the strand diff. Preserving dead code as "fallbacks" or leaving commented-out blocks is prohibited.
+5. Structural Assertion Rigor (Anti-Green-Mirage): Reject tests relying on partial/loose assertions (`assert "foo" in bar` or `assert len(x) > 0`). Require full structural equality (`assert actual == expected`) and mandatory negative controls.
 Contract Exception: Only foundational tasks explicitly contracted as `[STAGED - NOT WIRED]` in `implementation_plan.md` may defer consumer wiring to a scheduled follow-up wiring task in the subsequent wave.
 </CRITICAL>
 
@@ -303,8 +305,8 @@ If a worker is waiting for a lease or has held a lock too long, probe its listen
 rhizo probe <worker>
 ```
 
-### SOP 3: Verifying Two-Key Gate & Weaving
-When a worker replies indicating task completion:
+### SOP 3: Verifying the Three-Key Gate & Pre-Weave Adversarial Audit
+When a worker replies indicating Key 1 & Key 2 completion:
 ```json
 {
   "status": "gate_passed",
@@ -316,12 +318,20 @@ When a worker replies indicating task completion:
 }
 ```
 
-The Orchestrator conducts the **Closed-Circuit Call-Site & Replacement Audit** before weaving:
-1. **Two-Point Diff Audit**: Inspect the strand diff against `origin/main` (`git -C "$strand_path" diff --name-only origin/main...HEAD`). Confirm that the diff touches BOTH the provider (new module/logic) AND at least one live consumer call-site (application entrypoint, router, CLI dispatcher, UI view). If the diff only contains the new module and unit tests (and was not contracted as `[STAGED - NOT WIRED]`), reject the strand back to the worker:
-   `rhizo reply --to <worker> --subject "Weave Blocked: Missing Consumer Call-Site" --body "Your deliverable lacks an active consumer call-site. Wire your provider into the live system before requesting weave."`
-2. **Holistic Integration Audit**: Verify that the integration uses real data flow and handles runtime state (no hollow stubs, fake data mocks, or superficial heuristic shortcuts).
-3. **Aggressive Replacement Purge**: Verify that any existing code, obsolete configurations, or vestigial fallbacks meant to be replaced by the feature were deleted in the strand diff.
-4. **Weave & Unlock**:
+The Orchestrator or designated Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit Pump** under the **Presumption of Guilt**:
+
+1. **Thesis Intake**: Demand the worker's **Deliverable Claim Bundle** (task contract, Two-Point Diff mapping, test evidence, negative controls).
+2. **Five-Pillar Presumption-of-Guilt Audit**:
+   - **Pillar 1 (Closed-Circuit Two-Point Diff)**: Inspect strand diff against `origin/main` (`git -C "$strand_path" diff --name-only origin/main...HEAD`). Confirm both Provider and live Consumer call-sites are modified. Reject hermetic shelfware lacking a live consumer.
+   - **Pillar 2 (Holistic Integration)**: Verify real production integration (no hollow mocks, stubs, naive string splits, or swallowed exceptions).
+   - **Pillar 3 (Literal Fidelity & Reference Parity)**: When duplicating functionality, porting, or executing specific operator directives, demand literal true fidelity. Reject approximations ("looks right", "good enough for happy paths") and verify edge case parity against reference specifications.
+   - **Pillar 4 (Aggressive Replacement Purge)**: Ensure all superseded legacy code, fallbacks, and commented-out blocks are deleted in the strand.
+   - **Pillar 5 (Structural Assertion Rigor)**: Reject partial/loose assertions (`assert "foo" in bar`). Mandate complete structural equality (`assert actual == expected`) and negative controls.
+3. **The Delta Re-Pump Loop**:
+   - If findings exist: emit `code_audit_report.md` with empirical citations. Worker fixes them in the strand.
+   - The auditor reviews the **git diff delta** against the previous audit commit (`git diff <audit_sha>...HEAD`) and re-runs `vine gate`.
+   - The pump repeats until **ZERO open defects of severity CRIT, HIGH, or MED remain**.
+4. **Weave & Unlock (Only after Key 3 Clearance)**:
 ```bash
 # 1. Weave the verified strand into main
 vine weave
