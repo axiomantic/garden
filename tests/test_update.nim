@@ -42,12 +42,24 @@ suite "Garden Triad Update Subsystem Suite":
     check loaded["settings"]["prompt_rider"].getBool() == true
 
   test "Install kind detection detects dev repo and binary paths":
-    # 1. Test against current repo directory (which is a dev source repo)
-    let vineDetection = detectInstallKind("vine")
-    # Vine is symlinked to /Users/eek/Development/vine/bin/vine
-    check vineDetection.kind == ikDevSource
-    check "git -C" in vineDetection.updateCommand
-    check "nimble build" in vineDetection.updateCommand
+    # 1. Hermetically test dev source detection using temporary test package
+    let tmpDevDir = getTempDir() / "garden_mock_dev_repo"
+    createDir(tmpDevDir / "bin")
+    writeFile(tmpDevDir / "mockpkg.nimble", "version = \"0.1.0\"\n")
+    let mockBin = tmpDevDir / "bin" / "mockpkg"
+    writeFile(mockBin, "#!/bin/sh\necho 0.1.0\n")
+    setFilePermissions(mockBin, {fpUserExec, fpUserRead, fpUserWrite})
+
+    let origPath = getEnv("PATH")
+    putEnv("PATH", (tmpDevDir / "bin") & ":" & origPath)
+    defer:
+      putEnv("PATH", origPath)
+      removeDir(tmpDevDir)
+
+    let devDetection = detectInstallKind("mockpkg")
+    check devDetection.kind == ikDevSource
+    check "git -C" in devDetection.updateCommand
+    check "nimble build" in devDetection.updateCommand
 
     # 2. Test against non-existent binary
     let unknownDetection = detectInstallKind("non_existent_binary_xyz_123")
