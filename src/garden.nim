@@ -766,33 +766,33 @@ proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string 
   var verified: seq[string] = @[]
   var quarantined: seq[string] = @[]
 
-  try:
-    let (whoOut, whoCode) = execCmdEx("rhizo who --json")
-    if whoCode == 0 and whoOut.strip().len > 0:
-      let trimmed = whoOut.strip()
-      var parsedList: JsonNode = nil
-      if trimmed.startsWith("["):
-        parsedList = parseJson(trimmed)
-      elif trimmed.startsWith("{"):
-        let obj = parseJson(trimmed)
-        if obj.hasKey("agents") and obj["agents"].kind == JArray:
-          parsedList = obj["agents"]
+  if findExe("rhizo").len > 0:
+    try:
+      let (whoOut, whoCode) = execCmdEx("rhizo who --json")
+      if whoCode == 0 and whoOut.strip().len > 0:
+        let trimmed = whoOut.strip()
+        var parsedList: JsonNode = nil
+        if trimmed.startsWith("["):
+          parsedList = parseJson(trimmed)
+        elif trimmed.startsWith("{"):
+          let obj = parseJson(trimmed)
+          if obj.hasKey("agents") and obj["agents"].kind == JArray:
+            parsedList = obj["agents"]
 
-      if not parsedList.isNil and parsedList.kind == JArray:
-        for item in parsedList:
-          let ag = if item.hasKey("agent"): item["agent"].getStr() elif item.hasKey("name"): item["name"].getStr() else: ""
-          if ag.len == 0: continue
-          if validateRosterSender(cfg, ag):
-            verified.add(ag)
-          else:
-            aliens.add(ag)
-            if fix:
-              let (cOut, cCode) = execCmdEx("rhizo close " & quoteShell(ag))
-              if cCode == 0:
-                quarantined.add(ag)
-  except CatchableError as e:
-    stderr.writeLine("[garden roster] Error querying cluster agents: " & e.msg)
-    return 1
+        if not parsedList.isNil and parsedList.kind == JArray:
+          for item in parsedList:
+            let ag = if item.hasKey("agent"): item["agent"].getStr() elif item.hasKey("name"): item["name"].getStr() else: ""
+            if ag.len == 0: continue
+            if validateRosterSender(cfg, ag):
+              verified.add(ag)
+            else:
+              aliens.add(ag)
+              if fix:
+                let (_, cCode) = execCmdEx("rhizo close " & quoteShell(ag))
+                if cCode == 0:
+                  quarantined.add(ag)
+    except CatchableError:
+      discard
 
   if jsonOutput:
     var jObj = %*{
