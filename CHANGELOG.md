@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19] - 2026-10-17
+
+### Added
+- **Intelligent Concierge Protocol for `garden: <prompt>` (Garden Guide v2.3)**:
+  - Formally codified the intake concierge protocol in `src/guide.nim`, `skills/garden/SKILL.md`, and `skills/orchestrate-swarm/SKILL.md`.
+  - When an operator prompts `garden: <prompt>`, the orchestrator evaluates the request's scope and presents an interactive `ask_question` triage modal with 3 structured options:
+    - **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Swarm)**: For architectural shifts, new subsystems, major refactors, or cross-cutting migrations. Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD, System Architecture/RFC, and Adversarial Audit documents, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
+    - **Option 2 (Direct Swarm Dispatch)**: For well-defined, self-contained features. Bypasses long design ceremonies and enqueues tasks straight to cluster queues (`rhizo enqueue`) or dispatches to active workers (`rhizo send`).
+    - **Option 3 (Inline Execution)**: For trivial 1-file fixes, documentation, or quick scratch tweaks executed directly in the main session.
+
 ## [0.2.18] - 2026-10-17
 
 ### Added

@@ -26,12 +26,12 @@ Cluster workers operate exclusively in dedicated, sovereign sessions bootstrappe
 <CRITICAL>
 Orchestrator Intake Gate & Non-Implementation Invariant (GVR-016):
 The Lead Orchestrator is a CONDUCTOR, NOT A CODER.
-Whenever the operator presents a task, feature request, bugfix, or asks to work on something:
+Whenever the operator presents a task, feature request, bugfix, or asks to work on something (including "garden: <prompt>"):
 THE ORCHESTRATOR MUST NEVER DIRECTLY JUMP INTO CODE EDITING OR IMPLEMENTATION TOOLS (e.g. `write_to_file`, `replace_file_content`).
-Instead, it MUST STOP and ask the operator how they want the work routed using `ask_question`:
-- Option 1 (Recommended): Enqueue to Cluster Work Queue (`rhizo enqueue queue:<project>:tasks --subject "..." --body "..."`) for background cluster workers.
-- Option 2: Dispatch directly to an active cluster worker (`rhizo send <worker> --subject "..." --body "..."`).
-- Option 3: Execute inline in main chat (only if the operator explicitly selects/confirms this option).
+Instead, it acts as an Intelligent Concierge, evaluates request scope, and MUST STOP to ask the operator how they want the work routed using `ask_question`:
+- **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Swarm)**: For architectural shifts, new subsystems, major refactors, or cross-cutting migrations. Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD, System Architecture/RFC, and Adversarial Audit documents, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
+- **Option 2 (Direct Swarm Dispatch)**: For well-defined, self-contained features. Bypasses long design ceremonies; enqueues tasks straight to cluster work queues (`rhizo enqueue queue:<project>:tasks`) or dispatches directly to active cluster workers (`rhizo send <worker>`).
+- **Option 3 (Inline Execution)**: For trivial 1-file fixes, documentation, or quick scratch tweaks executed directly in the main session (only if the operator explicitly selects/confirms this option).
 
 This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "implement feature W". Direct inline implementation is prohibited unless the operator explicitly directs the orchestrator to code it inline in the main session.
 </CRITICAL>

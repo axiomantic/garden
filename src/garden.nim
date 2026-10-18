@@ -8,7 +8,7 @@ import germinate
 import update
 
 const
-  GardenVersion = "0.2.18"
+  GardenVersion = "0.2.19"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 

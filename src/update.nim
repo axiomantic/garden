@@ -145,9 +145,9 @@ proc saveUpdatesConfig*(config: JsonNode) =
   except CatchableError:
     discard
 
-proc getInstalledVersion*(pkg: string, gardenVersionConst: string = ""): string =
-  if pkg == "garden" and gardenVersionConst.len > 0:
-    return gardenVersionConst
+proc getInstalledVersion*(pkg: string, callerVer: string = "", callerPkg: string = ""): string =
+  if (pkg == callerPkg or (callerPkg.len == 0 and (pkg == "vine" or pkg == "garden" or pkg == "rhizo"))) and callerVer.len > 0:
+    return callerVer
 
   let binCmd = pkg & " --version"
   let (outp, code) = try: execCmdEx(binCmd) except CatchableError: ("", 1)
@@ -185,7 +185,8 @@ proc fetchRemoteVersion*(pkg: string): string =
   return ""
 
 proc checkTriadUpdates*(
-  gardenVerConst: string = "",
+  callerVer: string = "",
+  callerPkg: string = "",
   force: bool = false
 ): JsonNode =
   var config = loadUpdatesConfig()
@@ -205,7 +206,8 @@ proc checkTriadUpdates*(
   var updatesAvailable = false
 
   for pkg in TriadPackages:
-    let installed = getInstalledVersion(pkg, gardenVerConst)
+    let installed = if pkg == callerPkg and callerVer.len > 0: callerVer
+                    else: getInstalledVersion(pkg, callerVer, callerPkg)
     let latest = fetchRemoteVersion(pkg)
     let effectiveLatest = if latest.len > 0: latest else: installed
     let hasUpdate = if installed.len > 0 and effectiveLatest.len > 0:
@@ -238,11 +240,11 @@ proc isAutonomousModeActive*(): bool =
   if fileExists(getCurrentDir() / ".autonomous"): return true
   return false
 
-proc getUpdatePromptRider*(gardenVerConst: string = ""): string =
+proc getUpdatePromptRider*(callerVer: string = "", callerPkg: string = ""): string =
   if isAutonomousModeActive():
     return ""
 
-  let config = checkTriadUpdates(gardenVerConst, force = false)
+  let config = checkTriadUpdates(callerVer, callerPkg, force = false)
   let settings = config{"settings"}
   if settings != nil and not settings{"prompt_rider"}.getBool(true):
     return ""
@@ -294,7 +296,8 @@ proc getUpdatePromptRider*(gardenVerConst: string = ""): string =
 
 proc doUpdateCommand*(
   args: seq[string],
-  gardenVerConst: string = ""
+  callerVer: string = "",
+  callerPkg: string = "garden"
 ): int =
   var forceCheck = false
   var applyUpdate = false
@@ -352,7 +355,7 @@ proc doUpdateCommand*(
     saveUpdatesConfig(config)
     return 0
 
-  let res = checkTriadUpdates(gardenVerConst, force = (forceCheck or applyUpdate or not config.hasKey("cached") or config["cached"].len == 0))
+  let res = checkTriadUpdates(callerVer, callerPkg, force = (forceCheck or applyUpdate or not config.hasKey("cached") or config["cached"].len == 0))
 
   if jsonOut:
     echo pretty(res)
@@ -383,7 +386,7 @@ proc doUpdateCommand*(
       echo "[UPDATES] No updates needed. All triad packages are current."
     else:
       # Refresh status
-      discard checkTriadUpdates(gardenVerConst, force = true)
+      discard checkTriadUpdates(callerVer, callerPkg, force = true)
     return overallCode
 
   # Default: display status

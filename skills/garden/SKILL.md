@@ -97,6 +97,33 @@ Execute phases sequentially. Never skip phases or invert the order.
 
 ### Phase 0: Interactive Project Intake & Swarm Calibration
 
+#### The Intelligent Concierge Protocol (`garden: <prompt>`)
+When the operator prefixes a request with `garden: <prompt>` (or directs a feature, refactor, or project task to Garden):
+The orchestrator MUST NOT immediately write code, edit files, or unilaterally launch massive multi-file changes.
+Instead, it acts as an **Intelligent Intake Concierge**:
+
+1. **Evaluate Request Scope & Blast Radius**:
+   - **High Complexity / Architectural Shifts / New Subsystems / Multi-File Migrations**: The request impacts foundational contracts, multiple modules, or shared abstractions. Requires empirical research, RFC design, adversarial review, and parallel strand isolation. Recommend **Option 1**.
+   - **Medium Complexity / Well-Defined Features / Self-Contained Deliverables**: The scope is clear, boundaries are known, and it can be implemented without a 3-stage dialectical design cycle. Recommend **Option 2**.
+   - **Low Complexity / Single-File Fixes / Documentation / Scratch Tweaks**: Trivial 1-file patch or config change. Recommend **Option 3**.
+
+2. **Present Interactive Triage Modal (`ask_question`)**:
+   The orchestrator invokes `ask_question` with 3 mutually exclusive options clearly explaining the tradeoffs:
+   - **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Swarm)**:
+     *Scope*: Architectural shifts, new subsystems, major refactors, or cross-cutting migrations.
+     *Process*: Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD, System Architecture/RFC, and Adversarial Audit documents, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
+   - **Option 2 (Direct Swarm Dispatch)**:
+     *Scope*: Well-defined, self-contained features, bugfixes, or bounded deliverables.
+     *Process*: Bypasses heavy research/design documentation; enqueues tasks straight to cluster work queues (`rhizo enqueue queue:<project>:tasks`) or dispatches directly to active workers (`rhizo send <worker>`).
+   - **Option 3 (Inline Execution)**:
+     *Scope*: Trivial 1-file fixes, documentation, typo corrections, or quick scratch scripts.
+     *Process*: Executes directly within the main session without provisioning worker sessions or cluster overhead.
+
+3. **Execution Branching**:
+   - **If Option 1 selected**: Run `garden plant "<prompt>"`, then proceed to Cold-Start Swarm Calibration / Phase 1 `choose-personas` (or attach to active swarm via Fast-Path) and Phase 3 `dialectical-pump`.
+   - **If Option 2 selected**: Check `rhizo who --json`. If workers are online, dispatch via `rhizo send` or `rhizo enqueue`. If cold, run Cold-Start Swarm Calibration to spin up workers.
+   - **If Option 3 selected**: Execute inline in the current session.
+
 #### Fast-Path: Re-using an Active / Existing Swarm (First-Look Invariant)
 Before asking ANY intake questions or presenting configuration modals, the orchestrator MUST run `rhizo who --json` to inspect the cluster.
 If active, healthy workers are ALREADY registered and listening on the Rhizo cluster:
