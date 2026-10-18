@@ -46,12 +46,13 @@ suite "Garden Triad Update Subsystem Suite":
     let tmpDevDir = getTempDir() / "garden_mock_dev_repo"
     createDir(tmpDevDir / "bin")
     writeFile(tmpDevDir / "mockpkg.nimble", "version = \"0.1.0\"\n")
-    let mockBin = tmpDevDir / "bin" / "mockpkg"
-    writeFile(mockBin, "#!/bin/sh\necho 0.1.0\n")
+    let binExt = if defined(windows): ".cmd" else: ""
+    let mockBin = tmpDevDir / "bin" / ("mockpkg" & binExt)
+    writeFile(mockBin, if defined(windows): "@echo 0.1.0\r\n" else: "#!/bin/sh\necho 0.1.0\n")
     setFilePermissions(mockBin, {fpUserExec, fpUserRead, fpUserWrite})
 
     let origPath = getEnv("PATH")
-    putEnv("PATH", (tmpDevDir / "bin") & ":" & origPath)
+    putEnv("PATH", (tmpDevDir / "bin") & PathSep & origPath)
     defer:
       putEnv("PATH", origPath)
       removeDir(tmpDevDir)

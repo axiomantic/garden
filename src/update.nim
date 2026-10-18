@@ -54,11 +54,14 @@ proc isNewerSemver*(remoteVer, localVer: string): bool =
   return r.patch > l.patch
 
 proc detectInstallKind*(binName: string): tuple[kind: InstallKind, realPath: string, updateCommand: string] =
-  let (whichOut, whichCode) = try: execCmdEx("which " & binName) except CatchableError: ("", 1)
-  if whichCode != 0 or whichOut.strip().len == 0:
-    return (ikGlobalNpm, "", "npm install -g @axiomantic/" & binName)
+  var rawPath = findExe(binName)
+  if rawPath.len == 0:
+    let (whichOut, whichCode) = try: execCmdEx("which " & binName) except CatchableError: ("", 1)
+    if whichCode == 0 and whichOut.strip().len > 0:
+      rawPath = whichOut.strip()
+    else:
+      return (ikGlobalNpm, "", "npm install -g @axiomantic/" & binName)
 
-  let rawPath = whichOut.strip()
   var realPath = rawPath
   try:
     if symlinkExists(rawPath):
@@ -74,7 +77,9 @@ proc detectInstallKind*(binName: string): tuple[kind: InstallKind, realPath: str
     return (ikDevSource, realPath, "git -C " & quoteShell(repoDir) & " pull && (cd " & quoteShell(repoDir) & " && nimble build -d:release)")
 
   # Check 2: Local node_modules
-  if "node_modules/.bin" in rawPath or "node_modules/@axiomantic" in realPath:
+  let normRaw = rawPath.replace('\\', '/')
+  let normReal = realPath.replace('\\', '/')
+  if "node_modules/.bin" in normRaw or "node_modules/@axiomantic" in normReal:
     if fileExists("pnpm-lock.yaml"):
       return (ikLocalNpm, realPath, "pnpm update @axiomantic/" & binName)
     elif fileExists("yarn.lock"):
