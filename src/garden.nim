@@ -8,7 +8,7 @@ import germinate
 import update
 
 const
-  GardenVersion = "0.2.19"
+  GardenVersion = "0.2.20"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -379,7 +379,11 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "- **Isolated Workspaces (Vine Strands)**:\n"
   result &= "  Always isolate task changes inside a dedicated Vine strand:\n"
   result &= "  `vine new <task_id>`\n"
-  result &= "  Verify before reporting completion with the Two-Key Gate:\n"
+  result &= "- **Pre-Weave Changelog Discipline**:\n"
+  result &= "  If the project has a changelog (CHANGELOG.md), record your user-facing changes under '## [Unreleased]':\n"
+  result &= "  `vine changelog \"Description of changes\"` (or `vine changelog --ensure-unreleased`)\n"
+  result &= "- **Verification & Two-Key Gate**:\n"
+  result &= "  Verify before reporting completion with the Two-Key Gate (verifies mergeability, tests, and changelog update):\n"
   result &= "  `vine gate`\n"
   result &= "- **Reporting & Acknowledging**:\n"
   result &= "  Send status updates or gate reports back to the Orchestrator:\n"

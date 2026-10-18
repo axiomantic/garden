@@ -154,11 +154,20 @@ The Thesis in a code review is neither a raw dump of files nor vague conversatio
 - Test Suite Executed: Exact command and execution time
 - Assertion Style: Complete structural equality (`assert actual == expected`) or tripwire snapshots
 - Negative Controls: List of tests asserting failure under invalid/adversarial inputs
+
+## 4. Changelog & Release Discipline
+- Changelog Target: Path to changelog (`CHANGELOG.md`) or explicitly marked bypass (`--allow-no-changelog`)
+- Unreleased Entry: Exact entry recorded under `## [Unreleased]` via `vine changelog`
 ```
 
 ### Step 4.2: The Five-Pillar Forensic Code Audit (Antithesis)
 
-The Auditor executes the following five rigorous checks against the Claim Bundle and the strand diff (`git diff origin/main...HEAD`):
+The Auditor executes the following checks against the Claim Bundle and the strand diff (`git diff origin/main...HEAD`):
+
+#### Pillar 0: Changelog Gate & Release Discipline
+- [ ] **Changelog Updated**: If the project contains a changelog (`CHANGELOG.md`, `changelog.md`, etc.), verify that the strand diff modifies it under `## [Unreleased]`.
+- [ ] **No Unreleased Section Missing**: Verify that `## [Unreleased]` exists (scaffolded via `vine changelog --ensure-unreleased` if needed).
+- [ ] **Exit Code 5 Clearance**: Confirm `vine gate` passed without `GATE_CHANGELOG_VIOLATION` (or `--allow-no-changelog` was explicitly justified).
 
 #### Pillar 1: Disconnected Shelfware & Closed-Circuit Consumer Audit
 - [ ] **Live Consumer Call-Site Verification**: Does the new capability plug directly into the production entrypoint, router, CLI dispatcher, or UI?

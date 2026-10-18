@@ -322,6 +322,7 @@ The Orchestrator or designated Auditor initiates **Key 3: The Pre-Weave Adversar
 
 1. **Thesis Intake**: Demand the worker's **Deliverable Claim Bundle** (task contract, Two-Point Diff mapping, test evidence, negative controls).
 2. **Five-Pillar Presumption-of-Guilt Audit**:
+   - **Changelog Gate (Key 2 Interlock)**: If the repository contains a changelog (`CHANGELOG.md`, `changelog.md`, etc.), verify that changes are documented under `## [Unreleased]`. Confirm `vine gate` passed without changelog violations (or verify worker ran `vine changelog "..."`). Reject if an existing changelog is untouched unless `--allow-no-changelog` was explicitly approved.
    - **Pillar 1 (Closed-Circuit Two-Point Diff)**: Inspect strand diff against `origin/main` (`git -C "$strand_path" diff --name-only origin/main...HEAD`). Confirm both Provider and live Consumer call-sites are modified. Reject hermetic shelfware lacking a live consumer.
    - **Pillar 2 (Holistic Integration)**: Verify real production integration (no hollow mocks, stubs, naive string splits, or swallowed exceptions).
    - **Pillar 3 (Literal Fidelity & Reference Parity)**: When duplicating functionality, porting, or executing specific operator directives, demand literal true fidelity. Reject approximations ("looks right", "good enough for happy paths") and verify edge case parity against reference specifications.
