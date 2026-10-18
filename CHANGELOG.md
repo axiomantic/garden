@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Unbootstrapped Session Identity & Active Listener Hijacking Guardrails (`src/guide.nim`, `skills/garden/SKILL.md`)**:
+  - Bumped Garden Guide to `v2.5` with the `Unbootstrapped Session Identity Invariant` and `Never Hijack or Kill Another Session's Active Listener` rule.
+  - Clarified in `skills/garden/SKILL.md` that the Active Swarm Fast-Path applies exclusively to sessions designated as Lead Orchestrator, prohibiting fresh unbootstrapped sessions from adopting `<project>-orchestrator`.
+
+### Fixed
+- **Cross-Platform CI & Windows Path Handling (`src/update.nim`, `tests/test_update.nim`)**:
+  - Replaced `which` shell command with cross-platform `findExe` in `detectInstallKind` to properly locate executables on Windows.
+  - Normalized path separators with `replace('\\', '/')` and `std/os.PathSep` in tests and mock executable runners.
+
 ## [0.2.20] - 2026-10-18
 
 ### Added
