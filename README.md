@@ -92,17 +92,6 @@ Garden provides comprehensive ceremony, manifest, and protocol specifications:
 
 ---
 
-## Standalone Yet Designed for the Axiomantic Triad
-
-Garden is completely standalone and can direct multi-agent dialectics, persona selection, and prompt-bootstrapped worker swarms on any codebase.
-
-However, Garden is designed from the ground up to pair seamlessly with **Rhizo** and **Vine**:
-- [**Rhizo**](https://github.com/axiomantic/rhizo) (Transport & Concurrency): Inter-agent messaging bus, monotonic fencing locks, and task queues over Redis.
-- [**Vine**](https://github.com/axiomantic/vine) (Workspaces & Verification): Zero-cost Rift copy-on-write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
-- **Garden** (Swarm Ceremonies): Prompt-based worker session bootstrapping, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
-
----
-
 ## Installation
 
 ### 1. For AI Coding Assistants (Recommended)
