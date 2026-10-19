@@ -9,7 +9,7 @@ Thumbs.db
 
 # Dependencies & Caches
 bin/*
-!bin/run.js
+!bin/*.js
 node_modules/
 .npm
 __pycache__/

@@ -40,6 +40,17 @@ jobs:
         run: |
           nimble test
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Verify bin riders
+        run: node tests/test_riders.js
+
   auto-tag:
     name: Auto-Tag on Version Bump
     needs: [test]

@@ -278,7 +278,7 @@ jobs:
           cp /tmp/win/${PKG_NAME}.exe bin/binaries/${PKG_NAME}-win32-x64.exe
           test -f bin/binaries/${PKG_NAME}-win32-x64.exe
 
-          chmod 755 bin/binaries/* bin/run.js
+          chmod 755 bin/binaries/* bin/*.js
           echo "Assembled fat-package binaries in bin/binaries/:"
           ls -lh bin/binaries/
 
@@ -286,7 +286,7 @@ jobs:
         if: steps.npm-check.outputs.already_published == 'false'
         run: |
           rm -f bin/garden bin/garden.exe
-          chmod 755 bin/run.js
+          chmod 755 bin/*.js
 
       - name: Publish to npm via OIDC
         if: steps.npm-check.outputs.already_published == 'false'

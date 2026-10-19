@@ -1,14 +1,20 @@
 {
   "name": "@axiomantic/garden",
-  "version": "0.2.21",
+  "version": "0.2.22",
   "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine",
   "main": "bin/run.js",
   "bin": {
-    "garden": "bin/run.js"
+    "garden": "bin/run.js",
+    "rhizo": "bin/rhizo.js",
+    "vine": "bin/vine.js",
+    "rift": "bin/rift.js"
   },
   "skills": "./skills",
   "files": [
     "bin/run.js",
+    "bin/rhizo.js",
+    "bin/vine.js",
+    "bin/rift.js",
     "bin/binaries/",
     "scripts/",
     "skills/",
@@ -24,7 +30,7 @@
     "url": "git+https://github.com/axiomantic/garden.git"
   },
   "scripts": {
-    "test": "nim c -r tests/test_garden.nim && nim c -r tests/test_seed.nim && nim c -r tests/test_germinate.nim && nim c -r tests/test_update.nim",
+    "test": "nim c -r tests/test_garden.nim && nim c -r tests/test_seed.nim && nim c -r tests/test_germinate.nim && nim c -r tests/test_update.nim && node tests/test_riders.js",
     "build": "nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim"
   },
   "keywords": [
@@ -42,5 +48,10 @@
   "bugs": {
     "url": "https://github.com/axiomantic/garden/issues"
   },
-  "homepage": "https://github.com/axiomantic/garden#readme"
+  "homepage": "https://github.com/axiomantic/garden#readme",
+  "dependencies": {
+    "@axiomantic/rhizo": "^0.2.23",
+    "@axiomantic/vine": "^0.2.12",
+    "rift-snapshot": "^0.0.13"
+  }
 }

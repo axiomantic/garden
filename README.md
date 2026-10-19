@@ -128,15 +128,17 @@ npx skills add -g axiomantic/garden
 Install the compiled CLI tools directly onto your `$PATH`:
 
 ```bash
-# Install all three tools:
-npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapshot
-
-# Or install Garden alone:
+# Recommended: Install Garden (automatically carries rhizo, vine, and rift bin riders):
 npm install -g @axiomantic/garden
+
+# Or install individual components explicitly if desired:
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden rift-snapshot
 ```
 
 > [!TIP]
-> **Zero-Install Run via NPX**: In restricted or containerized environments where global installation is unavailable, you can run any command directly without installing:
+> **All-In-One Toolchain**: `@axiomantic/garden` carries first-class bin riders for `garden`, `rhizo`, `vine`, and `rift`. Installing `@axiomantic/garden` makes all four commands immediately accessible in your `$PATH`.
+>
+> In restricted or containerized environments where global installation is unavailable, you can run any command directly without installing:
 > ```bash
 > npx -y @axiomantic/garden <command>
 > ```
