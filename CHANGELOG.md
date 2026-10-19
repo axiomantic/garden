@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.21] - 2026-10-18
+
 ### Added
 - **Unbootstrapped Session Identity & Active Listener Hijacking Guardrails (`src/guide.nim`, `skills/garden/SKILL.md`)**:
   - Bumped Garden Guide to `v2.5` with the `Unbootstrapped Session Identity Invariant` and `Never Hijack or Kill Another Session's Active Listener` rule.
