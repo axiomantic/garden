@@ -27,9 +27,9 @@
 > ```text
 > "garden: I want to build [feature/system/project]"
 > ```
-> The session automatically acts as the **Lead Orchestrator**. It auto-detects your coding harness and conducts a single-question intake interview to calibrate your desired team shape and session-default models. It then configures your project (`garden.toml` & `garden-swarm.json`) and prints ready-to-copy prompt cards wrapped in **10 backticks** (` ``````````markdown `). You paste these cards into separate terminal tabs or coding harnesses, and Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
+> The session automatically acts as the **Lead Orchestrator**. It auto-detects your coding harness and conducts a single-question intake interview to calibrate your desired team shape and session-default models. It then configures your project (`garden.toml` & `garden-swarm.json`) and writes prompt cards to files for you to manually assign to new or existing chat sessions. Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
 
-Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated Rift copy-on-write strands verified by Vine's Two-Key Gate.
+Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), drives discussion between agents, and integrates code through fast isolated workspaces only after quality gates have passed.
 
 ```mermaid
 flowchart TD
