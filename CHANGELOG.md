@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.22] - 2026-10-19
+
+### Added
+- **All-in-One Swarm Toolchain Bin Riders (`package.json`, `bin/rhizo.js`, `bin/vine.js`, `bin/rift.js`, `tests/test_riders.js`)**:
+  - Added first-class binary riders for `rhizo`, `vine`, and `rift` directly into `@axiomantic/garden`.
+  - Installing `@axiomantic/garden` via `npm install -g @axiomantic/garden` now automatically links all 4 CLI executables (`garden`, `rhizo`, `vine`, and `rift`) into the user's global `$PATH`.
+  - Bundled `@axiomantic/rhizo@^0.2.23`, `@axiomantic/vine@^0.2.12`, and `rift-snapshot@^0.0.13` as dependencies with clean stdio-inheriting delegation runners.
+
 ## [0.2.21] - 2026-10-18
 
 ### Added
