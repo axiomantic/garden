@@ -16,7 +16,7 @@ The Orchestrator authors `implementation_plan.md` adhering to four core invarian
 
 1. **Deterministic Assignment**: Every subtask has exactly one primary persona owner.
 2. **Resource Fencing Before Mutation**: Any non-mergeable resource (e.g. database schemas, configuration files, migration scripts) must have an explicit `rhizo lock file:<path> --fencing` lease scheduled before modification begins.
-3. **Workspace Isolation via Vine**: Complex, multi-file changes must occur in isolated Rift strands (`vine new <task_id>`). Strands cannot be woven until passing the Two-Key Gate (`vine gate`).
+3. **Workspace Isolation via Vine**: Complex, multi-file changes must occur in isolated Rift strands (`vine new <task_id>`). Strands cannot be woven until passing the Three-Key Gate (`vine submit`, `vine audit approve`, `vine weave`).
 4. **Zero Silent Architectural Drift**: If an implementer encounters an unforeseen constraint during coding, it cannot unilaterally alter the architecture. It must submit a formal design addendum.
 5. **Closed-Circuit Two-Point Diff & Holistic Integration**: Every task specification must declare both the **Provider** (new capability) and the active **Consumer Call-Site** (runtime entrypoint, router, UI canvas, or CLI loop). Modules tested only by isolated unit tests are strictly prohibited as incomplete shelfware. The implementation must holistically integrate with real application state and live events (no toys, stubs, mocks, or hollow approximations). Any code intended to be replaced must be explicitly scheduled for **immediate deletion** in the same strand—never kept as a vestigial fallback or commented-out logic.
 
@@ -59,13 +59,11 @@ For all parallel development tracks:
 2. **Execute Work Inside Strand**:
    - Implement code changes.
    - Run local unit tests and formatters.
-3. **Two-Key Gate Verification**:
-   ```bash
-   vine gate --json
-   ```
-   *Must verify exit code 0: Key 1 (in-memory merge-tree) PASS + Key 2 (compiler/test suite) PASS.*
+3. **Three-Key Gate Verification**:
+   - **Worker**: Runs `vine submit --author <worker>` (evaluates Key 1 mechanical merge-tree + Key 2 live compiler/test suite + changelog).
+   - **Independent Auditor**: Inspects Five Pillars and runs `vine audit approve --auditor <auditor>` (Key 3 ratification, stamps `audit_token`). Remember: THE WORKER IS NOT THE AUDITOR.
 4. **Trunk Weaving**:
-   *Orchestrator fast-forwards verified branch into main:*
+   *Orchestrator fast-forwards ratified branch into main:*
    ```bash
    vine weave
    ```
@@ -82,14 +80,14 @@ For all parallel development tracks:
   - *Consumer / Call-Site*: Wire into `src/parser.nim` parse loop and `src/eval.nim`
   - *Replacement Deletion*: Delete deprecated ad-hoc string tuples in `src/legacy_types.nim`
   - *Holistic Verification*: Real AST nodes evaluate in full parser pipeline (no dummy mocks)
-  - *Weave*: `vine gate && vine weave && rhizo unlock file:src/types.nim`
+  - *Weave*: `vine submit && vine audit approve && vine weave && rhizo unlock file:src/types.nim`
 
 - [ ] **Task 1.2: Test Harness & Negative Controls** (`<project>-auditor`)
   - *Strand*: `strand/task-test-harness`
   - *Provider*: `tests/test_harness.py`
   - *Consumer / Call-Site*: Wire test runner into CI workflow and `tests/all.py`
   - *Verification*: `pytest tests/test_harness.py` (proves negative controls catch malformed JSON)
-  - *Weave*: `vine gate && vine weave`
+  - *Weave*: `vine submit && vine audit approve && vine weave`
 
 ### Phase 2: High-Level CLI & Integration
 - [ ] **Task 2.1: CLI Subcommand Wiring** (`implementer`)
@@ -99,7 +97,7 @@ For all parallel development tracks:
   - *Consumer / Call-Site*: Wire into `src/main.nim` CLI argument dispatcher table
   - *Replacement Deletion*: Delete old prototype script `scripts/gen_proto.sh`
   - *Holistic Verification*: Run compiled binary `app generate --input data.json` and verify live output
-  - *Weave*: `vine gate && vine weave`
+  - *Weave*: `vine submit && vine audit approve && vine weave`
 
 ---
 
@@ -131,5 +129,5 @@ If a worker discovers that an assumption in `design.md` is flawed or impossible 
 Before handing off to [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md):
 1. Assert that every task names a concrete persona owner.
 2. Assert that all shared files have fencing locks scheduled.
-3. Assert that all tasks requiring branch isolation specify `vine new` and `vine gate`.
+3. Assert that all tasks requiring branch isolation specify `vine new`, `vine submit`, and `vine audit approve`.
 4. Save file to `implementation_plan.md` in the project root.

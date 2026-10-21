@@ -1,12 +1,12 @@
 ---
 name: orchestrate-swarm
-description: "Directs live multi-agent swarm execution from the primary chat session acting as Lead Orchestrator. Dispatches tasks over the Rhizo Redis bus, monitors worker heartbeats with rhizo who, governs task leasing and dead-letter queues, ratifies emergent design addenda, verifies Two-Key Gate reports from workers, executes fast-forward trunk merges via vine weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
+description: "Directs live multi-agent swarm execution from the primary chat session acting as Lead Orchestrator. Dispatches tasks over the Rhizo Redis bus, monitors worker heartbeats with rhizo who, governs task leasing and dead-letter queues, ratifies emergent design addenda, enforces the Three-Key Gate and independent adversarial audit ratification, executes fast-forward trunk merges via vine weave, and dynamically maintains implementation plan checkboxes and harness To-Do tools. Triggers: 'orchestrate swarm', 'run implementation plan', 'execute swarm tasks', 'manage workers', 'drive plan'."
 ---
 
 # `orchestrate-swarm`: Main-Chat Swarm Governance & Trunk Integration
 
 > **The Sovereign Conductor of Autonomous Execution**  
-> *The Lead Orchestrator does not write the low-level code lines; it directs the symphony. It dispatches work over Redis, unblocks dependencies, enforces the Two-Key Gate, and weaves clean strands into the trunk.*
+> *The Lead Orchestrator does not write the low-level code lines; it directs the symphony. It dispatches work over Redis, unblocks dependencies, enforces the Three-Key Gate, and weaves clean strands into the trunk.*
 
 ---
 
@@ -15,12 +15,19 @@ description: "Directs live multi-agent swarm execution from the primary chat ses
 The main chat session assumes the role of **Lead Orchestrator**:
 - **Non-Interference**: Never perform massive multi-file edits directly when workers are active in isolated strands.
 - **Strict Transport Discipline**: All task assignments, handoffs, and cancellation interrupts flow exclusively over the Rhizo Redis bus (`rhizo send`, `rhizo reply`, `rhizo enqueue`).
-- **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed both Key 1 (mechanical merge-tree) and Key 2 (live compiler/tests) inside their Vine strands.
+- **Gated Integration**: Never run `git merge` directly. Only weave branches that have passed Key 1 (mechanical merge-tree), Key 2 (live compiler/tests + changelog) inside their Vine strands, and Key 3 (independent adversarial audit ratification via `vine audit approve`).
 
 <CRITICAL>
-Delegation Precedence & Sovereign Session Invariant:
+The Worker is NOT the Auditor Invariant:
+Workers are autonomous implementers, NEVER their own auditors. When a worker completes their tasks and passes Keys 1 & 2, they MUST run 'vine submit' to mark the strand READY_FOR_AUDIT. The worker is strictly forbidden from executing 'vine audit approve' on their own work.
+The Lead Orchestrator provisions an independent Adversarial Auditor persona to inspect the strand, verify the Five Pillars, and run 'vine audit approve --auditor <name>'. Self-auditing is mechanically rejected by Vine (ExitGateAuditViolation = 6).
+</CRITICAL>
+
+<CRITICAL>
+Delegation Precedence & Operator-Named Worker Mandate:
 Whenever instructed to "delegate", "assign", or "dispatch" work, the Lead Orchestrator MUST route tasks to active cluster workers via Rhizo (`rhizo send <worker>`, `rhizo enqueue queue:<project>:tasks`, or `rhizo task assign/claim`).
 Cluster workers operate exclusively in dedicated, sovereign sessions bootstrapped via 10-backtick prompt cards. NEVER spawn harness-internal subagents (e.g. `invoke_subagent`, `Task`, OpenCode subtasks) to act as cluster workers. Internal subagents are ephemeral, cannot maintain persistent blocking listeners, and cause severe context poisoning. Harness-internal subagents are restricted solely to transient, single-turn ad-hoc inspections in non-swarm solo chats when the operator explicitly specifies the word "subagent".
+Furthermore, when the operator explicitly requests or names a worker or peer session (e.g. 'u + autopxd-architect' or 'assign to worker-1'), the Lead Orchestrator MUST dispatch directly to that named recipient over Rhizo (`rhizo send --to <worker> ...`). The orchestrator MUST NEVER gate delegation on whether that worker appears in local single-project `rhizo who`, and MUST NEVER fall back to internal subagents. When inspecting the cluster roster for active workers, an orchestrator MUST query `rhizo who --all --json` (or check specific peers via `rhizo who <worker>` / `rhizo probe <worker>`). Never assume the cluster is empty based solely on local single-project `rhizo who` output.
 </CRITICAL>
 
 <CRITICAL>
@@ -37,11 +44,12 @@ This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "
 </CRITICAL>
 
 <CRITICAL>
-Pre-Weave Adversarial Audit & Literal Fidelity Invariant:
-The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, superficial heuristics, and green mirages.
+Pre-Weave Adversarial Audit, Anti-Defeat-Device & Literal Fidelity Invariant:
+The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, superficial heuristics, benchmark defeat devices, and green mirages.
+Intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP). They are pre-authorized, mandatory, and autonomous across the Triad; the Orchestrator executes them automatically without prompting for human operator input.
 Before executing `vine weave` on any worker strand, the Orchestrator MUST enforce the Five-Pillar Pre-Weave Adversarial Audit (Key 3 of the Three-Key Gate):
 1. Two-Point Diff: The branch modifies both a Provider and an active Consumer call-site (live router, CLI command dispatcher, UI, or event loop). Unwired modules tested solely by their own test suites are strictly rejected back to the worker as incomplete shelfware.
-2. Holistic Integration (Anti-Stub / Anti-Toy): Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, naive string splits, or shallow heuristics pretending to be integrated.
+2. Holistic Integration & Anti-Defeat-Device: Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, naive string splits, or prompt keyword interceptors (e.g. 'if flight game in q'). Any prompt-matching defeat device that bypasses genuine pipelines to fake benchmark compliance is mechanically rejected at Key 2 (`ExitGateDefeatDeviceViolation` = 7) and Key 3.
 3. Literal Fidelity & Reference Parity Mandate (Anti-Approximation): If the task ports, reverse-engineers, duplicates functionality from a reference, or executes a specific operator directive, it must exhibit literal, true fidelity. Approximations ("looks right", "good enough for happy paths") are strictly rejected. All edge cases, flags, type boundaries, and error flows must match the specification precisely.
 4. Replacement Purge: All legacy or obsolete code targeted for replacement is completely deleted in the strand diff. Preserving dead code as "fallbacks" or leaving commented-out blocks is prohibited.
 5. Structural Assertion Rigor (Anti-Green-Mirage): Reject tests relying on partial/loose assertions (`assert "foo" in bar` or `assert len(x) > 0`). Require full structural equality (`assert actual == expected`) and mandatory negative controls.
@@ -128,7 +136,7 @@ Safety Net (In-Flight Task Liveness Probe & Watchdog Protocol):
 
 ## Unified Work Item State Machine (WISM)
 
-Rhizo, Garden, and Vine coordinate all multi-agent work through the formal **Work Item State Machine (WISM)**. Every task progresses through 10 deterministic states with atomic Redis transitions, automated DAG unblocking, and Two-Key integration gates.
+Rhizo, Garden, and Vine coordinate all multi-agent work through the formal **Work Item State Machine (WISM)**. Every task progresses through deterministic states with atomic Redis transitions, automated DAG unblocking, and Three-Key integration gates.
 
 ```mermaid
 stateDiagram-v2
@@ -143,14 +151,18 @@ stateDiagram-v2
 
     CLAIMED --> IN_PROGRESS : Worker provisions strand (vine new <id>)
     IN_PROGRESS --> IN_PROGRESS : Progress reported (rhizo task progress, lease extended)
-    IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine gate)
+    IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine submit / vine gate)
     IN_PROGRESS --> YIELDED : rhizo task yield (Returned to pool)
     IN_PROGRESS --> ORPHANED : Lease expires without progress
 
-    GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red or merge conflict)
-    GATE_EVALUATING --> READY_TO_WEAVE : Two-Key Gate PASSED (Cryptographic gate token stamped)
+    GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red, changelog missing, or merge conflict)
+    GATE_EVALUATING --> READY_FOR_AUDIT : Keys 1 & 2 PASSED (vine submit, gate token stamped)
 
-    READY_TO_WEAVE --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
+    READY_FOR_AUDIT --> AUDIT_RATIFIED : Key 3 PASSED (vine audit approve, audit token stamped)
+    READY_FOR_AUDIT --> AUDIT_REJECTED : Key 3 FAILED (vine audit reject)
+    AUDIT_REJECTED --> IN_PROGRESS : Remediate defects in strand
+
+    AUDIT_RATIFIED --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
 
     ORPHANED --> QUEUED : Re-queued for retry (attempts < 3)
     ORPHANED --> DEAD_LETTER : Max delivery retries exceeded (attempts >= 3)
@@ -194,17 +206,24 @@ stateDiagram-v2
    +-------------+
      │        ▲
      │ vine   │ Gate fails
-     │ gate   │ (Tests red or conflict)
+     │ submit │ (Tests red or conflict)
      ▼        │
   +-----------------+
   | GATE_EVALUATING |
   +-----------------+
           │
-          │ Two-Key Gate PASSED (Key 1 merge-tree + Key 2 live test suite green)
+          │ Keys 1 & 2 PASSED (vine submit: merge-tree + live test suite green)
           ▼
-  +----------------+
-  | READY_TO_WEAVE |
-  +----------------+
+  +------------------+
+  | READY_FOR_AUDIT  | ◄──────────────────────┐
+  +------------------+                        │
+     │            │                           │
+     │ approve    │ reject                    │ Remediate
+     ▼            ▼                           │
+  +------------+ +----------------+           │
+  | AUDIT_     | | AUDIT_REJECTED | ──────────┘
+  | RATIFIED   | +----------------+
+  +------------+
           │
           │ vine weave && rhizo task complete
           ▼
@@ -220,13 +239,19 @@ stateDiagram-v2
 | **`DRAFTED`** | `rhizo task create <id> --title <t>` | Creates immutable task contract hash `task:<id>` in Redis. | N/A |
 | **`BLOCKED`** | Evaluated on create | Stamped if `depends_on` contains incomplete tasks. Workers cannot claim. | N/A |
 | **`QUEUED`** | Auto on create or parent complete | Pushed to queue/inbox. Available for worker consumption. | N/A |
-| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $ightarrow$ `ORPHANED` |
-| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $ightarrow$ `ORPHANED` |
-| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $ightarrow$ `ORPHANED` |
-| **`GATE_EVALUATING`**| `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite) evaluated. | Exit 1 $ightarrow$ `CONFLICTED`<br>Exit 2 $ightarrow$ `GATE_FAILED` |
-| **`READY_TO_WEAVE`** | Both keys pass 100% | Cryptographic gate token stamped (`gate_token`). Report sent to orchestrator. | N/A |
-| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $ightarrow$ `QUEUED`)!** | N/A |
-| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
+| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $
+ightarrow$ `ORPHANED` |
+| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $
+ightarrow$ `ORPHANED` |
+| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $
+ightarrow$ `ORPHANED` |
+| **`GATE_EVALUATING`**| `vine submit` / `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite + changelog) evaluated. | Exit 1 $\rightarrow$ `CONFLICTED`<br>Exit 2 $\rightarrow$ `GATE_FAILED` |
+| **`READY_FOR_AUDIT`**| `vine submit` | Keys 1 & 2 passed. Strand submitted for independent adversarial review. | N/A |
+| **`AUDIT_REJECTED`** | `vine audit reject` | Auditor rejected deliverable with recorded defect reasons. Worker returns to `IN_PROGRESS` for delta remediation. | N/A |
+| **`AUDIT_RATIFIED`** | `vine audit approve` | Key 3 passed! Cryptographic `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). | N/A |
+| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $\rightarrow$ `QUEUED`)!** | N/A |
+| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 
+ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
 | **`YIELDED`** | `rhizo task yield <id>` | Worker gracefully steps aside. Task returned to `QUEUED`. | N/A |
 | **`DEAD_LETTER`** | Retries exhausted ($\ge 3$) | Moved to dead-letter queue. Alerts orchestrator and operator. | Requires manual operator triage |
 
@@ -305,20 +330,24 @@ If a worker is waiting for a lease or has held a lock too long, probe its listen
 rhizo probe <worker>
 ```
 
-### SOP 3: Verifying the Three-Key Gate & Pre-Weave Adversarial Audit
-When a worker replies indicating Key 1 & Key 2 completion:
+### SOP 3: Enforcing the Three-Key Gate & Independent Adversarial Audit
+When a worker finishes implementation in their strand, they run `vine submit --author <worker>` and report readiness:
 ```json
 {
-  "status": "gate_passed",
+  "status": "READY_FOR_AUDIT",
   "task_id": "task-core-ds",
   "branch": "strand/task-core-ds",
   "strand_path": "/Users/eek/Development/workspaces/myproject/task-core-ds/myproject",
-  "key1_mechanical": "PASS",
-  "key2_semantic": "PASS"
+  "author": "implementer"
 }
 ```
 
-The Orchestrator or designated Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit Pump** under the **Presumption of Guilt**:
+> [!CRITICAL]
+> **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`).
+> The Lead Orchestrator dispatches an audit request to the dedicated **Adversarial Auditor** session:
+> `rhizo send @auditor --subject "Audit Request: task-core-ds" --body '{"strand_path": "...", "author": "implementer"}'`
+
+The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit Pump** under the **Presumption of Guilt**:
 
 1. **Thesis Intake**: Demand the worker's **Deliverable Claim Bundle** (task contract, Two-Point Diff mapping, test evidence, negative controls).
 2. **Five-Pillar Presumption-of-Guilt Audit**:
@@ -328,13 +357,17 @@ The Orchestrator or designated Auditor initiates **Key 3: The Pre-Weave Adversar
    - **Pillar 3 (Literal Fidelity & Reference Parity)**: When duplicating functionality, porting, or executing specific operator directives, demand literal true fidelity. Reject approximations ("looks right", "good enough for happy paths") and verify edge case parity against reference specifications.
    - **Pillar 4 (Aggressive Replacement Purge)**: Ensure all superseded legacy code, fallbacks, and commented-out blocks are deleted in the strand.
    - **Pillar 5 (Structural Assertion Rigor)**: Reject partial/loose assertions (`assert "foo" in bar`). Mandate complete structural equality (`assert actual == expected`) and negative controls.
-3. **The Delta Re-Pump Loop**:
-   - If findings exist: emit `code_audit_report.md` with empirical citations. Worker fixes them in the strand.
-   - The auditor reviews the **git diff delta** against the previous audit commit (`git diff <audit_sha>...HEAD`) and re-runs `vine gate`.
-   - The pump repeats until **ZERO open defects of severity CRIT, HIGH, or MED remain**.
+3. **Audit Ratification or Delta Re-Pump Loop**:
+   - **If findings exist**: Auditor executes `vine audit reject --reason "<defects>" --auditor <auditor_name>` and reports findings to the worker. Worker remediates inside the strand and re-submits with `vine submit`.
+   - **The Delta Re-Pump Loop**: Auditor reviews the git delta against the previous audit commit (`git diff <audit_sha>...HEAD`) and verifies clean tests. The pump repeats until **ZERO open defects of severity CRIT, HIGH, or MED remain**.
+   - **When 0 defects remain**: Auditor runs:
+     ```bash
+     vine audit approve --auditor <auditor_name>
+     ```
+     This stamps a cryptographic `audit_token` and marks the strand `AUDIT_RATIFIED`. Auditor notifies orchestrator.
 4. **Weave & Unlock (Only after Key 3 Clearance)**:
 ```bash
-# 1. Weave the verified strand into main
+# 1. Weave the verified, ratified strand into main (mechanically verifies audit_token)
 vine weave
 
 # 2. Release any held fencing locks if applicable

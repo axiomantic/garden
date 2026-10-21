@@ -1,6 +1,6 @@
 ---
 name: garden
-description: "Master entrypoint and umbrella conductor for the Axiomantic Multi-Agent Swarm Triad (Garden + Rhizo + Vine). Activating Garden automatically coordinates Rhizo for transport/concurrency and Vine for Rift workspace virtualization. Guides the user through feature sowing (garden plant), deterministic germination (garden germinate dispatch|prompt|inline|status), conversational intake, persona selection, prompt-based worker fleet bootstrapping with 10-backtick copy-paste cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning, and Two-Key gate trunk weaving. Triggers: 'garden', 'swarm', 'multi-agent', 'agent team', 'coordinate agents', 'parallel agents', 'run swarm', 'start swarm', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony', 'start a project with garden', 'start a project with rhizo', 'set up a multi-agent team', 'use rhizo for this project', 'set up a swarm', 'coordinate multiple agents on this project', 'set up agents for this project', 'garden plant', 'garden germinate', 'sow seed', 'germinate', 'roadmap'."
+description: "Master entrypoint and umbrella conductor for the Axiomantic Multi-Agent Swarm Triad (Garden + Rhizo + Vine). Activating Garden automatically coordinates Rhizo for transport/concurrency and Vine for Rift workspace virtualization. Guides the user through feature sowing (garden plant), deterministic germination (garden germinate dispatch|prompt|inline|status), conversational intake, persona selection, prompt-based worker fleet bootstrapping with 10-backtick copy-paste cards, 3-stage empirical dialectical pump (research, design, audit), master implementation planning, and Three-Key gate trunk weaving. Triggers: 'garden', 'swarm', 'multi-agent', 'agent team', 'coordinate agents', 'parallel agents', 'run swarm', 'start swarm', 'run garden', 'swarm this project', 'orchestrate with garden', 'start garden swarm', 'run the full garden ceremony', 'start a project with garden', 'start a project with rhizo', 'set up a multi-agent team', 'use rhizo for this project', 'set up a swarm', 'coordinate multiple agents on this project', 'set up agents for this project', 'garden plant', 'garden germinate', 'sow seed', 'germinate', 'roadmap'."
 ---
 
 # Garden: Multi-Agent Swarm Ceremony & Orchestration Engine
@@ -40,7 +40,7 @@ flowchart TD
 
     subgraph Infrastructure["Coordination Infrastructure"]
         Rhizo["Rhizo (Redis Bus, Fencing Mutexes, Work Queues)"]
-        Vine["Vine (Rift Strands, Two-Key Gate, Weaving)"]
+        Vine["Vine (Rift Strands, Three-Key Gate, Weaving)"]
     end
 
     Phase0 --> Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
@@ -121,16 +121,21 @@ Instead, it acts as an **Intelligent Intake Concierge**:
 
 3. **Execution Branching**:
    - **If Option 1 selected**: Run `garden plant "<prompt>"`, then proceed to Cold-Start Swarm Calibration / Phase 1 `choose-personas` (or attach to active swarm via Fast-Path) and Phase 3 `dialectical-pump`.
-   - **If Option 2 selected**: Check `rhizo who --json`. If workers are online, dispatch via `rhizo send` or `rhizo enqueue`. If cold, run Cold-Start Swarm Calibration to spin up workers.
+   - **If Option 2 selected**: Check `rhizo who --all --json`. If workers are online, dispatch via `rhizo send` or `rhizo enqueue`. If cold, run Cold-Start Swarm Calibration to spin up workers.
    - **If Option 3 selected**: Execute inline in the current session.
 
 #### Fast-Path: Re-using an Active / Existing Swarm (First-Look Invariant)
-Before asking ANY intake questions or presenting configuration modals, the designated orchestrator MUST run `rhizo who --json` to inspect the cluster.
+Before asking ANY intake questions or presenting configuration modals, the designated orchestrator MUST run `rhizo who --all --json` to inspect the cluster across all projects.
 If active, healthy workers are ALREADY registered and listening on the Rhizo cluster:
 - **DO NOT** ask intake interview questions or prompt the operator for new sessions or models.
 - **DO NOT** display swarm composition or harness questions.
 - Automatically attach to the existing online workers (`@worker-1`, `@worker-2`, ...).
 - Confirm cluster readiness and proceed immediately to Phase 3 (Dialectical Pump / Task Breakdown) or Phase 5 (Task Dispatch).
+
+<CRITICAL>
+Operator-Named Worker Delegation Mandate:
+When the operator explicitly requests or names a worker or peer session (e.g. 'u + autopxd-architect' or 'assign to worker-1'), the Lead Orchestrator MUST dispatch directly to that named recipient over Rhizo (`rhizo send --to <worker> ...`). The orchestrator MUST NEVER gate delegation on whether that worker appears in local single-project `rhizo who`, and MUST NEVER fall back to internal subagents. When inspecting the cluster roster for active workers, an orchestrator MUST query `rhizo who --all --json` (or check specific peers via `rhizo who <worker>` / `rhizo probe <worker>`). Never assume the cluster is empty based solely on local single-project `rhizo who` output.
+</CRITICAL>
 
 > [!CAUTION]
 > **Orchestrator Scope Restriction**: This fast-path applies **ONLY** to a session that was explicitly initialized or designated by the operator as the Lead Orchestrator. A fresh unbootstrapped session must NEVER assume it is the orchestrator simply because `<project>-orchestrator` appears in `rhizo who`!
@@ -185,7 +190,7 @@ Upon receiving the operator's response:
 
 ## Unified Work Item State Machine (WISM)
 
-Rhizo, Garden, and Vine coordinate all multi-agent work through the formal **Work Item State Machine (WISM)**. Every task progresses through 10 deterministic states with atomic Redis transitions, automated DAG unblocking, and Two-Key integration gates.
+Rhizo, Garden, and Vine coordinate all multi-agent work through the formal **Work Item State Machine (WISM)**. Every task progresses through deterministic states with atomic Redis transitions, automated DAG unblocking, and Three-Key integration gates.
 
 ```mermaid
 stateDiagram-v2
@@ -200,14 +205,18 @@ stateDiagram-v2
 
     CLAIMED --> IN_PROGRESS : Worker provisions strand (vine new <id>)
     IN_PROGRESS --> IN_PROGRESS : Progress reported (rhizo task progress, lease extended)
-    IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine gate)
+    IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine submit / vine gate)
     IN_PROGRESS --> YIELDED : rhizo task yield (Returned to pool)
     IN_PROGRESS --> ORPHANED : Lease expires without progress
 
-    GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red or merge conflict)
-    GATE_EVALUATING --> READY_TO_WEAVE : Two-Key Gate PASSED (Cryptographic gate token stamped)
+    GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red, changelog missing, or merge conflict)
+    GATE_EVALUATING --> READY_FOR_AUDIT : Keys 1 & 2 PASSED (vine submit, gate token stamped)
 
-    READY_TO_WEAVE --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
+    READY_FOR_AUDIT --> AUDIT_RATIFIED : Key 3 PASSED (vine audit approve, audit token stamped)
+    READY_FOR_AUDIT --> AUDIT_REJECTED : Key 3 FAILED (vine audit reject)
+    AUDIT_REJECTED --> IN_PROGRESS : Remediate defects in strand
+
+    AUDIT_RATIFIED --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
 
     ORPHANED --> QUEUED : Re-queued for retry (attempts < 3)
     ORPHANED --> DEAD_LETTER : Max delivery retries exceeded (attempts >= 3)
@@ -251,17 +260,24 @@ stateDiagram-v2
    +-------------+
      │        ▲
      │ vine   │ Gate fails
-     │ gate   │ (Tests red or conflict)
+     │ submit │ (Tests red or conflict)
      ▼        │
   +-----------------+
   | GATE_EVALUATING |
   +-----------------+
           │
-          │ Two-Key Gate PASSED (Key 1 merge-tree + Key 2 live test suite green)
+          │ Keys 1 & 2 PASSED (vine submit: merge-tree + live test suite green)
           ▼
-  +----------------+
-  | READY_TO_WEAVE |
-  +----------------+
+  +------------------+
+  | READY_FOR_AUDIT  | ◄──────────────────────┐
+  +------------------+                        │
+     │            │                           │
+     │ approve    │ reject                    │ Remediate
+     ▼            ▼                           │
+  +------------+ +----------------+           │
+  | AUDIT_     | | AUDIT_REJECTED | ──────────┘
+  | RATIFIED   | +----------------+
+  +------------+
           │
           │ vine weave && rhizo task complete
           ▼
@@ -277,13 +293,19 @@ stateDiagram-v2
 | **`DRAFTED`** | `rhizo task create <id> --title <t>` | Creates immutable task contract hash `task:<id>` in Redis. | N/A |
 | **`BLOCKED`** | Evaluated on create | Stamped if `depends_on` contains incomplete tasks. Workers cannot claim. | N/A |
 | **`QUEUED`** | Auto on create or parent complete | Pushed to queue/inbox. Available for worker consumption. | N/A |
-| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $ightarrow$ `ORPHANED` |
-| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $ightarrow$ `ORPHANED` |
-| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $ightarrow$ `ORPHANED` |
-| **`GATE_EVALUATING`**| `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite) evaluated. | Exit 1 $ightarrow$ `CONFLICTED`<br>Exit 2 $ightarrow$ `GATE_FAILED` |
-| **`READY_TO_WEAVE`** | Both keys pass 100% | Cryptographic gate token stamped (`gate_token`). Report sent to orchestrator. | N/A |
-| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $ightarrow$ `QUEUED`)!** | N/A |
-| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
+| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $
+ightarrow$ `ORPHANED` |
+| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $
+ightarrow$ `ORPHANED` |
+| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $
+ightarrow$ `ORPHANED` |
+| **`GATE_EVALUATING`**| `vine submit` / `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite + changelog) evaluated. | Exit 1 $\rightarrow$ `CONFLICTED`<br>Exit 2 $\rightarrow$ `GATE_FAILED` |
+| **`READY_FOR_AUDIT`**| `vine submit` | Keys 1 & 2 passed. Strand submitted for independent adversarial review. | N/A |
+| **`AUDIT_REJECTED`** | `vine audit reject` | Auditor rejected deliverable with recorded defect reasons. Worker returns to `IN_PROGRESS` for delta remediation. | N/A |
+| **`AUDIT_RATIFIED`** | `vine audit approve` | Key 3 passed! Cryptographic `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). | N/A |
+| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $\rightarrow$ `QUEUED`)!** | N/A |
+| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 
+ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
 | **`YIELDED`** | `rhizo task yield <id>` | Worker gracefully steps aside. Task returned to `QUEUED`. | N/A |
 | **`DEAD_LETTER`** | Retries exhausted ($\ge 3$) | Moved to dead-letter queue. Alerts orchestrator and operator. | Requires manual operator triage |
 
@@ -324,7 +346,7 @@ Zero Theatrical Dialogue: Every dialectical assertion must be substantiated with
 Worker Autonomous Execution Invariant (GVR-017):
 Swarm workers are sovereign, autonomous implementers, not passive chatbots.
 When 'rhizo listen' delivers an incoming task and exits, workers MUST NOT wait for an operator prompt or ask "Shall I begin?".
-They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, verify the Two-Key Gate, report results, and re-arm the single-shot listener before concluding their turn.
+They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, submit the strand for independent audit ('vine submit'), report results, and re-arm the single-shot listener before concluding their turn. Remember: THE WORKER IS NOT THE AUDITOR; an independent adversarial auditor must review and ratify Key 3 ('vine audit approve').
 </CRITICAL>
 
 <CRITICAL>

@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.22] - 2026-10-19
+### Added
+- **Botanical Project Roadmap & Re-entrant Markdown (`src/roadmap.nim`, `src/garden.nim`, `tests/test_roadmap.nim`)**:
+  - Implemented `garden roadmap` command with `--season`, `--json`, `--markdown`, `--write`, and `--sync` options.
+  - Automatically compiles task seeds from `.garden/seeds/` and `.garden/roadmap.json` into structured JSON and re-entrant Markdown with interactive checkboxes (`- [x]`, `- [ ]`), milestone progress metrics, and version history.
+  - Added pre-commit synchronization capability (`garden roadmap --sync`) and automated seed updates.
+- **Procedural Non-Human Persona Generation (`src/garden.nim`, `skills/choose-personas/SKILL.md`)**:
+  - Replaced static 12-item persona table with dynamic procedural generator combining themed descriptors and craft archetypes with randomized salt.
+  - Completely eradicated faux-human example names from prompts and skills to eliminate token priming and repetition.
+  - Added dedicated Adversarial Auditor persona (`@<project>-auditor`) for independent Three-Key Gate audit ratification.
+- **Anti-Defeat-Device & Autonomous Intensive Audit Mandates (`src/guide.nim`, `skills/dialectical-pump/SKILL.md`, `skills/orchestrate-swarm/SKILL.md`)**:
+  - Upgraded Pillar 2 in the Dialectical Pump and Three-Key Gate with the Anti-Defeat-Device & Anti-Theatrical Interceptor Mandate: strictly rejects prompt keyword interceptors (e.g. `if 'flight game' in q`) and theatrical mock questionnaires in generic runtimes as critical defects (`CRIT-DEFEAT-DEVICE`).
+  - Codified the Autonomous Intensive Audit Mandate: intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP), pre-authorized, and autonomous across the Triad without requiring operator confirmation.
 
 ### Added
 - **All-in-One Swarm Toolchain Bin Riders (`package.json`, `bin/rhizo.js`, `bin/vine.js`, `bin/rift.js`, `tests/test_riders.js`)**:

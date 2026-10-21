@@ -29,7 +29,7 @@
 > ```
 > The session automatically acts as the **Lead Orchestrator**. It auto-detects your coding harness and conducts a single-question intake interview to calibrate your desired team shape and session-default models. It then configures your project (`garden.toml` & `garden-swarm.json`) and writes prompt cards to files for you to manually assign to new or existing chat sessions. Garden coordinates the entire swarm over Rhizo (local Redis message bus) and Vine (isolated Rift copy-on-write workspaces)!
 
-Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), drives discussion between agents, and integrates code through fast isolated workspaces only after quality gates have passed.
+Instead of treating AI agents as isolated single-turn chatbots, Garden provisions **prompt-bootstrapped worker swarms** across your favorite AI coding harnesses (Claude Code, OpenCode, Antigravity, Pi, Cursor), balances specialized personas with designated foundation models, drives **empirically grounded dialectical deliberation**, schedules distributed fencing mutexes, and integrates code through isolated Rift copy-on-write strands verified by Vine's Three-Key Gate.
 
 ```mermaid
 flowchart TD
@@ -46,7 +46,7 @@ flowchart TD
 
     subgraph Layer2["Layer 2: Vine (Workstream Integrator)"]
         Strands["Rift Strands (Zero-cost copy-on-write workspaces)"]
-        TwoKey["Two-Key Gate (Mechanical merge-tree + semantic test suite)"]
+        TwoKey["Three-Key Gate (Mechanical + Semantic + Independent Audit)"]
         Weave["Trunk Weaving (Fast-forward verified branches)"]
     end
 
@@ -74,7 +74,7 @@ Garden is organized into a clean, batteries-included catalog of self-explanatory
 | **[`launch-workers`](skills/launch-workers/SKILL.md)** | **Session Bootstrapping** | Generates self-contained, 10-backtick raw markdown prompt cards for pasting into separate terminal sessions (Claude Code, OpenCode, Antigravity, Pi). Configures environment variables, registers identities via `rhizo open`, and arms single-shot listeners. |
 | **[`dialectical-pump`](skills/dialectical-pump/SKILL.md)** | **Empirical Deliberation** | Drives multi-perspective thesis/antithesis/synthesis debates. Strictly prohibits theatrical roleplay: every turn requires tool execution (reading files, running tests, checking ASTs). Produces `understanding.md`, `design.md`, and `audit_report.md`. |
 | **[`plan-implementation`](skills/plan-implementation/SKILL.md)** | **Master Scheduling** | Authors `implementation_plan.md` defining task assignment matrices, `rhizo` distributed fencing locks, `vine` strand workflows, dynamic markdown checkboxes, harness To-Do integration, and emergent design addenda. |
-| **[`orchestrate-swarm`](skills/orchestrate-swarm/SKILL.md)** | **Main-Chat Governor** | Governs execution from the primary chat session: dispatches tasks over Redis, tracks heartbeats, ratifies emergent design addenda, verifies Two-Key gate passes, and triggers `vine weave`. |
+| **[`orchestrate-swarm`](skills/orchestrate-swarm/SKILL.md)** | **Main-Chat Governor** | Governs execution from the primary chat session: dispatches tasks over Redis, tracks heartbeats, ratifies emergent design addenda, verifies Three-Key gate passes, and triggers `vine weave`. |
 
 ---
 
@@ -91,6 +91,7 @@ Garden provides comprehensive ceremony, manifest, and protocol specifications:
 * **[Agent Constitution & Invariants (AGENTS.md)](AGENTS.md)**: Coordination invariants, sovereign session rules, and listener discipline.
 
 ---
+
 
 ## Installation
 
@@ -201,7 +202,7 @@ Garden authors `implementation_plan.md`:
 - Sets up dynamic progress checkboxes and harness To-Do tracking.
 
 ### 6. Live Orchestration & Trunk Weaving (`orchestrate-swarm`)
-The main chat orchestrator dispatches work over Redis. Workers code in isolated strands, run unit tests, and verify the Two-Key Gate (`vine gate`). When passed, the orchestrator executes `vine weave` to fast-forward verified code into `main` with zero merge conflicts!
+The main chat orchestrator dispatches work over Redis. Workers code in isolated strands, run unit tests, and verify Keys 1 & 2 (`vine submit`). An independent adversarial auditor reviews and ratifies Key 3 (`vine audit approve`). When ratified, the orchestrator executes `vine weave` to fast-forward verified code into `main` with zero merge conflicts!
 
 ---
 
@@ -210,13 +211,13 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
 | `garden plant` | `"<description>" [--season <name>] [--sunlight <level>] [--tags <csv>] [--list] [--json]` | Sow a roadmap seed to `.garden/seeds/<id>.toml` or list sown seeds. |
-| `garden germinate` | `<dispatch\|prompt\|inline\|status> <seed_id>` | Deterministically germinate a seed via Rhizo work queues, prompt cards, inline pump, or status query. |
+| `garden germinate` | `<dispatch|prompt|inline|status> <seed_id>` | Deterministically germinate a seed via Rhizo work queues, prompt cards, inline pump, or status query. |
 | `garden prompts` | `[--worker <name>] [--inline] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Generate bootstrap prompt cards (written to /tmp/garden-<project>/ by default; pass --inline for stdout). |
 | `garden launch` | `[--worker <name>] [--inline] [--write [file]] [--json] [--project-dir <dir>] [--swarm-file <file>]` | Bootstrap swarm worker sessions (writes prompt cards to /tmp/garden-<project>/). |
 | `garden status` | `[--json]` | Telemetry query across active Rhizo agents, listener status, and Vine strands. |
 | `garden init` | `[<target_dir>] [--force]` | Initialize `garden.toml`, docs scaffold, and install guide in `AGENTS.md`. |
 | `garden teardown`| `[--swarm-file <file>]` | Gracefully close registered swarm agents on the Redis bus. |
-| `garden guide` | `<install\|check\|uninstall> [path]` | Install or manage Garden Multi-Agent Swarm Guide in `AGENTS.md`. |
+| `garden guide` | `<install|check|uninstall> [path]` | Install or manage Garden Multi-Agent Swarm Guide in `AGENTS.md`. |
 
 ---
 
@@ -280,8 +281,8 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
    The main chat session coordinates, reviews, and integrates. Intensive multi-file edits are executed by the worker fleet in isolated strands.
 2. **Empirical Grounding Protocol (Zero Theatrical Dialogue)**:
    Dialectical deliberations must cite hard evidence from real tool calls (line citations, test outputs, compiler errors). Theatrical roleplay is strictly banned.
-3. **Two-Key Gate Verification**:
-   No code is merged into the trunk without passing both Key 1 (in-memory `git merge-tree` mechanical check) and Key 2 (live semantic compiler and test suite run).
+3. **Three-Key Gate Verification**:
+   No code is merged into the trunk without passing Key 1 (in-memory `git merge-tree` mechanical check), Key 2 (live semantic compiler and test suite run), and Key 3 (independent adversarial audit ratification via `vine audit approve`). Workers submit strands with `vine submit` and CANNOT audit their own work.
 4. **Zero Dirty Commits**:
    All agent identity files, session state, and temporary lockfiles are strictly ignored in `.gitignore`.
 

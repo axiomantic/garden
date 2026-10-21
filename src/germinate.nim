@@ -17,11 +17,20 @@ proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, proj
   result &= "- **Sunlight**: " & seed.sunlight & "\n"
   result &= "- **Tags**: " & seed.tags.join(", ") & "\n"
   result &= "- **Status**: " & seed.status & "\n\n"
-  result &= "### Germination Mandate\n"
-  result &= "1. Provision an isolated Vine strand: `vine new seed-" & seed.id & "`\n"
-  result &= "2. Implement capabilities fulfilling '" & seed.title & "'.\n"
-  result &= "3. Verify two-key gate: `vine gate`\n"
-  result &= "4. Report completion and return to listening: `rhizo listen " & workerName & "`\n"
+  if role.toLowerAscii.contains("audit") or workerName.toLowerAscii.contains("audit"):
+    result &= "### Adversarial Auditor Mandate (Key 3 Gatekeeper)\n"
+    result &= "1. Receive submitted strands from workers (`vine submit`).\n"
+    result &= "2. Perform adversarial audit across the Five Pillars (Two-Point Diff, Holistic Integration, Literal Fidelity, Replacement Purge, Structural Rigor).\n"
+    result &= "3. If defects: `vine audit reject <strand> --auditor " & workerName & " --reason <findings>`.\n"
+    result &= "4. If sound: `vine audit approve <strand> --auditor " & workerName & " --notes <notes>`.\n"
+    result &= "5. Report completion to Orchestrator and return to listening: `rhizo listen " & workerName & "`\n"
+  else:
+    result &= "### Germination Mandate\n"
+    result &= "1. Provision an isolated Vine strand: `vine new seed-" & seed.id & "`\n"
+    result &= "2. Implement capabilities fulfilling '" & seed.title & "'.\n"
+    result &= "3. Verify Three-Key Gate (Keys 1 & 2): `vine gate`\n"
+    result &= "4. Submit for independent audit: `vine submit` (THE WORKER IS NOT THE AUDITOR; independent auditor will audit).\n"
+    result &= "5. Report completion and return to listening: `rhizo listen " & workerName & "`\n"
   result &= PromptFence10 & "\n"
 
 proc germinateDispatch*(seedId: string, projectRoot: string = ""): (bool, string, JsonNode) =
@@ -181,7 +190,7 @@ proc germinateInline*(seedId: string, projectRoot: string = ""): (bool, string, 
 
   let stage1Name = "Research & Understanding (Fact-Check Gate)"
   let stage2Name = "Product & System Architecture Design"
-  let stage3Name = "Adversarial Design Review & Two-Key Verification"
+  let stage3Name = "Adversarial Design Review & Three-Key Verification"
 
   var jStages = newJArray()
   jStages.add(%*{"stage": 1, "name": stage1Name, "status": "COMPLETED"})

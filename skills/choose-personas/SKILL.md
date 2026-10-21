@@ -25,15 +25,21 @@ graph TD
     C <-->|Coherence Tension| A
 ```
 
-1. **The Systems Architect** (e.g., Bramblestitch / Cogswell Pendulum):
+1. **The Systems Architect**:
    - **Focus**: Global system topology, invariants, lifecycle management, failure modes, cross-component boundaries.
    - **Bias**: Prefers structural purity and comprehensive conceptual models.
-2. **The Purist Auditor / Refactoring Specialist** (e.g., Prickle-Thistle / Grumblewick Snark):
+2. **The Purist Auditor / Refactoring Specialist**:
    - **Focus**: Single-source of truth (SSOT), ISO standards compliance, dead-code elimination, zero green mirages, edge-case failure proofs.
    - **Bias**: Adversarial skeptic. Assumes claims are unproven until verified by an automated test or compiler run.
-3. **The DevEx & Implementation Lead** (e.g., Moss-Weaver / Sprocket-Hop):
+3. **The DevEx & Implementation Lead**:
    - **Focus**: Developer experience, API ergonomics, ease of adoption, idiomatic conventions, pragmatic delivery.
    - **Bias**: Champions the human engineer using the tool; eliminates cognitive overhead and unnecessary friction.
+
+<CRITICAL>
+Mandatory Independent Auditor Role (Key 3 Invariant):
+Swarm rosters MUST ALWAYS include a dedicated, independent Adversarial Auditor (@<project>-auditor).
+Workers who write code are strictly prohibited from auditing or ratifying their own deliverables. Vine's Key 3 gate mechanically rejects self-auditing (ExitGateAuditViolation = 6). The Adversarial Auditor must run in a dedicated, independent session to inspect submitted strands, enforce the Five Pillars, and execute 'vine audit approve --auditor <name>'.
+</CRITICAL>
 
 ---
 
@@ -58,13 +64,9 @@ Swarm workers operate in sovereign interactive sessions and inherit whatever fou
 </CRITICAL>
 
 <CRITICAL>
-Whimsical Personas & Anti-Anchoring Invariant (GVR-017):
-1. Strict Negative Constraints: Faux-human corporate or academic persona names (e.g. "Marcus Vance", "Elena Rostova", "Caleb Thorne", "Lyra Sterling", "Dr. Jane Doe") are STRICTLY FORBIDDEN. Personas MUST be whimsical, fantastical, mechanical, or botanical entities that could not possibly be confused with real human beings.
-2. Anti-Anchoring Protocol: When generating or recommending swarm personas, YOU MUST NOT COPY OR REUSE ANY EXAMPLE NAMES FROM THIS SKILL VERBATIM. Do not name agents "Bramblestitch", "Prickle-Thistle", "Cogswell", or "Moss-Weaver". Instead, dynamically INVENT fresh, topical, whimsical names tailored specifically to the target project's character and domain:
-   - Botanical / Biological: Briar-Weaver, Sprout-Surge, Root-Tender, Bark-Scraper, Mycelium-Mender
-   - Clockwork / Artificer: Gear-Whisperer, Escapement-Caliber, Ratcheteer, Piston-Spark, Clocksmith-Spindle
-   - Mythical / Cryptid: Astral-Gryphon, Iron-Basilisk, Forge-Salamander, Chimera-Mason, Gargoyle-Gaze
-   - Celestial / Nautical: Nebula-Drifter, Solar-Flare, Coral-Carver, Deep-Current, Tide-Warden
+Whimsical Non-Human Personas & Dynamic Invention Invariant (GVR-017):
+1. Strict Non-Human Constraint: Personas MUST NEVER be human or humanoid personal names (e.g. first/last name combinations). Personas MUST be purely non-human entities: botanical, clockwork, mythical, mineral, or topological compound monikers.
+2. Dynamic Synthesis Mandate: When configuring or recommending swarm personas, NEVER draw from or reuse static, generic, or example lists. Dynamically synthesize completely original, inventive compound monikers ([Descriptor]-[Entity/Craft]) tailored specifically to the target project's domain.
 </CRITICAL>
 
 | Role Mandate | Recommended Harness | Model Alignment | Rationale |

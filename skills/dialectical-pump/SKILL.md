@@ -177,6 +177,8 @@ The Auditor executes the following checks against the Claim Bundle and the stran
 #### Pillar 2: Holistic Integration vs. Heuristic Hand-Waves & Hollow Stubs
 - [ ] **Anti-Stub & Anti-Toy Check**: Does the implementation handle real application state, real network/file I/O, and real concurrent events?
 - [ ] **No Hollow Mocks in Production**: Reject artificial `sleep()` calls, hardcoded success responses, or fake test doubles in production paths.
+- [ ] **Anti-Defeat-Device & Anti-Theatrical Interceptor Mandate**: Strictly reject prompt keyword interceptors (e.g. `if 'flight game' in q or 'webworker' in q`) and theatrical mock questionnaires in generic runtimes that bypass genuine neural/radar/algorithmic pipelines to fake benchmark compliance. This is a critical `CRIT-DEFEAT-DEVICE` defect requiring complete elimination.
+- [ ] **Autonomous Intensive Audit Mandate**: Intensive audits are Standard Operating Procedure (SOP) and pre-authorized. Auditors must execute without requesting operator confirmation or input.
 - [ ] **Brittle String-Split Hacks**: Reject naive string splits (`str.split(" ")[0]`) pretending to parse structured protocols or payloads; compliant lexers/parsers must be used.
 - [ ] **Swallowed Exceptions**: Reject empty `except: pass` or `catch: discard` blocks that sweep real error conditions under the rug.
 
@@ -218,45 +220,40 @@ sequenceDiagram
     participant A as Adversarial Auditor
     participant G as Gate (Vine / Garden)
 
-    W->>A: Submit Deliverable Claim Bundle (Thesis)
+    Note over W: Worker finishes and runs 'vine submit'
+    W->>A: Submit Deliverable Claim Bundle ('vine submit')
     A->>A: Five-Pillar Presumption-of-Guilt Audit (Antithesis)
     
     alt Findings > 0 (CRIT / HIGH / MED)
+        A->>G: 'vine audit reject --reason <text>'
         A-->>W: Emit audit_report.md with empirical citations
         Note over W: Worker remediates findings inside Strand
-        W->>A: Re-pump: Submit Delta Claim Bundle (Fixes + git diff against last audit commit)
+        W->>A: Re-pump: 'vine submit' (Delta Claim Bundle + git diff against last audit commit)
         A->>A: Delta Audit: Verify fix + full test regression sweep
         Note over A,W: Loop repeats until 0 open defects
     else Findings == 0
-        A->>G: Issue GATE_AUDIT_PASSED token
+        A->>G: 'vine audit approve --auditor <name>' (Stamps audit_token)
         G->>G: Execute vine weave (Trunk Fast-Forward)
     end
 ```
 
-1. **Defect Issuance**: The Auditor records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
+> [!CRITICAL]
+> **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`). The audit MUST be performed by an independent Adversarial Auditor session.
+
+1. **Defect Issuance**: If defects are discovered, the Auditor runs `vine audit reject --reason "<defects>"` and records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
 2. **In-Strand Remediation**: The worker fixes findings strictly inside the isolated Vine strand.
-3. **The Delta Re-Pump**: When resubmitting, the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
+3. **The Delta Re-Pump**: When resubmitting with `vine submit`, the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
 4. **Exit Condition**: The pump loops until **ZERO open defects of severity CRIT, HIGH, or MED remain**, and all low/nit items are resolved or empirically justified.
 
 ### Step 4.4: Gate Clearance & Cryptographic Token
 
-When all findings reach 0, the auditor stamps a verification receipt:
-```json
-{
-  "status": "GATE_AUDIT_PASSED",
-  "task_id": "<task-id>",
-  "audit_iterations": 2,
-  "five_pillars": {
-    "closed_circuit": "VERIFIED",
-    "holistic_integration": "VERIFIED",
-    "literal_fidelity": "VERIFIED",
-    "replacement_purge": "VERIFIED",
-    "structural_assertions": "VERIFIED"
-  },
-  "gate_token": "AUDIT_PASS_SHA256_..."
-}
+When all findings reach 0, the independent auditor ratifies Key 3:
+```bash
+vine audit approve --auditor <auditor_name>
 ```
-Only strands with this verified clearance are permitted to weave into trunk.
+This mechanically verifies Keys 1 & 2, checks that the strand has zero uncommitted changes, ensures `auditor != author`, and stamps a cryptographic `audit_token` in `.vine.json`.
+
+Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token are permitted to weave into trunk (`vine weave`).
 
 ---
 

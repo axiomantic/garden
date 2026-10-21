@@ -1,11 +1,12 @@
 # /Users/eek/Development/garden/src/garden.nim
 # The Garden Multi-Agent Swarm Orchestration Engine CLI.
 
-import std/[os, osproc, strutils, json, times]
+import std/[os, osproc, strutils, json, times, random]
 import guide
 import seed
 import germinate
 import update
+import roadmap
 
 const
   GardenVersion = "0.2.22"
@@ -42,6 +43,7 @@ Usage:
 Subcommands:
   init [dir]               Initialize Garden configuration and install guides
   plant <title> [options]  Sow a new botanical task/roadmap seed into .garden/seeds/
+  roadmap [options]        Generate structured roadmap (JSON, re-entrant Markdown, pre-commit sync)
   germinate <act> <seed>   Germinate a seed (dispatch, prompt, inline, status)
   prompts [options]        Generate copy-pasteable bootstrap prompts for worker sessions
   launch [options]         Bootstrap swarm worker sessions (generates prompts by default)
@@ -53,6 +55,14 @@ Subcommands:
   teardown [options]       Gracefully close swarm agents in Redis
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
+
+Options for 'roadmap':
+  --season, -S <name>      Filter roadmap to specific season/milestone
+  --json, -j               Output structured roadmap as JSON
+  --markdown, -m           Print formatted markdown roadmap to stdout (default)
+  --write, -w [path]       Write ROADMAP.md to project root or specified path
+  --sync, -s               Synchronize .garden/roadmap.json and update ROADMAP.md
+  --project-dir, -p <dir>  Target project directory
 
 Options for 'update':
   --apply, -a              Install latest triad packages via npm
@@ -138,7 +148,46 @@ type
   WhimsicalTheme* = enum
     wtBotanical, wtClockwork, wtCryptid, wtCosmic
 
+const
+  BotanicalPrefixes = [
+    "Briar", "Bramble", "Thistle", "Moss", "Fern", "Sprout", "Lichen", "Mycelium",
+    "Bark", "Clover", "Elder", "Willow", "Ivy", "Thicket", "Rowan", "Juniper",
+    "Sedge", "Sorrel", "Hemlock", "Nettle", "Birch", "Cedar", "Alder", "Ash"
+  ]
+  ClockworkPrefixes = [
+    "Cog", "Sprocket", "Piston", "Ratchet", "Gimbal", "Flywheel", "Cam", "Bushing",
+    "Spindle", "Pendulum", "Gear", "Crank", "Pinion", "Governor", "Spring", "Bezel",
+    "Dynamo", "Tappet", "Escapement", "Caliber", "Chrono", "Brass", "Copper", "Gilded"
+  ]
+  CryptidPrefixes = [
+    "Astral", "Iron", "Obsidian", "Gargoyle", "Chimera", "Basilisk", "Gryphon", "Kraken",
+    "Drake", "Salamander", "Wyrm", "Sphinx", "Hydra", "Golem", "Rook", "Valkyrie",
+    "Shadow", "Cobalt", "Rune", "Thunder", "Frost", "Granite", "Echo", "Mantis"
+  ]
+  CosmicPrefixes = [
+    "Nebula", "Pulsar", "Quasar", "Starlight", "Solar", "Lunar", "Zenith", "Aurora",
+    "Comet", "Meteor", "Astro", "Orbit", "Eclipse", "Nova", "Vortex", "Corona",
+    "Photon", "Parallax", "Spectral", "Cosmic", "Horizon", "Helios", "Astron", "Ray"
+  ]
+
+  ArchitectSuffixes = [
+    "Weaver", "Mason", "Architect", "Surveyor", "Shaper", "Wright", "Cartographer",
+    "Loom", "Foundry", "Matrix", "Compass", "Spire", "Arbor", "Beacon", "Strand"
+  ]
+  AuditorSuffixes = [
+    "Warden", "Sentinel", "Gaze", "Skeptic", "Caliper", "Plumb", "Scales", "Gauge",
+    "Watcher", "Judge", "Shield", "Anvil", "Lens", "Audit", "Pillar"
+  ]
+  ImplementerSuffixes = [
+    "Smith", "Forge", "Spark", "Surge", "Drifter", "Carver", "Caster", "Joiner",
+    "Striker", "Tender", "Runner", "Builder", "Crafter", "Darter", "Scraper"
+  ]
+  GeneralSuffixes = [
+    "Spindle", "Wanderer", "Seeker", "Keeper", "Whisperer", "Harvester", "Ranger"
+  ]
+
 proc pickWhimsicalPersona*(roleKind: string, projName: string): string =
+  randomize()
   let lowerProj = projName.toLowerAscii()
   let theme =
     if lowerProj.contains("garden") or lowerProj.contains("vine") or lowerProj.contains("rhizo") or lowerProj.contains("plant") or lowerProj.contains("tree") or lowerProj.contains("leaf"):
@@ -150,35 +199,26 @@ proc pickWhimsicalPersona*(roleKind: string, projName: string): string =
     elif lowerProj.contains("crypto") or lowerProj.contains("dragon") or lowerProj.contains("wolf") or lowerProj.contains("beast") or lowerProj.contains("myth"):
       wtCryptid
     else:
-      var h: int = 0
-      for c in lowerProj: h = (h * 31 + ord(c)) and 0x7FFFFFFF
-      [wtBotanical, wtClockwork, wtCryptid, wtCosmic][h mod 4]
+      [wtBotanical, wtClockwork, wtCryptid, wtCosmic][rand(3)]
 
-  case theme
-  of wtBotanical:
-    case roleKind.toLowerAscii()
-    of "architect": "Bramblestitch"
-    of "auditor": "Prickle-Thistle"
-    of "implementer": "Moss-Weaver"
-    else: "Sprout-Surge"
-  of wtClockwork:
-    case roleKind.toLowerAscii()
-    of "architect": "Cogswell Pendulum"
-    of "auditor": "Grumblewick Snark"
-    of "implementer": "Sprocket-Hop"
-    else: "Whirly-Spindle"
-  of wtCryptid:
-    case roleKind.toLowerAscii()
-    of "architect": "Astral Gryphon"
-    of "auditor": "Iron Basilisk"
-    of "implementer": "Forge Salamander"
-    else: "Copper Goblin"
-  of wtCosmic:
-    case roleKind.toLowerAscii()
-    of "architect": "Nebula-Weaver"
-    of "auditor": "Quasar-Gaze"
-    of "implementer": "Pulsar-Spark"
-    else: "Starlight-Drifter"
+  let prefix = case theme
+    of wtBotanical: BotanicalPrefixes[rand(BotanicalPrefixes.high)]
+    of wtClockwork: ClockworkPrefixes[rand(ClockworkPrefixes.high)]
+    of wtCryptid:   CryptidPrefixes[rand(CryptidPrefixes.high)]
+    of wtCosmic:    CosmicPrefixes[rand(CosmicPrefixes.high)]
+
+  let rk = roleKind.toLowerAscii()
+  let suffix =
+    if rk.contains("architect") or rk.contains("systems"):
+      ArchitectSuffixes[rand(ArchitectSuffixes.high)]
+    elif rk.contains("audit") or rk.contains("qa") or rk.contains("verifier"):
+      AuditorSuffixes[rand(AuditorSuffixes.high)]
+    elif rk.contains("impl") or rk.contains("dev"):
+      ImplementerSuffixes[rand(ImplementerSuffixes.high)]
+    else:
+      GeneralSuffixes[rand(GeneralSuffixes.high)]
+
+  result = prefix & "-" & suffix
 
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
@@ -271,7 +311,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "qa", "audit", "verifier", "purist"],
-      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, or untested branches. You verify that all tests genuinely fail when code is broken (negative controls) and strictly audit Two-Key Gates ('vine gate'). Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
+      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <strand> --auditor " & auditName & " --reason <reason>'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <strand> --auditor " & auditName & "'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
     ))
@@ -283,7 +323,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: @[projName, "dev", "devex", "build", "implementation"],
-      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Two-Key Gates with 'vine gate', and report completed deliverables with gate tokens back over Rhizo.",
+      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
       startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
     ))
@@ -382,12 +422,36 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "- **Pre-Weave Changelog Discipline**:\n"
   result &= "  If the project has a changelog (CHANGELOG.md), record your user-facing changes under '## [Unreleased]':\n"
   result &= "  `vine changelog \"Description of changes\"` (or `vine changelog --ensure-unreleased`)\n"
-  result &= "- **Verification & Two-Key Gate**:\n"
-  result &= "  Verify before reporting completion with the Two-Key Gate (verifies mergeability, tests, and changelog update):\n"
+  result &= "- **Verification & Three-Key Gate Protocol**:\n"
+  result &= "  Verify before reporting completion with Keys 1 & 2 of the Three-Key Gate (verifies mergeability, tests, and changelog update):\n"
   result &= "  `vine gate`\n"
+  result &= "- **THE WORKER IS NOT THE AUDITOR INVARIANT (MANDATORY)**:\n"
+  result &= "  <CRITICAL>\n"
+  result &= "  YOU ARE NOT THE AUDITOR. An implementer or worker MUST NEVER attempt to audit or approve their own strand ('vine audit approve' on your own strand will fail with Exit Code 6: Self-audit violation). The Key 3 Adversarial Audit MUST be performed by an independent Adversarial Auditor session created by the Orchestrator.\n"
+  result &= "  Once your tests and changelog pass, submit your strand for independent audit with `vine submit` (or `vine gate --submit`), notify the Orchestrator (@" & cfg.orchestrator & "), and await the auditor's review.\n"
+  result &= "  If the auditor rejects your strand ('AUDIT_REJECTED'), inspect the findings, fix them in your strand, and re-submit with `vine submit`.\n"
+  result &= "  </CRITICAL>\n"
   result &= "- **Reporting & Acknowledging**:\n"
   result &= "  Send status updates or gate reports back to the Orchestrator:\n"
   result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
+
+  if w.name.toLowerAscii.contains("audit") or w.role.toLowerAscii.contains("audit"):
+    result &= "### 5b. Key 3 Adversarial Auditor Protocol (YOUR PRIMARY MANDATE)\n"
+    result &= "<CRITICAL>\n"
+    result &= "YOU ARE THE DESIGNATED ADVERSARIAL AUDITOR. You enforce Key 3 of the Three-Key Gate.\n"
+    result &= "- When a worker submits a strand (`vine submit`), inspect their strand directory under the presumption of guilt.\n"
+    result &= "- Verify the Five Pillars:\n"
+    result &= "  1. Closed-Circuit Two-Point Diff: Provider wired to real Consumer call-site.\n"
+    result &= "  2. Holistic Integration: Real errors and application state handled (no hollow stubs/toys).\n"
+    result &= "  3. Literal Fidelity & Parity: Exact implementation of the specification (zero loose approximations).\n"
+    result &= "  4. Replacement Purge: All legacy or obsolete code targeted for replacement is deleted.\n"
+    result &= "  5. Structural Assertion Rigor: Tests assert full structural equality with negative controls.\n"
+    result &= "- IF DEFECTS FOUND: Reject the strand with detailed actionable feedback:\n"
+    result &= "  `vine audit reject <strand_path> --auditor \"" & w.name & "\" --reason \"<findings>\"`\n"
+    result &= "- IF 100% SOUND & CLEAN: Ratify approval and generate cryptographic audit token:\n"
+    result &= "  `vine audit approve <strand_path> --auditor \"" & w.name & "\" --notes \"<notes>\"`\n"
+    result &= "- SELF-AUDIT IS STRICTLY FORBIDDEN: You must never audit or approve your own strand.\n"
+    result &= "</CRITICAL>\n\n"
 
   result &= "### 6. Closed-Circuit & Holistic Integration Invariant (No Shelfware / No Stubs)\n"
   result &= "<CRITICAL>\n"
@@ -1008,10 +1072,35 @@ proc doPlant*(
       if seed.tags.len > 0:
         echo "  Tags:     " & seed.tags.join(", ")
       echo "  File:     " & seed.filePath
+
+    # Auto-sync .garden/roadmap.json and update ROADMAP.md if present
+    try:
+      let rm = buildRoadmap(root)
+      discard saveRoadmap(rm, root, writeMarkdown = fileExists(root / "ROADMAP.md"))
+    except CatchableError:
+      discard
+
     return 0
   except CatchableError as e:
     stderr.writeLine("[garden] Error planting seed: " & e.msg)
     return 1
+
+proc doRoadmap*(season: string = "", projectDir: string = "", jsonOutput: bool = false,
+                writeMarkdown: bool = false, markdownPath: string = ""): int =
+  let root = if projectDir.len > 0: projectDir else: findProjectRoot()
+  let rm = buildRoadmap(root, season)
+
+  # Always persist structured JSON to .garden/roadmap.json
+  let (jsonPath, mdPath) = saveRoadmap(rm, root, writeMarkdown = writeMarkdown, markdownPath = markdownPath)
+
+  if jsonOutput:
+    echo pretty(rm.toJson())
+  elif writeMarkdown:
+    echo "[garden roadmap] Persisted roadmap JSON to " & jsonPath
+    echo "[garden roadmap] Wrote re-entrant Markdown roadmap to " & mdPath
+  else:
+    echo rm.toMarkdown()
+  return 0
 
 proc main() =
   let params = commandLineParams()
@@ -1071,6 +1160,38 @@ proc main() =
           title &= " " & a
       inc i
     quit(doPlant(title, season, sunlight, tagsCsv, customId, projectDir, listMode, jsonOutput))
+  of "roadmap":
+    var season = ""
+    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var jsonOutput = false
+    var writeMarkdown = false
+    var markdownPath = ""
+    var i = 1
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]:
+        jsonOutput = true
+      elif a in ["--write", "-w"]:
+        writeMarkdown = true
+        if i + 1 < params.len and not params[i + 1].startsWith("-"):
+          inc i; markdownPath = params[i]
+      elif a.startsWith("--write="):
+        writeMarkdown = true
+        markdownPath = a[8..^1]
+      elif a in ["--sync", "-s"]:
+        writeMarkdown = true
+      elif (a in ["--season", "-S"]) and i + 1 < params.len:
+        inc i; season = params[i]
+      elif a.startsWith("--season="):
+        season = a[9..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a.startsWith("--project-dir="):
+        projectDir = a[14..^1]
+      elif a in ["--markdown", "-m"]:
+        writeMarkdown = false
+      inc i
+    quit(doRoadmap(season, projectDir, jsonOutput, writeMarkdown, markdownPath))
   of "germinate":
     if params.len < 2:
       stderr.writeLine("Usage: garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]")

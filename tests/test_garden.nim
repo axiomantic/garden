@@ -163,9 +163,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
     check pCode == 0
     check pOut.contains("auditor")
-    check pOut.contains("Prickle-Thistle")
-    check not pOut.contains("Bramblestitch")
-    check not pOut.contains("Moss-Weaver")
+    check pOut.contains("garden-auditor")
+    check not pOut.contains("garden-architect")
+    check not pOut.contains("garden-implementer")
 
   test "Garden prompts --json outputs structured json telemetry":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -179,7 +179,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["workers"][0].hasKey("file_path")
     check j["workers"][0].hasKey("copy_command")
     check fileExists(j["workers"][0]["file_path"].getStr())
-    check j["workers"][0]["prompt"].getStr().contains("Bramblestitch")
+    check j["workers"][0]["persona"].getStr().len > 0
+    check j["workers"][0]["prompt"].getStr().contains("garden-architect")
 
   test "Garden prompts --write outputs prompts to file":
     let tmpDir = getTempDir() / ("garden_test_prompts_write_" & $getCurrentProcessId())
@@ -201,12 +202,12 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
     check lCode == 0
-    check lOut.contains("Moss-Weaver")
+    check lOut.contains("garden-implementer")
     check lOut.contains(".md")
 
     let (iOut, iCode) = execCmdEx(exePath & " launch --worker implementer --inline")
     check iCode == 0
-    check iOut.contains("Moss-Weaver")
+    check iOut.contains("garden-implementer")
     check iOut.contains("``````````markdown")
 
   test "Garden respects GARDEN_SWARM_FILE and GARDEN_PROJECT_DIR environment variables":
@@ -359,20 +360,17 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not fileExists(tmpDir / ".garden" / "session.json")
 
   test "Garden procedural whimsical persona generation":
-    check pickWhimsicalPersona("architect", "garden") == "Bramblestitch"
-    check pickWhimsicalPersona("auditor", "garden") == "Prickle-Thistle"
-    check pickWhimsicalPersona("implementer", "garden") == "Moss-Weaver"
+    var names: seq[string] = @[]
+    for role in ["architect", "auditor", "implementer"]:
+      for proj in ["garden", "gearmulator", "astro-station", "dragon-vault"]:
+        let persona = pickWhimsicalPersona(role, proj)
+        check persona.contains("-")
+        check persona notin ["Bramblestitch", "Prickle-Thistle", "Moss-Weaver", "Marcus Vance", "Elena Rostova", "Caleb Thorne"]
+        names.add(persona)
 
-    check pickWhimsicalPersona("architect", "gearmulator") == "Cogswell Pendulum"
-    check pickWhimsicalPersona("auditor", "gearmulator") == "Grumblewick Snark"
-    check pickWhimsicalPersona("implementer", "gearmulator") == "Sprocket-Hop"
-
-    check pickWhimsicalPersona("architect", "astro-station") == "Nebula-Weaver"
-    check pickWhimsicalPersona("auditor", "astro-station") == "Quasar-Gaze"
-    check pickWhimsicalPersona("implementer", "astro-station") == "Pulsar-Spark"
-
-    check pickWhimsicalPersona("architect", "dragon-vault") == "Astral Gryphon"
-    check pickWhimsicalPersona("auditor", "dragon-vault") == "Iron Basilisk"
-    check pickWhimsicalPersona("implementer", "dragon-vault") == "Forge Salamander"
+    var unique: seq[string] = @[]
+    for n in names:
+      if n notin unique: unique.add(n)
+    check unique.len >= 6
 
 
