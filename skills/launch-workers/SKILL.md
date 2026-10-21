@@ -45,6 +45,15 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    Swarm workers must never produce isolated shelfware or mock toys. Every task must implement both the Provider and an active Consumer call-site in live entrypoints, must holistically integrate with real application state and events, and must aggressively delete any legacy code it replaces in the same strand.
    </CRITICAL>
 
+8. **Mutual Arrival Handshake Invariant**:
+   <CRITICAL>
+   Swarm workers MUST NEVER boot into silent, passive blocking listeners.
+   Turn 1 of every worker prompt card mandates executing the Mutual Arrival Handshake:
+   `rhizo send --to "@<orchestrator>" --subject "WORKER_READY" --body "..."`
+   This broadcast guarantees that the Orchestrator's background listener is immediately woken upon session initialization.
+   Conversely, the Lead Orchestrator MUST arm its background listener (`rhizo listen <orchestrator>`) in the exact turn that prompt cards are emitted to prevent bootstrap deadlocks.
+   </CRITICAL>
+
 ---
 
 ## 2. The Bootstrapping Flow
@@ -61,15 +70,19 @@ sequenceDiagram
     Orch->>Garden: Runs garden prompts (or garden launch)
     Garden-->>Orch: Emits X prompt cards wrapped in 10 backticks
     Orch->>Op: Displays formatted prompt blocks to operator
+    Note over Orch: MANDATORY: Orchestrator arms background listener ('rhizo listen <orchestrator>')
     Op->>Workers: Pastes Prompt #1 into Session 1, Prompt #2 into Session 2...
     loop Each Pasted Worker Session
         Workers->>Workers: Sets RHIZO_AGENT_NAME & enters target directory
         Workers->>Redis: Runs rhizo open <name> "<tags>"
+        Workers->>Redis: Broadcasts Arrival Handshake ('rhizo send @orchestrator --subject WORKER_READY')
         Workers->>Redis: Runs rhizo listen <name> (blocks waiting for tasks)
+        Redis-->>Orch: WORKER_READY message wakes Orchestrator listener!
+        Orch->>Redis: Orchestrator immediately dispatches initial sprint task
     end
-    Orch->>Redis: Runs rhizo who --json to verify readiness gate
-    Redis-->>Orch: All workers active and listening
-    Orch->>Op: Confirms swarm is ready for task dispatch
+    Orch->>Redis: Runs rhizo who --json to verify full cluster roster
+    Redis-->>Orch: All workers active, listening, and assigned
+    Orch->>Op: Confirms swarm is fully active and executing
 ```
 
 ---

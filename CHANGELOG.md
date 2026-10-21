@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mutual Arrival Handshake & Swarm Cold-Start Protocol (`src/garden.nim`, `tests/test_garden.nim`, `skills/launch-workers/SKILL.md`)**:
+  - Added the mandatory Mutual Arrival Handshake (`rhizo send --to <orchestrator> --subject WORKER_READY`) to Turn 1 execution of all worker prompt cards.
+  - Workers now proactively announce presence to the Orchestrator upon session opening, waking the orchestrator's background listener to eliminate prompt-pasting deadlocks.
+  - Added active cluster listener discovery to `garden prompts` and `garden launch`, surfacing already active project workers (bypassing redundant prompt pasting) and available idle cluster peers for dynamic repurposing.
+  - Added unmissable Orchestrator Arm-Now Mandate banner to prompt generation output, instructing orchestrators to run `rhizo listen <orchestrator>` before yielding to chat.
 - **Botanical Project Roadmap & Re-entrant Markdown (`src/roadmap.nim`, `src/garden.nim`, `tests/test_roadmap.nim`)**:
   - Implemented `garden roadmap` command with `--season`, `--json`, `--markdown`, `--write`, and `--sync` options.
   - Automatically compiles task seeds from `.garden/seeds/` and `.garden/roadmap.json` into structured JSON and re-entrant Markdown with interactive checkboxes (`- [x]`, `- [ ]`), milestone progress metrics, and version history.

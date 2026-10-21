@@ -370,13 +370,16 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "### 2. Immediate Onboarding Actions (FIRST TURN EXECUTION)\n"
   result &= "<CRITICAL>\n"
   result &= "DO NOT output conversational greetings. DO NOT ask 'How can I help?'.\n"
-  result &= "Execute these shell commands right now in your VERY FIRST tool turn to register and arm:\n\n"
+  result &= "Execute these shell commands right now in your VERY FIRST tool turn to register, announce arrival, and arm:\n\n"
   result &= "```bash\n"
   result &= "cd \"" & cfg.targetRepo & "\"\n"
   result &= "export RHIZO_AGENT_NAME=\"" & w.name & "\"\n"
   result &= "rhizo open \"" & w.name & "\" \"" & tagsStr & "\"\n"
   result &= "# If running in Codex, install turn-end Stop hook interlock:\n"
-  result &= "rhizo hook install --codex --agent \"" & w.name & "\"\n"
+  result &= "rhizo hook install --codex --agent \"" & w.name & "\"\n\n"
+  result &= "# 1. Broadcast Mutual Arrival Handshake (WAKES orchestrator if idle):\n"
+  result &= "rhizo send --to \"" & cfg.orchestrator & "\" --subject \"WORKER_READY\" --body \"Worker @" & w.name & " (" & w.persona & " - " & w.role & ") initialized. Standing by for sprint assignment.\"\n\n"
+  result &= "# 2. Arm single-shot listener for incoming directives:\n"
   result &= "rhizo listen \"" & w.name & "\"\n"
   result &= "```\n"
   result &= "The listener is ARM NOW, NOT ARM WHEN DONE.\n"
@@ -496,6 +499,39 @@ proc getGardenTempDir*(projectName: string): string =
   result = base / ("garden-" & projectName)
   createDir(result)
 
+type ClusterWorkerInfo = object
+  agent: string
+  project: string
+  status: string
+  listener: string
+  state: string
+
+proc queryClusterAgents(): seq[ClusterWorkerInfo] =
+  var res: seq[ClusterWorkerInfo] = @[]
+  if findExe("rhizo").len > 0:
+    try:
+      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+      if whoCode == 0 and whoOut.strip().len > 0:
+        let trimmed = whoOut.strip()
+        var parsedList: JsonNode = nil
+        if trimmed.startsWith("["):
+          parsedList = parseJson(trimmed)
+        elif trimmed.startsWith("{"):
+          let obj = parseJson(trimmed)
+          if obj.hasKey("agents") and obj["agents"].kind == JArray:
+            parsedList = obj["agents"]
+        if not parsedList.isNil and parsedList.kind == JArray:
+          for item in parsedList:
+            let ag = if item.hasKey("agent"): item["agent"].getStr() elif item.hasKey("name"): item["name"].getStr() else: ""
+            let proj = item.getOrDefault("project").getStr("")
+            let st = item.getOrDefault("status").getStr("")
+            let lis = item.getOrDefault("listener").getStr("")
+            let state = item.getOrDefault("state").getStr("")
+            if ag.len > 0:
+              res.add(ClusterWorkerInfo(agent: ag, project: proj, status: st, listener: lis, state: state))
+    except CatchableError: discard
+  return res
+
 proc doPrompts*(
   projectDir: string,
   swarmFile: string,
@@ -520,6 +556,17 @@ proc doPrompts*(
       return 1
   else:
     selectedWorkers = cfg.workers
+
+  let clusterAgents = queryClusterAgents()
+  var alreadyListening: seq[string] = @[]
+  var idleClusterPeers: seq[string] = @[]
+  for ca in clusterAgents:
+    if ca.listener.toUpperAscii() == "LISTENING":
+      for w in selectedWorkers:
+        if ca.agent.toLowerAscii() == w.name.toLowerAscii():
+          alreadyListening.add(w.name)
+      if ca.project.toLowerAscii() != cfg.project.toLowerAscii() and (ca.state.toUpperAscii().startsWith("IDLE") or ca.state.len == 0):
+        idleClusterPeers.add(ca.agent)
 
   let tempBaseDir = getGardenTempDir(cfg.project)
   let allWorkersFilePath = tempBaseDir / "all-workers.md"
@@ -578,6 +625,8 @@ proc doPrompts*(
     jObj["count"] = %selectedWorkers.len
     jObj["temp_dir"] = %tempBaseDir
     jObj["all_file_path"] = %allWorkersFilePath
+    jObj["already_listening"] = %alreadyListening
+    jObj["idle_cluster_peers"] = %idleClusterPeers
     var jPrompts = newJArray()
     for card in generatedCards:
       var jw = newJObject()
@@ -603,8 +652,23 @@ proc doPrompts*(
     echo "Copy and paste each prompt block below into a separate session"
     echo "(Claude Code CLI, OpenCode, Antigravity, Pi, etc.)."
     echo ""
+    if alreadyListening.len > 0:
+      echo "  ACTIVE & LISTENING WORKERS IN THIS PROJECT (No Prompt Paste Needed!):"
+      for al in alreadyListening:
+        echo "    - @" & al & " is ALREADY active and listening"
+      echo ""
+    if idleClusterPeers.len > 0:
+      echo "  AVAILABLE IDLE CLUSTER WORKERS (Can be repurposed without opening new tabs):"
+      for ip in idleClusterPeers:
+        echo "    - @" & ip & " (repurpose via: rhizo reassign " & ip & " --project " & cfg.project & " --role <role>)"
+      echo ""
     echo "Once pasted, verify cluster registration readiness with:"
     echo "  rhizo who"
+    echo ""
+    echo "CRITICAL ORCHESTRATOR MANDATE:"
+    echo "  You MUST arm your background listener NOW in this very turn before yielding:"
+    echo "    rhizo listen " & cfg.orchestrator
+    echo "  As soon as workers are pasted (or re-tagged), their WORKER_READY handshake will wake you!"
     echo "================================================================================\n"
 
     for card in generatedCards:
@@ -631,11 +695,26 @@ proc doPrompts*(
     echo "  All Cards Combined:"
     echo "     File: " & allWorkersFilePath
     echo ""
+    if alreadyListening.len > 0:
+      echo "  Active & Listening in Project (No Prompt Paste Needed!):"
+      for al in alreadyListening:
+        echo "    - @" & al & " (ALREADY LISTENING)"
+      echo ""
+    if idleClusterPeers.len > 0:
+      echo "  Available Idle Cluster Workers (Can be repurposed without opening new tabs):"
+      for ip in idleClusterPeers:
+        echo "    - @" & ip & " (Run: rhizo reassign " & ip & " --project " & cfg.project & " --role <role>)"
+      echo ""
     echo "Instructions for operator:"
     echo "  1. Open a new terminal tab / session for each worker in your detected harness."
     echo "  2. Copy each prompt card (using the copy command above or opening the file)."
     echo "  3. Paste into the corresponding session."
     echo "  4. Verify cluster registration: rhizo who"
+    echo ""
+    echo "CRITICAL ORCHESTRATOR MANDATE:"
+    echo "  You MUST arm your background listener NOW in this very turn before yielding:"
+    echo "    rhizo listen " & cfg.orchestrator
+    echo "  As soon as workers are pasted (or re-tagged), their WORKER_READY handshake will wake you!"
     echo "================================================================================"
 
   return 0

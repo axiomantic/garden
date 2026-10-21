@@ -197,6 +197,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check content.contains("architect")
     check content.contains("auditor")
     check content.contains("implementer")
+    check content.contains("WORKER_READY")
+    check content.contains("rhizo send --to")
 
   test "Garden launch defaults to prompt generation without requiring tmux":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
@@ -204,11 +206,15 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check lCode == 0
     check lOut.contains("garden-implementer")
     check lOut.contains(".md")
+    check lOut.contains("CRITICAL ORCHESTRATOR MANDATE")
+    check lOut.contains("rhizo listen")
 
     let (iOut, iCode) = execCmdEx(exePath & " launch --worker implementer --inline")
     check iCode == 0
     check iOut.contains("garden-implementer")
     check iOut.contains("``````````markdown")
+    check iOut.contains("WORKER_READY")
+    check iOut.contains("CRITICAL ORCHESTRATOR MANDATE")
 
   test "Garden respects GARDEN_SWARM_FILE and GARDEN_PROJECT_DIR environment variables":
     let tmpDir = getTempDir() / ("garden_test_env_" & $getCurrentProcessId())

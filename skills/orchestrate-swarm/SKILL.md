@@ -100,10 +100,10 @@ Context compaction purges detailed operational invariants, ceremony rules, and p
 Orchestrator Turn-End Listener Invariant (GVR-014):
 Coding harnesses (Antigravity, Claude Code, OpenCode) are event-driven: when the model yields a turn with text output, execution is completely suspended. Redis inbox state changes CANNOT wake an idle harness without an active child process registered in the task manager.
 
-Whenever the Lead Orchestrator dispatches a task, broadcasts instructions, or awaits worker responses, THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
+Whenever the Lead Orchestrator dispatches a task, broadcasts instructions, awaits worker responses, or emits worker prompt cards ('garden prompts' / 'garden launch'), THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
 `run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`
 
-FORBIDDEN: Never yield the conversation turn to the operator after dispatching work without an active background listener running. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies in Redis and causing silent swarm stalls.
+FORBIDDEN: Never yield the conversation turn to the operator after dispatching work or emitting prompt cards without an active background listener running. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies and mutual arrival handshakes ('WORKER_READY') in Redis and causing silent swarm deadlocks.
 
 Safety Net (In-Flight Task Liveness Probe & Watchdog Protocol):
 - **Antigravity & OpenCode Idle Exemption**: When idle or waiting for routine replies in Google Antigravity (using background `run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`) and OpenCode (using background ear), DO NOT schedule recurring cron timers. Antigravity's task manager natively and reactively resumes execution on process exit when `rhizo listen` delivers a message.
