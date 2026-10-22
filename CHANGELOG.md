@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.23] - 2026-10-22
+
 ### Added
 - **Mutual Arrival Handshake & Swarm Cold-Start Protocol (`src/garden.nim`, `tests/test_garden.nim`, `skills/launch-workers/SKILL.md`)**:
   - Added the mandatory Mutual Arrival Handshake (`rhizo send --to <orchestrator> --subject WORKER_READY`) to Turn 1 execution of all worker prompt cards.
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Anti-Defeat-Device & Autonomous Intensive Audit Mandates (`src/guide.nim`, `skills/dialectical-pump/SKILL.md`, `skills/orchestrate-swarm/SKILL.md`)**:
   - Upgraded Pillar 2 in the Dialectical Pump and Three-Key Gate with the Anti-Defeat-Device & Anti-Theatrical Interceptor Mandate: strictly rejects prompt keyword interceptors (e.g. `if 'flight game' in q`) and theatrical mock questionnaires in generic runtimes as critical defects (`CRIT-DEFEAT-DEVICE`).
   - Codified the Autonomous Intensive Audit Mandate: intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP), pre-authorized, and autonomous across the Triad without requiring operator confirmation.
+
+## [0.2.22] - 2026-10-19
 
 ### Added
 - **All-in-One Swarm Toolchain Bin Riders (`package.json`, `bin/rhizo.js`, `bin/vine.js`, `bin/rift.js`, `tests/test_riders.js`)**:
