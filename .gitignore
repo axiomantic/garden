@@ -22,6 +22,7 @@ __pycache__/
 .rhizo.agent
 .braid.agent
 .braid.json
+garden-swarm.json
 workspaces/
 *.lock
 *.tmp.*
@@ -32,3 +33,5 @@ workspaces/
 tests/test_garden
 tests/test_seed
 tests/test_germinate
+tests/test_roadmap
+tests/test_update

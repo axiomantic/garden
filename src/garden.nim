@@ -1546,7 +1546,10 @@ proc main() =
     var i = 1
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]:
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]:
         jsonOutput = true
       elif a in ["--list", "-l"]:
         listMode = true
@@ -1586,7 +1589,10 @@ proc main() =
     var i = 1
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]:
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]:
         jsonOutput = true
       elif a in ["--write", "-w"]:
         writeMarkdown = true
@@ -1622,7 +1628,10 @@ proc main() =
     var i = 2
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]:
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]:
         jsonOutput = true
       elif a in ["--inline", "-i"]:
         inlineOutput = true
@@ -1656,7 +1665,10 @@ proc main() =
     var i = 1
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]:
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]:
         jsonOutput = true
       elif a in ["--self-tag", "-s"]:
         selfTag = true
@@ -1805,7 +1817,10 @@ proc main() =
     var i = 1
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]: jsonOutput = true
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]: jsonOutput = true
       elif a in ["--fix", "-F"]: fix = true
       elif a in ["--audit", "-a"]: discard
       elif (a in ["--swarm-file", "-f"]) and i + 1 < params.len:
@@ -1834,7 +1849,10 @@ proc main() =
     var i = 2
     while i < params.len:
       let a = params[i]
-      if a in ["--json", "-j"]: jsonOutput = true
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]: jsonOutput = true
       elif (a in ["--agent", "-a"]) and i + 1 < params.len:
         inc i; agentName = params[i]
       elif a.startsWith("--agent="): agentName = a[8..^1]
