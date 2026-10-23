@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Adaptive Swarm On-Ramp & Dynamic Worker Repurposing (`src/garden.nim`, `tests/test_garden.nim`, `skills/garden/SKILL.md`, `skills/choose-personas/SKILL.md`, `skills/orchestrate-swarm/SKILL.md`)**:
+  - **Dynamic Cluster Listener Triage**: Enhanced `queryClusterAgents` to classify all active cluster listeners into `projectActive` (listeners on current project), `availableIdlePeers` (idle listeners on other projects available for reassignment), and `busyClusterPeers` (active on in-flight tasks).
+  - **Fast-Path On-Ramp & Dual Pathway Dispatch**: In `garden prompts` and `garden launch`, activates the Fast-Path when target project active workers meet or exceed the target worker count, avoiding redundant prompt card generation while supporting `--force-prompts` bypass. When workers are needed and idle peers exist in the cluster, surfaces Pathway A (Dynamic Repurposing via `garden repurpose`) alongside Pathway B (Bootstrap Prompts in `/tmp/garden-<project>/`).
+  - **First-Class `garden repurpose` Subcommand**: Reassigns idle cluster workers into the target project via `rhizo reassign` and authenticated control directives (`--project`, `--role`, `--tags`, `--force`, `--json`).
+  - **Self-Tagging Capability Handshake (`--self-tag`)**: Dispatches a `SWARM_REPURPOSE_OFFER` directive payload containing candidate roles and expected tags, allowing heterogenous worker nodes to inspect local toolchains and self-select matching specializations.
+  - **Negative Controls & Safety Invariants**: Rejects attempts to repurpose `BUSY` workers without `--force`; requires explicit `--force` override to reassign active workers.
+
 ## [0.2.23] - 2026-10-22
 
 ### Added

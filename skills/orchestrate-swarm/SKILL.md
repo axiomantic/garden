@@ -396,6 +396,24 @@ If an incoming message contains `[DESIGN ADDENDUM]`:
 4. If rejected:
    - Reply with counter-guidance and instruct the worker to remain aligned with original specs.
 
+### SOP 6: Dynamic Worker Repurposing & Self-Tagging Capability Handshake
+When cluster capacity needs adjustment, or idle listeners from other projects are available:
+1. **Triage Cluster Listeners**:
+   Query active listeners across all projects with `rhizo who --all --json` to classify `projectActive`, `availableIdlePeers`, and `busyClusterPeers`.
+2. **Execute Repurposing**:
+   Reassign workers into the target project using `garden repurpose`:
+   ```bash
+   garden repurpose <worker> --project <target-project> --role "<role>" --tags "<tag1,tag2>"
+   ```
+3. **Self-Tagging Capability Handshake**:
+   When workers operate in heterogeneous environments (different compilers, runtimes, or test harnesses), dispatch a self-tagging offer:
+   ```bash
+   garden repurpose <worker> --project <target-project> --self-tag --expected-tags "backend,frontend,qa,audit"
+   ```
+   This sends an authenticated `SWARM_REPURPOSE_OFFER` directive payload. The recipient worker inspects its local environment, claims matching tags via `rhizo tag add`, and responds with `WORKER_READY`.
+4. **Negative Controls & Safety**:
+   `garden repurpose` automatically halts if a worker is currently executing an in-flight task (`BUSY`), returning exit code 1. Repurposing a busy worker requires explicit `--force` override.
+
 ---
 
 ## 4. Swarm Conclusion & Teardown

@@ -379,4 +379,105 @@ suite "Garden CLI Compilation & Telemetry Suite":
       if n notin unique: unique.add(n)
     check unique.len >= 6
 
+  test "Adaptive on-ramp surfaces available idle cluster peers and suggested repurpose commands":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (jOut, jCode) = execCmdEx(exePath & " prompts --json")
+    check jCode == 0
+    let j = parseJson(jOut.strip())
+    check j.hasKey("fast_path")
+    check j.hasKey("already_listening")
+    check j.hasKey("idle_cluster_peers")
+    check j.hasKey("busy_cluster_peers")
+    check j.hasKey("suggested_repurpose_commands")
+
+  test "Garden repurpose CLI reassigns workers and emits structured JSON":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (rOut, rCode) = execCmdEx(exePath & " repurpose test-idle-agent --project test-garden-proj --role \"Staff Systems Architect\" --tags \"test,systems\" --json")
+    check rCode == 0
+    let rJson = parseJson(rOut.strip())
+    check rJson["status"].getStr() == "ok"
+    check rJson["action"].getStr() == "repurpose"
+    check rJson["project"].getStr() == "test-garden-proj"
+    check rJson["repurposed_count"].getInt() == 1
+    check rJson["repurposed_workers"][0]["agent"].getStr() == "test-idle-agent"
+    check rJson["repurposed_workers"][0]["role"].getStr() == "Staff Systems Architect"
+    check rJson["repurposed_workers"][0]["mode"].getStr() == "direct"
+
+  test "Garden repurpose supports --self-tag capability handshake":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let (sOut, sCode) = execCmdEx(exePath & " repurpose test-handshake-agent --project test-garden-proj --self-tag --expected-tags \"nim,qa,audit\" --json")
+    check sCode == 0
+    let sJson = parseJson(sOut.strip())
+    check sJson["status"].getStr() == "ok"
+    check sJson["action"].getStr() == "repurpose"
+    check sJson["repurposed_workers"][0]["mode"].getStr() == "self_tag"
+
+  test "Garden repurpose negative control: busy worker rejected without --force, overrides with --force":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    
+    # Query cluster to find an actual busy worker
+    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+    var busyAgent = ""
+    if whoCode == 0 and whoOut.strip().len > 0:
+      try:
+        let parsed = parseJson(whoOut.strip())
+        let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
+        for item in list:
+          let state = item.getOrDefault("state").getStr("")
+          if state.toUpperAscii().startsWith("BUSY"):
+            busyAgent = item.getOrDefault("agent").getStr("")
+            if busyAgent.len > 0: break
+      except CatchableError: discard
+
+    if busyAgent.len > 0:
+      # 1. Attempting without --force fails
+      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project test-proj --json")
+      check errCode != 0
+      let errJson = parseJson(errOut.strip())
+      check errJson["status"].getStr() == "error"
+      check errJson["error"].getStr().contains("BUSY")
+
+      # 2. Overriding with --force succeeds
+      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project test-proj --force --json")
+      check fCode == 0
+      let fJson = parseJson(fOut.strip())
+      check fJson["status"].getStr() == "ok"
+      check fJson["repurposed_workers"][0]["agent"].getStr() == busyAgent
+
+  test "Garden prompts fast-path skips card generation when project active workers >= target":
+    let tmpDir = getTempDir() / ("garden_fast_path_test_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: removeDir(tmpDir)
+
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    
+    # Create single-worker swarm matching current active worker (garden-botanist)
+    let swarmFile = tmpDir / "test-fast-swarm.json"
+    writeFile(swarmFile, """{
+      "project": "garden",
+      "target_repo": """" & tmpDir & """",
+      "orchestrator": "test-orch",
+      "workers": [
+        {
+          "name": "garden-botanist",
+          "role": "Ceremony & Swarm On-Ramp Lead"
+        }
+      ]
+    }""")
+
+    # 1. Fast-Path Activated (without --force-prompts)
+    let (fpOut, fpCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --json")
+    check fpCode == 0
+    let fpJson = parseJson(fpOut.strip())
+    check fpJson["fast_path"].getBool() == true
+    check fpJson["active_workers_count"].getInt() >= 1
+
+    # 2. Force Prompts Flag overrides fast-path
+    let (forceOut, forceCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --force-prompts --json")
+    check forceCode == 0
+    let forceJson = parseJson(forceOut.strip())
+    check forceJson["fast_path"].getBool() == false
+    check forceJson["count"].getInt() == 1
+    check forceJson["workers"].len == 1
+
 

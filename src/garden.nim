@@ -45,6 +45,7 @@ Subcommands:
   plant <title> [options]  Sow a new botanical task/roadmap seed into .garden/seeds/
   roadmap [options]        Generate structured roadmap (JSON, re-entrant Markdown, pre-commit sync)
   germinate <act> <seed>   Germinate a seed (dispatch, prompt, inline, status)
+  repurpose [workers...]   Repurpose existing cluster listeners into target project
   prompts [options]        Generate copy-pasteable bootstrap prompts for worker sessions
   launch [options]         Bootstrap swarm worker sessions (generates prompts by default)
   status [options]         Unified cluster telemetry (Rhizo heartbeats, Vine strands)
@@ -55,6 +56,16 @@ Subcommands:
   teardown [options]       Gracefully close swarm agents in Redis
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
+
+Options for 'repurpose':
+  --project, -p <proj>     Target project codename (default: current project)
+  --role, -r <role>        Target role assignment
+  --tags, -t <csv>         Target taxonomy tags
+  --self-tag, -s           Offer candidate roles and allow worker to self-select matching tags
+  --expected-tags <csv>    Expected capabilities or tools required
+  --force, -f              Force repurposing even if worker is currently BUSY
+  --swarm-file, -S <file>  Path to garden-swarm.json manifest
+  --json                   Output result as structured JSON
 
 Options for 'roadmap':
   --season, -S <name>      Filter roadmap to specific season/milestone
@@ -92,6 +103,7 @@ Options for 'prompts' and 'launch':
   --worker, -w <name>      Filter prompt output to a specific worker
   --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)
   --inline, -i             Print raw 10-backtick prompt cards directly to stdout
+  --force-prompts, --cards Force prompt card generation (skips fast-path)
   --json                   Output prompts as JSON
   --project-dir, -p <dir>  Target project directory (default: current root)
 
@@ -499,15 +511,23 @@ proc getGardenTempDir*(projectName: string): string =
   result = base / ("garden-" & projectName)
   createDir(result)
 
-type ClusterWorkerInfo = object
-  agent: string
-  project: string
-  status: string
-  listener: string
-  state: string
+type
+  ClusterWorkerInfo* = object
+    agent*: string
+    project*: string
+    status*: string
+    listener*: string
+    state*: string
+    tags*: seq[string]
 
-proc queryClusterAgents(): seq[ClusterWorkerInfo] =
-  var res: seq[ClusterWorkerInfo] = @[]
+  ClusterCategorization* = object
+    projectActive*: seq[ClusterWorkerInfo]
+    availableIdlePeers*: seq[ClusterWorkerInfo]
+    busyClusterPeers*: seq[ClusterWorkerInfo]
+    allAgents*: seq[ClusterWorkerInfo]
+
+proc queryClusterAgents*(currentProject: string = "", targetWorkers: seq[WorkerSpec] = @[]): ClusterCategorization =
+  var allList: seq[ClusterWorkerInfo] = @[]
   if findExe("rhizo").len > 0:
     try:
       let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
@@ -527,10 +547,43 @@ proc queryClusterAgents(): seq[ClusterWorkerInfo] =
             let st = item.getOrDefault("status").getStr("")
             let lis = item.getOrDefault("listener").getStr("")
             let state = item.getOrDefault("state").getStr("")
+            var tags: seq[string] = @[]
+            if item.hasKey("tags"):
+              if item["tags"].kind == JArray:
+                for t in item["tags"]:
+                  if t.kind == JString: tags.add(t.getStr())
+              elif item["tags"].kind == JString:
+                for t in item["tags"].getStr().split(","):
+                  let clean = t.strip()
+                  if clean.len > 0: tags.add(clean)
             if ag.len > 0:
-              res.add(ClusterWorkerInfo(agent: ag, project: proj, status: st, listener: lis, state: state))
+              allList.add(ClusterWorkerInfo(agent: ag, project: proj, status: st, listener: lis, state: state, tags: tags))
     except CatchableError: discard
-  return res
+
+  result.allAgents = allList
+  let curProjLower = currentProject.toLowerAscii()
+
+  for ca in allList:
+    let isListening = ca.listener.toUpperAscii() == "LISTENING"
+    let isBusy = ca.state.toUpperAscii().startsWith("BUSY") or ca.state.toUpperAscii().contains("BUSY")
+    
+    if isBusy:
+      result.busyClusterPeers.add(ca)
+
+    if isListening:
+      var isTarget = false
+      for w in targetWorkers:
+        if ca.agent.toLowerAscii() == w.name.toLowerAscii():
+          isTarget = true
+          break
+      
+      let isProjMatch = curProjLower.len > 0 and ca.project.toLowerAscii() == curProjLower
+
+      if isProjMatch or isTarget:
+        result.projectActive.add(ca)
+      else:
+        if not isBusy and (ca.state.toUpperAscii().startsWith("IDLE") or ca.state.len == 0):
+          result.availableIdlePeers.add(ca)
 
 proc doPrompts*(
   projectDir: string,
@@ -539,7 +592,8 @@ proc doPrompts*(
   writeFileParam: string,
   jsonOutput: bool,
   optOrchAgent: string = "",
-  inlineOutput: bool = false
+  inlineOutput: bool = false,
+  forcePrompts: bool = false
 ): int =
   let cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent)
   registerOrchestratorAlias(cfg, quiet = jsonOutput)
@@ -557,16 +611,55 @@ proc doPrompts*(
   else:
     selectedWorkers = cfg.workers
 
-  let clusterAgents = queryClusterAgents()
-  var alreadyListening: seq[string] = @[]
-  var idleClusterPeers: seq[string] = @[]
-  for ca in clusterAgents:
-    if ca.listener.toUpperAscii() == "LISTENING":
-      for w in selectedWorkers:
+  let categorization = queryClusterAgents(cfg.project, selectedWorkers)
+  let projectActive = categorization.projectActive
+  let availableIdlePeers = categorization.availableIdlePeers
+  let busyPeers = categorization.busyClusterPeers
+
+  # Fast-Path Check: Skip card generation if all target workers are active and listening
+  var allTargetWorkersListening = false
+  if selectedWorkers.len > 0:
+    var matchedCount = 0
+    for w in selectedWorkers:
+      for ca in projectActive:
         if ca.agent.toLowerAscii() == w.name.toLowerAscii():
-          alreadyListening.add(w.name)
-      if ca.project.toLowerAscii() != cfg.project.toLowerAscii() and (ca.state.toUpperAscii().startsWith("IDLE") or ca.state.len == 0):
-        idleClusterPeers.add(ca.agent)
+          inc matchedCount
+          break
+    allTargetWorkersListening = (matchedCount >= selectedWorkers.len)
+
+  if not forcePrompts and allTargetWorkersListening and selectedWorkers.len > 0:
+    if jsonOutput:
+      var jObj = newJObject()
+      jObj["fast_path"] = %true
+      jObj["project"] = %cfg.project
+      jObj["target_workers_count"] = %selectedWorkers.len
+      jObj["active_workers_count"] = %projectActive.len
+      var jActive = newJArray()
+      for ca in projectActive:
+        var ja = newJObject()
+        ja["agent"] = %ca.agent
+        ja["project"] = %ca.project
+        ja["listener"] = %ca.listener
+        ja["state"] = %ca.state
+        jActive.add(ja)
+      jObj["active_workers"] = jActive
+      jObj["message"] = %("Fast-Path Activated: All target swarm workers are already active and listening on project '" & cfg.project & "'.")
+      echo pretty(jObj)
+      return 0
+
+    echo "================================================================================"
+    echo "  GARDEN SWARM FAST-PATH ACTIVATED: " & cfg.project
+    echo "================================================================================"
+    echo "All " & $selectedWorkers.len & " target swarm worker(s) are already active and listening on project '" & cfg.project & "':"
+    for ca in projectActive:
+      echo "  - @" & ca.agent & " (listener: " & ca.listener & ", state: " & (if ca.state.len > 0: ca.state else: "IDLE") & ")"
+    echo ""
+    echo "Zero prompt copying or terminal tab opening required!"
+    echo "Proceed directly to work queue dispatch or germination:"
+    echo "  garden germinate dispatch <seed>"
+    echo "  rhizo enqueue queue:" & cfg.project & ":tasks --subject \"<subj>\" --body \"<body>\""
+    echo "================================================================================"
+    return 0
 
   let tempBaseDir = getGardenTempDir(cfg.project)
   let allWorkersFilePath = tempBaseDir / "all-workers.md"
@@ -615,8 +708,22 @@ proc doPrompts*(
     writeFile(outPath, allWorkersBuf)
     echo "[garden] Prompts successfully written to: " & outPath
 
+  var suggestedRepurposeCmds: seq[string] = @[]
+  if availableIdlePeers.len > 0:
+    var peerNames: seq[string] = @[]
+    for p in availableIdlePeers:
+      peerNames.add(p.agent)
+      if peerNames.len >= max(1, selectedWorkers.len - projectActive.len):
+        break
+    suggestedRepurposeCmds.add("garden repurpose " & peerNames.join(" ") & " --project " & cfg.project & " --self-tag")
+    for i, p in peerNames:
+      if i < selectedWorkers.len:
+        let w = selectedWorkers[i]
+        suggestedRepurposeCmds.add("garden repurpose " & p & " --project " & cfg.project & " --role " & quoteShell(w.role) & " --tags " & quoteShell(w.tags.join(",")))
+
   if jsonOutput:
     var jObj = newJObject()
+    jObj["fast_path"] = %false
     jObj["project"] = %cfg.project
     jObj["target_repo"] = %cfg.targetRepo
     jObj["orchestrator"] = %cfg.orchestrator
@@ -625,8 +732,23 @@ proc doPrompts*(
     jObj["count"] = %selectedWorkers.len
     jObj["temp_dir"] = %tempBaseDir
     jObj["all_file_path"] = %allWorkersFilePath
-    jObj["already_listening"] = %alreadyListening
-    jObj["idle_cluster_peers"] = %idleClusterPeers
+    
+    var jAlready = newJArray()
+    for pa in projectActive: jAlready.add(%pa.agent)
+    jObj["already_listening"] = jAlready
+    
+    var jIdle = newJArray()
+    for ip in availableIdlePeers: jIdle.add(%ip.agent)
+    jObj["idle_cluster_peers"] = jIdle
+
+    var jBusy = newJArray()
+    for bp in busyPeers: jBusy.add(%bp.agent)
+    jObj["busy_cluster_peers"] = jBusy
+
+    var jCmds = newJArray()
+    for sc in suggestedRepurposeCmds: jCmds.add(%sc)
+    jObj["suggested_repurpose_commands"] = jCmds
+
     var jPrompts = newJArray()
     for card in generatedCards:
       var jw = newJObject()
@@ -652,15 +774,20 @@ proc doPrompts*(
     echo "Copy and paste each prompt block below into a separate session"
     echo "(Claude Code CLI, OpenCode, Antigravity, Pi, etc.)."
     echo ""
-    if alreadyListening.len > 0:
+    if projectActive.len > 0:
       echo "  ACTIVE & LISTENING WORKERS IN THIS PROJECT (No Prompt Paste Needed!):"
-      for al in alreadyListening:
-        echo "    - @" & al & " is ALREADY active and listening"
+      for pa in projectActive:
+        echo "    - @" & pa.agent & " is ALREADY active and listening"
       echo ""
-    if idleClusterPeers.len > 0:
+    if availableIdlePeers.len > 0:
       echo "  AVAILABLE IDLE CLUSTER WORKERS (Can be repurposed without opening new tabs):"
-      for ip in idleClusterPeers:
-        echo "    - @" & ip & " (repurpose via: rhizo reassign " & ip & " --project " & cfg.project & " --role <role>)"
+      for ip in availableIdlePeers:
+        let curProj = if ip.project.len > 0: ip.project else: "unassigned"
+        echo "    - @" & ip.agent & " (current project: " & curProj & ")"
+      echo ""
+      echo "  Suggested Repurpose Command(s):"
+      for sc in suggestedRepurposeCmds:
+        echo "    " & sc
       echo ""
     echo "Once pasted, verify cluster registration readiness with:"
     echo "  rhizo who"
@@ -682,6 +809,27 @@ proc doPrompts*(
     echo "================================================================================"
     echo "  GARDEN SWARM BOOTSTRAP: " & cfg.project
     echo "================================================================================"
+    echo "Adaptive Swarm On-Ramp Telemetry:"
+    echo "Target Workers: " & $selectedWorkers.len & " | Currently Active in Project: " & $projectActive.len
+    echo ""
+    if availableIdlePeers.len > 0:
+      echo "Two On-Ramp Pathways Available:"
+      echo ""
+      echo "--------------------------------------------------------------------------------"
+      echo "PATHWAY A: DYNAMIC WORKER REPURPOSING (Recommended - Zero New Tabs!)"
+      echo "--------------------------------------------------------------------------------"
+      echo "Detected " & $availableIdlePeers.len & " active idle listener(s) standing by in the cluster:"
+      for p in availableIdlePeers:
+        let curProj = if p.project.len > 0: p.project else: "unassigned"
+        echo "  - @" & p.agent & " (current project: " & curProj & ")"
+      echo ""
+      echo "Repurpose them immediately into '" & cfg.project & "' without opening new terminal windows:"
+      for cmd in suggestedRepurposeCmds:
+        echo "  " & cmd
+      echo ""
+      echo "--------------------------------------------------------------------------------"
+      echo "PATHWAY B: FRESH SESSION BOOTSTRAPPING (Prompt Card Files)"
+      echo "--------------------------------------------------------------------------------"
     echo "Generated " & $selectedWorkers.len & " worker bootstrap prompt card(s) in:"
     echo "  " & tempBaseDir & "/"
     echo ""
@@ -695,15 +843,10 @@ proc doPrompts*(
     echo "  All Cards Combined:"
     echo "     File: " & allWorkersFilePath
     echo ""
-    if alreadyListening.len > 0:
+    if projectActive.len > 0:
       echo "  Active & Listening in Project (No Prompt Paste Needed!):"
-      for al in alreadyListening:
-        echo "    - @" & al & " (ALREADY LISTENING)"
-      echo ""
-    if idleClusterPeers.len > 0:
-      echo "  Available Idle Cluster Workers (Can be repurposed without opening new tabs):"
-      for ip in idleClusterPeers:
-        echo "    - @" & ip & " (Run: rhizo reassign " & ip & " --project " & cfg.project & " --role <role>)"
+      for pa in projectActive:
+        echo "    - @" & pa.agent & " (ALREADY LISTENING)"
       echo ""
     echo "Instructions for operator:"
     echo "  1. Open a new terminal tab / session for each worker in your detected harness."
@@ -717,6 +860,201 @@ proc doPrompts*(
     echo "  As soon as workers are pasted (or re-tagged), their WORKER_READY handshake will wake you!"
     echo "================================================================================"
 
+  return 0
+
+proc doLaunch*(
+  projectDir: string,
+  swarmFile: string,
+  targetWorker: string,
+  writeFileParam: string,
+  jsonOutput: bool,
+  optOrchAgent: string = "",
+  inlineOutput: bool = false,
+  forcePrompts: bool = false
+): int =
+  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts)
+
+proc doRepurpose*(
+  workers: seq[string],
+  projectParam: string = "",
+  roleParam: string = "",
+  tagsParam: string = "",
+  selfTag: bool = false,
+  expectedTagsParam: string = "",
+  force: bool = false,
+  swarmFileParam: string = "",
+  jsonOutput: bool = false
+): int =
+  let root = findProjectRoot()
+  let targetProj = if projectParam.len > 0: projectParam.strip()
+                   else: root.lastPathPart.toLowerAscii.replace(" ", "-")
+
+  if targetProj.len == 0:
+    let errMsg = "Target project cannot be empty. Specify --project <proj>."
+    if jsonOutput:
+      echo $(%*{"status": "error", "error": errMsg})
+    else:
+      stderr.writeLine("[garden repurpose] Error: " & errMsg)
+    return 1
+
+  let cfg = loadSwarmConfig(root, swarmFileParam)
+  let categorization = queryClusterAgents(targetProj, cfg.workers)
+
+  var targetWorkers = workers
+  if targetWorkers.len == 0:
+    if categorization.availableIdlePeers.len == 0:
+      let errMsg = "No idle cluster workers found to repurpose. Start new sessions or pass specific worker names."
+      if jsonOutput:
+        echo $(%*{"status": "error", "error": errMsg})
+      else:
+        stderr.writeLine("[garden repurpose] Error: " & errMsg)
+      return 1
+    
+    let needed = if cfg.workers.len > categorization.projectActive.len: cfg.workers.len - categorization.projectActive.len else: 1
+    for i in 0 ..< min(needed, categorization.availableIdlePeers.len):
+      targetWorkers.add(categorization.availableIdlePeers[i].agent)
+
+  # Check for busy workers unless force is enabled (Negative Control)
+  for tw in targetWorkers:
+    let twLower = tw.toLowerAscii()
+    for bp in categorization.busyClusterPeers:
+      if bp.agent.toLowerAscii() == twLower:
+        if not force:
+          let errMsg = "Worker '@" & tw & "' is currently BUSY (" & bp.state & "). Use --force to override."
+          if jsonOutput:
+            echo $(%*{"status": "error", "error": errMsg, "agent": tw, "state": bp.state})
+          else:
+            stderr.writeLine("[garden repurpose] Error: " & errMsg)
+          return 1
+
+  var candidateRolesJson = newJArray()
+  if cfg.workers.len > 0:
+    for w in cfg.workers:
+      var jw = newJObject()
+      jw["role"] = %w.role
+      jw["persona"] = %w.persona
+      jw["tags"] = %(w.tags)
+      candidateRolesJson.add(jw)
+  else:
+    candidateRolesJson.add(%*{
+      "role": "Staff Systems Architect",
+      "persona": "Bramblestitch",
+      "tags": @[targetProj, "systems", "architecture", "invariants"]
+    })
+    candidateRolesJson.add(%*{
+      "role": "Verification & Adversarial Auditor",
+      "persona": "Prickle-Thistle",
+      "tags": @[targetProj, "qa", "audit", "verifier", "purist"]
+    })
+    candidateRolesJson.add(%*{
+      "role": "DevEx & Implementation Lead",
+      "persona": "Moss-Weaver",
+      "tags": @[targetProj, "dev", "devex", "build", "implementation"]
+    })
+
+  var expectedTagsSeq: seq[string] = @[]
+  if expectedTagsParam.len > 0:
+    for t in expectedTagsParam.split(","):
+      let clean = t.strip()
+      if clean.len > 0: expectedTagsSeq.add(clean)
+
+  type RepurposedResult = object
+    agent: string
+    role: string
+    tags: seq[string]
+    mode: string
+    status: string
+
+  var results: seq[RepurposedResult] = @[]
+
+  for idx, tw in targetWorkers:
+    var assignedRole = roleParam
+    var assignedTags: seq[string] = @[]
+    if tagsParam.len > 0:
+      for t in tagsParam.split(","):
+        let clean = t.strip()
+        if clean.len > 0: assignedTags.add(clean)
+
+    if assignedRole.len == 0:
+      if idx < cfg.workers.len:
+        assignedRole = cfg.workers[idx].role
+        if assignedTags.len == 0:
+          assignedTags = cfg.workers[idx].tags
+      else:
+        assignedRole = "Swarm Worker"
+        if assignedTags.len == 0:
+          assignedTags = @[targetProj, "worker"]
+
+    if assignedTags.len == 0:
+      assignedTags = @[targetProj, assignedRole.toLowerAscii().replace(" ", "-")]
+
+    let mode = if selfTag: "self_tag" else: "direct"
+    let tagsCsv = assignedTags.join(",")
+
+    var reassignCmd = "rhizo reassign " & quoteShell(tw) & " --project " & quoteShell(targetProj) & " --role " & quoteShell(assignedRole) & " --tags " & quoteShell(tagsCsv)
+    try:
+      discard execCmdEx(reassignCmd)
+    except CatchableError:
+      discard
+
+    if selfTag:
+      var offerObj = newJObject()
+      offerObj["type"] = %"directive"
+      offerObj["subject"] = %"SWARM_REPURPOSE_OFFER"
+      var bodyObj = newJObject()
+      bodyObj["target_project"] = %targetProj
+      bodyObj["mode"] = %"self_tag"
+      bodyObj["assigned_role"] = %assignedRole
+      bodyObj["candidate_roles"] = candidateRolesJson
+      if expectedTagsSeq.len > 0:
+        bodyObj["expected_tags"] = %expectedTagsSeq
+      offerObj["body"] = bodyObj
+
+      let sendCmd = "rhizo send --to " & quoteShell(tw) & " --subject " & quoteShell("SWARM_REPURPOSE_OFFER") & " --body " & quoteShell($offerObj)
+      try:
+        discard execCmdEx(sendCmd)
+      except CatchableError:
+        discard
+
+    results.add(RepurposedResult(
+      agent: tw,
+      role: assignedRole,
+      tags: assignedTags,
+      mode: mode,
+      status: "REASSIGNED"
+    ))
+
+  if jsonOutput:
+    var jObj = newJObject()
+    jObj["status"] = %"ok"
+    jObj["action"] = %"repurpose"
+    jObj["project"] = %targetProj
+    jObj["repurposed_count"] = %results.len
+    var jRes = newJArray()
+    for r in results:
+      var jr = newJObject()
+      jr["agent"] = %r.agent
+      jr["role"] = %r.role
+      jr["tags"] = %r.tags
+      jr["mode"] = %r.mode
+      jr["status"] = %r.status
+      jRes.add(jr)
+    jObj["repurposed_workers"] = jRes
+    echo pretty(jObj)
+    return 0
+
+  echo "================================================================================"
+  echo "  GARDEN WORKER REPURPOSING: " & targetProj
+  echo "================================================================================"
+  echo "Successfully dispatched repurposing directive(s) to " & $results.len & " worker(s):"
+  for r in results:
+    echo "  - @" & r.agent & " -> Role: " & r.role & " (Tags: " & r.tags.join(", ") & ")"
+    if r.mode == "self_tag":
+      echo "      (Self-Tagging Capability Handshake offer dispatched)"
+  echo ""
+  echo "Workers will announce WORKER_READY once enrolled."
+  echo "Verify with: rhizo who"
+  echo "================================================================================"
   return 0
 
 proc doInit(targetDir: string, force: bool, optOrchAgent: string = ""): int =
@@ -1305,6 +1643,49 @@ proc main() =
       quit(1)
 
     quit(doGerminate(action, seedId, targetWorker, projectDir, jsonOutput, inlineOutput))
+  of "repurpose":
+    var workers: seq[string] = @[]
+    var projectParam = ""
+    var roleParam = ""
+    var tagsParam = ""
+    var selfTag = false
+    var expectedTagsParam = ""
+    var force = false
+    var swarmFileParam = getEnv("GARDEN_SWARM_FILE", "")
+    var jsonOutput = false
+    var i = 1
+    while i < params.len:
+      let a = params[i]
+      if a in ["--json", "-j"]:
+        jsonOutput = true
+      elif a in ["--self-tag", "-s"]:
+        selfTag = true
+      elif a in ["--force", "-f"]:
+        force = true
+      elif (a in ["--project", "-p"]) and i + 1 < params.len:
+        inc i; projectParam = params[i]
+      elif a.startsWith("--project="):
+        projectParam = a[10..^1]
+      elif (a in ["--role", "-r"]) and i + 1 < params.len:
+        inc i; roleParam = params[i]
+      elif a.startsWith("--role="):
+        roleParam = a[7..^1]
+      elif (a in ["--tags", "-t"]) and i + 1 < params.len:
+        inc i; tagsParam = params[i]
+      elif a.startsWith("--tags="):
+        tagsParam = a[7..^1]
+      elif a == "--expected-tags" and i + 1 < params.len:
+        inc i; expectedTagsParam = params[i]
+      elif a.startsWith("--expected-tags="):
+        expectedTagsParam = a[16..^1]
+      elif (a in ["--swarm-file", "-S"]) and i + 1 < params.len:
+        inc i; swarmFileParam = params[i]
+      elif a.startsWith("--swarm-file="):
+        swarmFileParam = a[13..^1]
+      elif not a.startsWith("-"):
+        workers.add(a)
+      inc i
+    quit(doRepurpose(workers, projectParam, roleParam, tagsParam, selfTag, expectedTagsParam, force, swarmFileParam, jsonOutput))
   of "init":
     var targetDir = ""
     var force = false
@@ -1326,6 +1707,7 @@ proc main() =
     var writeFileParam = ""
     var jsonOutput = false
     var inlineOutput = false
+    var forcePrompts = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var optOrchAgent = ""
     var i = 1
@@ -1337,6 +1719,8 @@ proc main() =
         inc i; if i < params.len: targetWorker = params[i]
       of "--orchestrator", "-a", "--orchestrator-agent":
         inc i; if i < params.len: optOrchAgent = params[i]
+      of "--force-prompts", "--cards":
+        forcePrompts = true
       of "--write", "-o":
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
@@ -1350,13 +1734,14 @@ proc main() =
         inc i; if i < params.len: projectDir = params[i]
       else: discard
       inc i
-    quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput))
+    quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts))
   of "launch":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
     var jsonOutput = false
     var inlineOutput = false
+    var forcePrompts = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var optOrchAgent = ""
     var i = 1
@@ -1368,6 +1753,8 @@ proc main() =
         inc i; if i < params.len: targetWorker = params[i]
       of "--orchestrator", "-a", "--orchestrator-agent":
         inc i; if i < params.len: optOrchAgent = params[i]
+      of "--force-prompts", "--cards":
+        forcePrompts = true
       of "--write", "-o":
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
@@ -1381,7 +1768,7 @@ proc main() =
         inc i; if i < params.len: projectDir = params[i]
       else: discard
       inc i
-    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput))
+    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts))
   of "status":
     var jsonOutput = false
     var i = 1

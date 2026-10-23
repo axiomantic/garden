@@ -101,8 +101,10 @@ sequenceDiagram
     end
 ```
 
-### Step 0: Pre-Flight Cluster Check
-Run `rhizo who --json` and inspect `garden-swarm.json`. If active, healthy workers already exist in the cluster, skip persona selection and reuse the existing workers.
+### Step 0: Pre-Flight Cluster Check & Adaptive Swarm On-Ramp
+Run `rhizo who --all --json` to triage cluster listener state:
+1. **Target Project Active**: If active, healthy workers already exist registered under the target project, skip persona selection and reuse the existing workers (Fast-Path).
+2. **Available Idle Peers**: If active listeners exist under other projects or unassigned, note their presence. Once personas are ratified, these peers can be dynamically repurposed into the project via `garden repurpose` without requiring manual prompt copying into new windows.
 
 ### Step 1: Codebase & Task Analysis (Cold Starts Only)
 1. Inspect repository stack (e.g., Nim, Rust, Python, TypeScript, C).
@@ -185,7 +187,6 @@ Once ratified, write `garden-swarm.json` to the target project directory with wo
 Before concluding:
 1. Verify `garden-swarm.json` is syntactically valid JSON.
 2. Confirm each worker has unique `name` and non-empty `tags`.
-3. Proceed directly to [`launch-workers`](../launch-workers/SKILL.md):
-   - Call `garden prompts` to generate the 10-backtick raw markdown blocks.
-   - Present the operator with numbered terminal tab setup instructions.
-   - Await cluster readiness verification via `rhizo who --json`.
+3. Proceed to Worker On-Ramp ([`launch-workers`](../launch-workers/SKILL.md)):
+   - **Pathway A (Dynamic Repurposing)**: If idle cluster peers were detected, run `garden repurpose` to reassign them to the chosen personas/roles without manual session setup.
+   - **Pathway B (Fresh Session Bootstrapping)**: Call `garden prompts` to generate the 10-backtick raw markdown blocks in `/tmp/garden-<project>/`, present tab setup instructions, and await cluster readiness via `rhizo who --all --json`.

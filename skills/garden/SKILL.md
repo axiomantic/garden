@@ -124,13 +124,45 @@ Instead, it acts as an **Intelligent Intake Concierge**:
    - **If Option 2 selected**: Check `rhizo who --all --json`. If workers are online, dispatch via `rhizo send` or `rhizo enqueue`. If cold, run Cold-Start Swarm Calibration to spin up workers.
    - **If Option 3 selected**: Execute inline in the current session.
 
-#### Fast-Path: Re-using an Active / Existing Swarm (First-Look Invariant)
+#### Adaptive Swarm On-Ramp & Dynamic Worker Repurposing (First-Look Invariant)
+
 Before asking ANY intake questions or presenting configuration modals, the designated orchestrator MUST run `rhizo who --all --json` to inspect the cluster across all projects.
-If active, healthy workers are ALREADY registered and listening on the Rhizo cluster:
-- **DO NOT** ask intake interview questions or prompt the operator for new sessions or models.
-- **DO NOT** display swarm composition or harness questions.
+Garden automatically categorizes cluster listeners into three operational pools:
+1. **`projectActive`**: Active listeners already registered on the target project.
+2. **`availableIdlePeers`**: Active idle listeners currently registered under other projects, immediately available for dynamic repurposing.
+3. **`busyClusterPeers`**: Active listeners executing in-flight tasks (`BUSY`), guarded from unintentional reassignment.
+
+##### Fast-Path: Re-using an Active / Existing Swarm
+If active, healthy workers on the target project meet or exceed the target worker count (`projectActive >= targetWorkers`):
+- **Fast-Path Activated**: Skip intake interview questions and avoid generating redundant prompt card files.
 - Automatically attach to the existing online workers (`@worker-1`, `@worker-2`, ...).
 - Confirm cluster readiness and proceed immediately to Phase 3 (Dialectical Pump / Task Breakdown) or Phase 5 (Task Dispatch).
+- **Bypass**: To force prompt card regeneration despite active workers, pass `--force-prompts` to `garden prompts` or `garden launch`.
+
+##### Dual-Pathway Swarm On-Ramp (When Additional Workers Needed)
+When target project workers are needed and idle cluster peers exist, Garden surfaces two distinct pathways:
+
+- **Pathway A (Dynamic Repurposing via `garden repurpose`)**:
+  Repurpose existing idle cluster listeners directly into the target project without opening new terminal windows or copying prompt cards:
+  ```bash
+  garden repurpose <worker1> <worker2> \
+    --project <target-project> \
+    --role "<assigned-role>" \
+    [--tags "<t1,t2>"] \
+    [--force]
+  ```
+  - **Self-Tagging Capability Handshake (`--self-tag`)**: When cluster workers have heterogeneous environments (e.g. one tab has Nim/C, another Node/Playwright, another Python/uv), dispatch an authenticated `SWARM_REPURPOSE_OFFER` directive:
+    ```bash
+    garden repurpose <worker> \
+      --project <target-project> \
+      --self-tag \
+      --expected-tags "backend,frontend,qa,audit"
+    ```
+    The recipient worker inspects its local toolchain, self-selects a compatible role, adds corresponding tags (`rhizo tag add <tags>`), and replies with `WORKER_READY`.
+  - **Negative Control & Safety Guardrail**: Repurposing rejects workers that are actively `BUSY` on tasks to prevent disrupting active workflows. Repurposing a busy worker requires the explicit `--force` flag.
+
+- **Pathway B (Fresh Session Bootstrapping)**:
+  When zero cluster listeners exist or the operator prefers isolated fresh sessions, Garden generates self-contained 10-backtick prompt cards in `/tmp/garden-<project>/` via `garden prompts` (or `garden launch`).
 
 <CRITICAL>
 Operator-Named Worker Delegation Mandate:
