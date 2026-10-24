@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.24] - 2026-10-24
+
 ### Added
 - **Autonomous Dispatch & Fleet-First Swarm Discipline (Garden Guide v2.6, `src/guide.nim`, `tests/test_garden.nim`, `AGENTS.md`, `SKILL.md`)**:
   - **Pre-Authorized Directives & Autonomous Dispatch**: Upgraded the Intelligent Concierge Protocol and Orchestrator Non-Implementation Invariant. When the operator instructs to "work on this with your workers" (or similar delegation phrases), or whenever active cluster workers already exist on the Rhizo cluster (`rhizo who`), the Orchestrator MUST NOT stop to ask routing questions. It is fully pre-authorized to act: immediately break down work, provision isolated Vine strands (`vine new <task>`), and dispatch directly over Rhizo (`rhizo send`) or enqueue to work queues (`rhizo enqueue`).
