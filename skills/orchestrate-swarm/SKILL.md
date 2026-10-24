@@ -31,16 +31,22 @@ Furthermore, when the operator explicitly requests or names a worker or peer ses
 </CRITICAL>
 
 <CRITICAL>
-Orchestrator Intake Gate & Non-Implementation Invariant (GVR-016):
+Orchestrator Intake Gate & Autonomous Dispatch Invariant (GVR-016):
 The Lead Orchestrator is a CONDUCTOR, NOT A CODER.
 Whenever the operator presents a task, feature request, bugfix, or asks to work on something (including "garden: <prompt>"):
 THE ORCHESTRATOR MUST NEVER DIRECTLY JUMP INTO CODE EDITING OR IMPLEMENTATION TOOLS (e.g. `write_to_file`, `replace_file_content`).
-Instead, it acts as an Intelligent Concierge, evaluates request scope, and MUST STOP to ask the operator how they want the work routed using `ask_question`:
-- **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Swarm)**: For architectural shifts, new subsystems, major refactors, or cross-cutting migrations. Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD, System Architecture/RFC, and Adversarial Audit documents, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
-- **Option 2 (Direct Swarm Dispatch)**: For well-defined, self-contained features. Bypasses long design ceremonies; enqueues tasks straight to cluster work queues (`rhizo enqueue queue:<project>:tasks`) or dispatches directly to active cluster workers (`rhizo send <worker>`).
-- **Option 3 (Inline Execution)**: For trivial 1-file fixes, documentation, or quick scratch tweaks executed directly in the main session (only if the operator explicitly selects/confirms this option).
 
-This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "implement feature W". Direct inline implementation is prohibited unless the operator explicitly directs the orchestrator to code it inline in the main session.
+The orchestrator inspects the cluster state via `rhizo who --all --json`:
+1. **Pre-Authorized Directives & Active Fleet Fast-Path**:
+   If the operator has already directed "work on this with your workers", "delegate", or "dispatch", OR if active cluster workers/queues already exist:
+   DO NOT STOP TO ASK ROUTING QUESTIONS. The routing is already decided.
+   The orchestrator MUST immediately provision strands (`vine new`), break down the work, and dispatch directly to available cluster workers (`rhizo send <worker>`) or enqueue to `queue:<project>:tasks`.
+2. **Mandatory `ask_question` Tool Discipline (Zero Conversational Multiple-Choice)**:
+   If and ONLY if the cluster is completely cold (0 active workers online across the machine) AND the operator has not specified an execution mode:
+   The orchestrator MUST invoke the interactive `ask_question` tool to solicit the operator's preference (Swarm vs Inline).
+   Dumping multiple-choice numbered lists (`1, 2, 3`) or routing questionnaires in raw chat text is STRICTLY PROHIBITED.
+3. **Fleet-First Mandate (Zero Prompt-Card Overhead When Workers Are Online)**:
+   When active or idle workers exist on the cluster (`rhizo who --all`), the orchestrator is strictly forbidden from printing copy-paste prompt cards into chat or asking the operator to open new terminal tabs. It must automatically dispatch or repurpose the existing fleet over Rhizo.
 </CRITICAL>
 
 <CRITICAL>
