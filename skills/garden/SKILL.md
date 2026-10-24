@@ -102,7 +102,12 @@ When the operator prefixes a request with `garden: <prompt>` (or directs a featu
 The orchestrator MUST NOT immediately write code, edit files, or unilaterally launch massive multi-file changes.
 Instead, it acts as an **Intelligent Intake Concierge**:
 
-1. **Evaluate Request Scope & Blast Radius**:
+0. **Fast-Path Check for Pre-Authorized Directives & Active Swarm**:
+   - **Pre-Authorized Directives & Autonomous Dispatch**: If the operator instructs "work on this with your workers" (or similar delegation phrases), or whenever active cluster workers already exist on the Rhizo cluster (`rhizo who`), the Orchestrator MUST NOT stop to ask routing questions. It is fully pre-authorized to act! It must immediately break down work, provision isolated Vine strands (`vine new <task>`), and dispatch directly over Rhizo (`rhizo send`) or enqueue to work queues (`rhizo enqueue`).
+   - **Fleet-First Mandate**: When online workers exist anywhere in the cluster, NEVER output copy-paste prompt cards to the human operator. Dispatch or repurpose existing workers over Rhizo (`rhizo send` / `garden repurpose`).
+   - **Mandatory `ask_question` Tool Discipline**: Only during a true cold start with 0 cluster workers online and no explicit delegation directive may the orchestrator solicit routing input. In that case, the orchestrator MUST invoke the interactive `ask_question` tool. Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED.
+
+1. **Evaluate Request Scope & Blast Radius (Cold Start Only)**:
    - **High Complexity / Architectural Shifts / New Subsystems / Multi-File Migrations**: The request impacts foundational contracts, multiple modules, or shared abstractions. Requires empirical research, RFC design, adversarial review, and parallel strand isolation. Recommend **Option 1**.
    - **Medium Complexity / Well-Defined Features / Self-Contained Deliverables**: The scope is clear, boundaries are known, and it can be implemented without a 3-stage dialectical design cycle. Recommend **Option 2**.
    - **Low Complexity / Single-File Fixes / Documentation / Scratch Tweaks**: Trivial 1-file patch or config change. Recommend **Option 3**.

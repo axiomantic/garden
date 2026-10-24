@@ -76,6 +76,16 @@ suite "Garden Guide Management & Marker Suite":
     check ok == false
     check msg.contains("Malformed markers")
 
+  test "Guide v2.6 incorporates Autonomous Dispatch, ask_question discipline, and Fleet-First Mandate":
+    check GuideVersion == "v2.6"
+    check CanonicalGuideContent.contains("<!-- BEGIN GARDEN GUIDE [v2.6] -->")
+    check CanonicalGuideContent.contains("Pre-Authorized Directives & Autonomous Dispatch")
+    check CanonicalGuideContent.contains("Mandatory `ask_question` Tool Discipline")
+    check CanonicalGuideContent.contains("Fleet-First Mandate")
+    check CanonicalGuideContent.contains("Orchestrator Non-Implementation Invariant")
+    check CanonicalGuideContent.contains("Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED")
+    check CanonicalGuideContent.contains("When online workers exist, NEVER output copy-paste prompt cards to the human operator")
+
 suite "Garden CLI Compilation & Telemetry Suite":
 
   test "Garden binary compiles and outputs clean --help and --version":
