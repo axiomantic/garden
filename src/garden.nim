@@ -232,6 +232,70 @@ proc pickWhimsicalPersona*(roleKind: string, projName: string): string =
 
   result = prefix & "-" & suffix
 
+proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): string =
+  ## Dynamically discovers the actual orchestrator agent running for this project.
+  ## Priority:
+  ## 1. Explicit CLI option (-a, --orchestrator, --orchestrator-agent)
+  ## 2. Active session RHIZO_AGENT_NAME (excluding fake '-orchestrator' suffixes)
+  ## 3. Discovered Rhizo leader via 'rhizo leader status orchestrator:<project>'
+  ## 4. Persisted session in .garden/session.json
+  ## 5. Active agent on the cluster tagged 'orchestrator' or 'lead' in 'rhizo who'
+  if optOrchestratorAgent.strip().len > 0:
+    return optOrchestratorAgent.strip()
+
+  let envAgent = getEnv("RHIZO_AGENT_NAME", "").strip()
+  if envAgent.len > 0 and not envAgent.endsWith("-orchestrator"):
+    return envAgent
+
+  try:
+    let cmd = "rhizo leader status orchestrator:" & project & " --json"
+    let (outp, code) = execCmdEx(cmd)
+    if code == 0 and outp.strip().len > 0:
+      let j = parseJson(outp.strip())
+      if j.hasKey("status") and j["status"].getStr() == "active" and j.hasKey("leader"):
+        let ldr = j["leader"].getStr().strip()
+        if ldr.len > 0 and not ldr.endsWith("-orchestrator"):
+          return ldr
+  except CatchableError:
+    discard
+
+  let root = findProjectRoot()
+  let sessFile = root / ".garden" / "session.json"
+  if fileExists(sessFile):
+    try:
+      let sj = parseJson(readFile(sessFile))
+      if sj.hasKey("orchestrator"):
+        let so = sj["orchestrator"].getStr().strip()
+        if so.len > 0 and not so.endsWith("-orchestrator"):
+          return so
+      if sj.hasKey("agent"):
+        let sa = sj["agent"].getStr().strip()
+        if sa.len > 0 and not sa.endsWith("-orchestrator"):
+          return sa
+    except CatchableError:
+      discard
+
+  try:
+    let (whoOut, whoCode) = execCmdEx("rhizo who --json")
+    if whoCode == 0 and whoOut.strip().len > 0:
+      let wJson = parseJson(whoOut.strip())
+      if wJson.kind == JArray:
+        for item in wJson:
+          let itemProj = if item.hasKey("project"): item["project"].getStr().toLowerAscii() else: ""
+          let itemAgent = if item.hasKey("agent"): item["agent"].getStr().strip() else: ""
+          if itemProj == project.toLowerAscii() and itemAgent.len > 0:
+            if item.hasKey("tags") and item["tags"].kind == JArray:
+              for t in item["tags"]:
+                if t.getStr() in ["orchestrator", "lead"] and not itemAgent.endsWith("-orchestrator"):
+                  return itemAgent
+  except CatchableError:
+    discard
+
+  if envAgent.len > 0:
+    return envAgent
+
+  return ""
+
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
   let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
@@ -241,6 +305,8 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
                   else: ""
 
   let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
+  let discoveredOrch = discoverOrchestrator(projName, optOrchestratorAgent)
+  let effectiveOrch = if discoveredOrch.len > 0: discoveredOrch else: "orchestrator"
 
   if swarmFile.len > 0 and fileExists(swarmFile):
     try:
@@ -248,17 +314,16 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       result.project = if sJson.hasKey("project"): sJson["project"].getStr(projName) else: projName
       result.targetRepo = if sJson.hasKey("target_repo"): sJson["target_repo"].getStr(root) else: root
       
-      let defaultOrch = projName & "-orchestrator"
       if sJson.hasKey("orchestrator"):
         if sJson["orchestrator"].kind == JObject:
-          result.orchestrator = if sJson["orchestrator"].hasKey("name"): sJson["orchestrator"]["name"].getStr(defaultOrch) else: defaultOrch
+          result.orchestrator = if sJson["orchestrator"].hasKey("name"): sJson["orchestrator"]["name"].getStr(effectiveOrch) else: effectiveOrch
           result.orchestratorAgent = if sJson["orchestrator"].hasKey("agent"): sJson["orchestrator"]["agent"].getStr("") elif sJson["orchestrator"].hasKey("codename"): sJson["orchestrator"]["codename"].getStr("") else: ""
         elif sJson["orchestrator"].kind == JString:
-          result.orchestrator = sJson["orchestrator"].getStr(defaultOrch)
+          result.orchestrator = sJson["orchestrator"].getStr(effectiveOrch)
         else:
-          result.orchestrator = defaultOrch
+          result.orchestrator = effectiveOrch
       else:
-        result.orchestrator = defaultOrch
+        result.orchestrator = effectiveOrch
 
       if sJson.hasKey("orchestrator_agent"):
         result.orchestratorAgent = sJson["orchestrator_agent"].getStr()
@@ -289,11 +354,27 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       stderr.writeLine("[garden] Warning: Failed to parse swarm file '" & swarmFile & "': " & e.msg)
 
   if result.workers.len == 0:
-    # Synthesize default balanced triad with project prefix
+    # Synthesize default balanced triad dynamically on the fly from project/seed requirements
     result.project = projName
     result.targetRepo = root
-    let orchName = projName & "-orchestrator"
-    result.orchestrator = orchName
+    result.orchestrator = effectiveOrch
+    result.orchestratorAgent = effectiveOrch
+
+    # Read active botanical seeds to enrich synthesized requirements
+    var seedContext = ""
+    var seedTags: seq[string] = @[]
+    try:
+      let seeds = listSeeds(root)
+      var activeSeedTitles: seq[string] = @[]
+      for s in seeds:
+        if s.status != "HARVESTED" and s.status != "WOVEN":
+          activeSeedTitles.add(s.title & " (" & s.id & ")")
+          for t in s.tags:
+            if t notin seedTags and t != projName: seedTags.add(t)
+      if activeSeedTitles.len > 0:
+        seedContext = " Sown project seed(s): " & activeSeedTitles.join("; ") & "."
+    except CatchableError:
+      discard
 
     let archName = projName & "-architect"
     let auditName = projName & "-auditor"
@@ -304,14 +385,20 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     let auditPersona = pickWhimsicalPersona("auditor", projName)
     let implPersona = pickWhimsicalPersona("implementer", projName)
 
+    var archTags = @[projName, "systems", "architecture", "invariants"]
+    var auditTags = @[projName, "qa", "audit", "verifier", "purist"]
+    var implTags = @[projName, "dev", "devex", "build", "implementation"]
+    for st in seedTags:
+      if st notin implTags: implTags.add(st)
+
     result.workers.add(WorkerSpec(
       name: archName,
       persona: archPersona,
       role: "Staff Systems Architect",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
-      tags: @[projName, "systems", "architecture", "invariants"],
-      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift. Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
+      tags: archTags,
+      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
       startupCommand: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
     ))
@@ -322,7 +409,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       role: "Verification & Adversarial Auditor",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
-      tags: @[projName, "qa", "audit", "verifier", "purist"],
+      tags: auditTags,
       systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <strand> --auditor " & auditName & " --reason <reason>'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <strand> --auditor " & auditName & "'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
@@ -334,33 +421,25 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       role: "DevEx & Implementation Lead",
       harness: curHarness,
       model: "Session Default (active in window/tab)",
-      tags: @[projName, "dev", "devex", "build", "implementation"],
-      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands. You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
+      tags: implTags,
+      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands." & seedContext & " You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
       startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
     ))
 
+  # Override / sanitize orchestrator if explicit or fake
   if optOrchestratorAgent.len > 0:
-    result.orchestratorAgent = optOrchestratorAgent
+    result.orchestrator = optOrchestratorAgent.strip()
+    result.orchestratorAgent = result.orchestrator
+  elif result.orchestrator.len == 0 or result.orchestrator.endsWith("-orchestrator"):
+    if discoveredOrch.len > 0:
+      result.orchestrator = discoveredOrch
+      result.orchestratorAgent = discoveredOrch
+    else:
+      result.orchestrator = "orchestrator"
+      result.orchestratorAgent = "orchestrator"
   elif result.orchestratorAgent.len == 0:
-    let envAgent = getEnv("RHIZO_AGENT_NAME", "")
-    if envAgent.len > 0 and envAgent != result.orchestrator:
-      result.orchestratorAgent = envAgent
-
-proc registerOrchestratorAlias*(cfg: SwarmConfig, quiet: bool = false) =
-  if cfg.orchestratorAgent.len > 0 and cfg.orchestratorAgent != cfg.orchestrator:
-    let cmd = "rhizo alias set " & quoteShell(cfg.orchestrator) & " " & quoteShell(cfg.orchestratorAgent)
-    try:
-      let res = execCmdEx(cmd)
-      if res.exitCode == 0:
-        if not quiet:
-          echo "[garden] Auto-registered alias in Rhizo: @" & cfg.orchestrator & " -> @" & cfg.orchestratorAgent
-      else:
-        if not quiet:
-          stderr.writeLine("[garden] Warning: Failed to auto-register alias in Rhizo: " & res.output.strip())
-    except CatchableError as e:
-      if not quiet:
-        stderr.writeLine("[garden] Warning: Could not invoke rhizo to register alias: " & e.msg)
+    result.orchestratorAgent = result.orchestrator
 
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   let tagsStr = w.tags.join(",")
@@ -596,7 +675,6 @@ proc doPrompts*(
   forcePrompts: bool = false
 ): int =
   let cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent)
-  registerOrchestratorAlias(cfg, quiet = jsonOutput)
   
   var selectedWorkers: seq[WorkerSpec] = @[]
   if targetWorker.len > 0:
@@ -1108,18 +1186,6 @@ default_triad = ["architect", "auditor", "implementer"]
     writeFile(codexHooksFile, hooksContent)
     echo "[garden] Initialized Codex lifecycle Stop hook in " & codexHooksFile
 
-  # Auto-register orchestrator alias if configured or present in environment
-  let defaultOrch = projName & "-orchestrator"
-  let actualAgent = if optOrchAgent.len > 0: optOrchAgent else: getEnv("RHIZO_AGENT_NAME", "")
-  if actualAgent.len > 0 and actualAgent != defaultOrch:
-    let cmd = "rhizo alias set " & quoteShell(defaultOrch) & " " & quoteShell(actualAgent)
-    try:
-      let res = execCmdEx(cmd)
-      if res.exitCode == 0:
-        echo "[garden] Auto-registered alias in Rhizo: @" & defaultOrch & " -> @" & actualAgent
-    except CatchableError:
-      discard
-
   echo "[garden] Initialization complete for " & root
   return 0
 
@@ -1329,7 +1395,7 @@ proc doSession*(action: string, agentName: string = "", role: string = "", orche
                         else: "worker"
     let effectiveOrch = if orchestrator.len > 0: orchestrator
                         elif current.hasKey("orchestrator"): current["orchestrator"].getStr()
-                        else: projName & "-orchestrator"
+                        else: (let o = discoverOrchestrator(projName); if o.len > 0: o else: "orchestrator")
     let data = %*{
       "agent": effectiveAgent,
       "project": projName,

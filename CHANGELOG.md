@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dynamic Swarm Synthesis & Direct Leader Addressing (`src/garden.nim`, `tests/test_garden.nim`)**:
+  - **Dynamic Swarm On-The-Fly Synthesis**: Deprecated and eliminated the requirement for on-disk `garden-swarm.json` manifests. Swarm prompt cards and role allocations are synthesized dynamically on the fly from project root context and active botanical seeds in `.garden/seeds/`.
+  - **Eradication of Fake Orchestrator Aliases**: Completely purged `registerOrchestratorAlias` and all `rhizo alias set` invocations. Prompt cards and session configurations now resolve and reference the actual active orchestrator agent (e.g. `@rhizo-garden-vine-1` or leader discovered via `rhizo leader status orchestrator:<project>`) directly, rather than relying on fake `<project>-orchestrator` alias redirections.
+  - **Clean Prompt Verification Testing**: Replaced the live alias registration test in `tests/test_garden.nim` with direct verification of prompt generation referencing the actual orchestrator agent without mutating Redis alias tables.
 - **Adaptive Swarm On-Ramp & Dynamic Worker Repurposing (`src/garden.nim`, `tests/test_garden.nim`, `skills/garden/SKILL.md`, `skills/choose-personas/SKILL.md`, `skills/orchestrate-swarm/SKILL.md`)**:
   - **Dynamic Cluster Listener Triage**: Enhanced `queryClusterAgents` to classify all active cluster listeners into `projectActive` (listeners on current project), `availableIdlePeers` (idle listeners on other projects available for reassignment), and `busyClusterPeers` (active on in-flight tasks).
   - **Fast-Path On-Ramp & Dual Pathway Dispatch**: In `garden prompts` and `garden launch`, activates the Fast-Path when target project active workers meet or exceed the target worker count, avoiding redundant prompt card generation while supporting `--force-prompts` bypass. When workers are needed and idle peers exist in the cluster, surfaces Pathway A (Dynamic Repurposing via `garden repurpose`) alongside Pathway B (Bootstrap Prompts in `/tmp/garden-<project>/`).

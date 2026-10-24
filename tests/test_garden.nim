@@ -300,28 +300,21 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j5["workers"][0]["harness"].getStr() == "Pi"
     delEnv("PI_SESSION_ID")
 
-  test "Garden prompts automatically registers orchestrator alias in Rhizo":
+  test "Garden prompts references actual orchestrator without touching Redis aliases":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (pOut, pCode) = execCmdEx(exePath & " prompts --json -a custom-orch-lead")
     check pCode == 0
     let j = parseJson(pOut.strip())
     check j.hasKey("orchestrator")
+    check j["orchestrator"].getStr() == "custom-orch-lead"
     check j.hasKey("orchestrator_agent")
     check j["orchestrator_agent"].getStr() == "custom-orch-lead"
 
-    defer:
-      try:
-        discard execCmdEx("rhizo alias del " & j["orchestrator"].getStr())
-      except CatchableError:
-        discard
-
-    # Verify alias was registered in Rhizo (when rhizo binary is installed)
-    try:
-      let (aOut, aCode) = execCmdEx("rhizo alias get " & j["orchestrator"].getStr())
-      if aCode == 0:
-        check aOut.strip() == "custom-orch-lead"
-    except CatchableError:
-      discard
+    # Verify generated prompts reference @custom-orch-lead directly, never a fake alias
+    check j["workers"].len > 0
+    let prompt0 = j["workers"][0]["prompt"].getStr()
+    check prompt0.contains("@custom-orch-lead")
+    check not prompt0.contains("-orchestrator")
 
   test "Garden roster-guard validates swarm members and quarantines alien agents":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
