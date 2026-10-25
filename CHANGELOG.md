@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Pure Redis Swarm Discovery, In-Memory Roadmap & Zero-JSON Purge (`src/garden.nim`, `src/roadmap.nim`, `src/seed.nim`, `src/germinate.nim`, `package.json`, `tests/test_roadmap.nim`, `tests/test_garden.nim`, `tests/test_germinate.nim`)**:
+  - **Complete Elimination of On-Disk JSON**: Completely removed all code paths reading or writing `garden-swarm.json`, `.garden/roadmap.json`, and `.garden/session.json`. Purged legacy manifest and cache files from disk upon discovery.
+  - **Dynamic Redis Swarm Discovery**: Replaced static manifest inspection with pure Redis cluster discovery via `queryClusterAgents` and `rhizo who --all --json`. Swarm status, teardown, and on-ramp dynamically discover active workers, capability tags, and in-flight busy states directly from Redis.
+  - **In-Memory Botanical Roadmap Compilation**: Compiles project roadmaps dynamically on demand directly in memory from `.garden/seeds/*.toml` Single Source of Truth (SSOT). `garden roadmap --json` emits structured JSON to stdout without disk persistence; `garden roadmap --write` writes directly to `ROADMAP.md` with zero intermediary JSON caching.
+  - **Queue Alignment for `garden germinate dispatch`**: Direct germination dispatch enqueues tasks to `queue:<project>:tasks` using structured JSON contracts containing `task_id`, `seed_id`, `title`, `season`, `sunlight`, `tags`, and explicit instructions. Added `--queue, -q <name>` override flag to `garden germinate dispatch`.
+  - **Negative Controls & Test Verification**: Added negative controls in `tests/test_garden.nim` and `tests/test_roadmap.nim` asserting zero creation of `garden-swarm.json`, `.garden/roadmap.json`, or `.garden/session.json` across `init`, `prompts`, `status`, and `roadmap` workflows. Added `test_roadmap.nim` to `package.json` test harness.
+
 ## [0.2.24] - 2026-10-24
 
 ### Added

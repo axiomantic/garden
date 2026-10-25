@@ -1,6 +1,6 @@
 ---
 name: choose-personas
-description: "Selects, balances, and configures specialized agent personas for a Garden swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. Auto-detects the active coding harness and aligns worker harnesses and session-default models with operator preferences via a single intake question. Outputs garden-swarm.json. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
+description: "Selects, balances, and configures specialized agent personas for a Garden swarm task. Analyzes codebase context, domain complexity, and task requirements to formulate a triad of complementary personas with opposing priorities. Auto-detects the active coding harness and aligns worker harnesses and session-default models with operator preferences via a single intake question. Synthesizes dynamic swarm configurations. Triggers: 'choose personas', 'select personas', 'set up agent team', 'assemble personas for this task', 'recommend agents'."
 ---
 
 # `choose-personas`: Dynamic Swarm Persona Selection & Auto-Detected Harness Intake
@@ -60,7 +60,7 @@ Swarm workers are ALWAYS sovereign, independent interactive sessions (separate t
 
 <CRITICAL>
 Session Default Models (No Cross-Harness Model Quizzes):
-Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session. NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options that do not correspond to the chosen harness. In `garden-swarm.json` and prompt cards, models default to `"Session Default (active in window/tab)"`.
+Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session. NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options that do not correspond to the chosen harness. In prompt cards and swarm specifications, models default to `"Session Default (active in window/tab)"`.
 </CRITICAL>
 
 <CRITICAL>
@@ -97,7 +97,7 @@ sequenceDiagram
         Note over Orch: Formulates primary triad + harness pairing
         Orch->>User: Renders unified ask_question modal (Team shape + Harness)
         User-->>Orch: Submits chosen triad
-        Orch->>Repo: Writes garden-swarm.json manifest
+        Orch->>Garden: Synthesizes dynamic swarm configuration
     end
 ```
 
@@ -136,8 +136,8 @@ Invoke `ask_question` with a SINGLE concise question combining execution mode an
 - Option 3: Single-Agent Inline (Execute sequentially within current chat session)
 - Option 4: Custom configuration (allows user write-in).
 
-### Step 4: Generate Swarm Manifest (`garden-swarm.json`)
-Once ratified, write `garden-swarm.json` to the target project directory with worker harnesses set to the detected harness:
+### Step 4: Synthesize Swarm Specification
+Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON). If inspectable output is needed, Garden emits to stdout or prompt cards in `/tmp/garden-<project>/`:
 
 ```json
 {
@@ -185,8 +185,7 @@ Once ratified, write `garden-swarm.json` to the target project directory with wo
 ## 4. Verification & Automatic Prompt Generation Handoff
 
 Before concluding:
-1. Verify `garden-swarm.json` is syntactically valid JSON.
-2. Confirm each worker has unique `name` and non-empty `tags`.
-3. Proceed to Worker On-Ramp ([`launch-workers`](../launch-workers/SKILL.md)):
+1. Confirm each worker has unique `name` and non-empty `tags`.
+2. Proceed to Worker On-Ramp ([`launch-workers`](../launch-workers/SKILL.md)):
    - **Pathway A (Dynamic Repurposing)**: If idle cluster peers were detected, run `garden repurpose` to reassign them to the chosen personas/roles without manual session setup.
    - **Pathway B (Fresh Session Bootstrapping)**: Call `garden prompts` to generate the 10-backtick raw markdown blocks in `/tmp/garden-<project>/`, present tab setup instructions, and await cluster readiness via `rhizo who --all --json`.

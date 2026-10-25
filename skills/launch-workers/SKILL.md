@@ -1,6 +1,6 @@
 ---
 name: launch-workers
-description: "Generates and formats X distinct copy-pasteable bootstrap prompts for new agent sessions (Claude Code, Pi, OpenCode, Antigravity, etc.) to join the Garden work group on Rhizo and Vine. Reads garden-swarm.json, configures identities, environment setup (RHIZO_AGENT_NAME, cd, rhizo open), single-shot listener discipline, task claiming, and Vine strand isolation. Spits out prompt blocks wrapped in 10 backticks for clean, unrendered raw markdown copying, and verifies cluster heartbeat readiness via rhizo who --json before handing off. Triggers: 'launch workers', 'spin up workers', 'start worker swarm', 'generate worker prompts', 'bootstrap swarm', 'launch fleet'."
+description: "Generates and formats X distinct copy-pasteable bootstrap prompts for new agent sessions (Claude Code, Pi, OpenCode, Antigravity, etc.) to join the Garden work group on Rhizo and Vine. Synthesizes balanced triads dynamically, configures identities, environment setup (RHIZO_AGENT_NAME, cd, rhizo open), single-shot listener discipline, task claiming, and Vine strand isolation. Spits out prompt blocks wrapped in 10 backticks for clean, unrendered raw markdown copying, and verifies cluster heartbeat readiness via rhizo who --json before handing off. Triggers: 'launch workers', 'spin up workers', 'start worker swarm', 'generate worker prompts', 'bootstrap swarm', 'launch fleet'."
 ---
 
 # `launch-workers`: Prompt-Based Swarm Bootstrapping & Work Group Onboarding
@@ -100,7 +100,7 @@ garden prompts --write garden-prompts.md
 garden prompts --worker <project>-architect  # (or suffix shorthand: --worker architect)
 ```
 
-If `garden-swarm.json` exists in the repository, Garden uses its configured personas, mandates, harnesses, and models. If missing, Garden automatically synthesizes the standard balanced triad with procedurally generated whimsical entities (e.g. botanical spirits, clockwork automatons, mythical cryptids):
+Garden automatically synthesizes the standard balanced triad with procedurally generated whimsical entities (e.g. botanical spirits, clockwork automatons, mythical cryptids):
 - `@<project>-architect` (e.g. Bramblestitch / Cogswell Pendulum - Staff Systems Architect)
 - `@<project>-auditor` (e.g. Prickle-Thistle / Grumblewick Snark - Verification & Adversarial Auditor)
 - `@<project>-implementer` (e.g. Moss-Weaver / Sprocket-Hop - DevEx & Implementation Lead)
@@ -161,9 +161,9 @@ When the swarm mission is completed, or when canceling a run:
 garden teardown
 ```
 
-Or manually:
+Or dynamically querying the project workers:
 ```bash
-for worker in $(python3 -c "import json; [print(w['name']) for w in json.load(open('garden-swarm.json'))['workers']]"); do
+for worker in $(rhizo who --all --json | jq -r '.active_agents[] | select(.tags | contains(["<project>"])) | .name'); do
   rhizo close "$worker" 2>/dev/null || true
 done
 ```

@@ -63,7 +63,7 @@ proc findProjectRoot*(startDir: string = ""): string =
     let envCfg = getEnv("GARDEN_CONFIG", "")
     if (envCfg.len > 0 and fileExists(envCfg)) or
        fileExists(dir / "garden.toml") or 
-       fileExists(dir / "garden-swarm.json") or 
+       dirExists(dir / ".garden") or 
        dirExists(dir / ".git") or
        fileExists(dir / ".git"):
       return dir

@@ -31,7 +31,7 @@ Garden directs multi-agent swarms using Rhizo for transport and Vine for workspa
 flowchart TD
     subgraph Garden["Garden Layer (Methodology & Ceremonies)"]
         Phase0["Phase 0: Interactive Intake Interview (Scope, Team & Models)"]
-        Phase1["Phase 1: choose-personas (Ratify garden-swarm.json)"]
+        Phase1["Phase 1: choose-personas (Synthesize Swarm Roles)"]
         Phase2["Phase 2: launch-workers (10-Backtick Prompt Cards & Sessions)"]
         Phase3["Phase 3: dialectical-pump (Research ➔ Design ➔ Audit)"]
         Phase4["Phase 4: plan-implementation (Locking & Strands)"]
@@ -87,7 +87,7 @@ Execute phases sequentially. Never skip phases or invert the order.
 | Phase | Sub-Skill / Step | Action | Quality Gate to Proceed |
 | :--- | :--- | :--- | :--- |
 | **Phase 0** | **Intake Gate** | Fast-path check (`rhizo who --json`) or single-question intake via `ask_question` calibrated to detected harness. | Active cluster workers confirmed or operator submits choice. |
-| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize and write `garden-swarm.json` reflecting detected harness and chosen shape. | Valid JSON written to repo root. |
+| **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize swarm configuration reflecting detected harness and chosen shape (zero on-disk JSON). | Swarm roles ratified. |
 | **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
 | **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
 | **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules, strands, and Two-Point Diff contracts (Provider, Consumer, Replacement deletion). | Complete `implementation_plan.md` with task-locking matrix. |
@@ -178,7 +178,7 @@ When the operator explicitly requests or names a worker or peer session (e.g. 'u
 > **Orchestrator Scope Restriction**: This fast-path applies **ONLY** to a session that was explicitly initialized or designated by the operator as the Lead Orchestrator. A fresh unbootstrapped session must NEVER assume it is the orchestrator simply because `<project>-orchestrator` appears in `rhizo who`!
 
 <INVARIANT>
-Unbootstrapped Session Identity: If a session was NOT explicitly bootstrapped with an identity in its conversation history (via a Garden bootstrap prompt card, an explicit operator assignment, or prior 'rhizo open <name>' in that same conversation), it MUST NEVER guess, adopt, or assume an existing identity from 'rhizo who --json' or 'garden-swarm.json' (especially NEVER '<project>-orchestrator'). If the operator commands '/rhizo listen' without arguments in an unbootstrapped session, the session MUST either:
+Unbootstrapped Session Identity: If a session was NOT explicitly bootstrapped with an identity in its conversation history (via a Garden bootstrap prompt card, an explicit operator assignment, or prior 'rhizo open <name>' in that same conversation), it MUST NEVER guess, adopt, or assume an existing identity from 'rhizo who --json' (especially NEVER '<project>-orchestrator'). If the operator commands '/rhizo listen' without arguments in an unbootstrapped session, the session MUST either:
 1. Run 'rhizo name' to allocate a fresh unique identity, followed by 'rhizo open <name>', OR
 2. Ask the operator via 'ask_question' which persona or role this window represents.
 Never assume you are the orchestrator or an existing active worker simply because those names appear in the project directory.
@@ -205,13 +205,13 @@ Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated 
 
 <CRITICAL>
 Session Default Models (Standalone Model Quizzes Prohibited):
-Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session (e.g., Gemini in Antigravity, Claude in Claude Code, configured workspace models in OpenCode). NEVER present a separate question asking the operator to choose "Foundation Model Pairings". In `garden-swarm.json` and prompt cards, model configuration defaults to `"Session Default (active in window/tab)"`.
+Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session (e.g., Gemini in Antigravity, Claude in Claude Code, configured workspace models in OpenCode). NEVER present a separate question asking the operator to choose "Foundation Model Pairings". In prompt cards, model configuration defaults to `"Session Default (active in window/tab)"`.
 </CRITICAL>
 
 #### Automatic Fulfillment & 10-Backtick Prompt Generation:
 Upon receiving the operator's response:
 1. Run `garden init` if `garden.toml` or `AGENTS.md` is not yet initialized.
-2. Generate `garden-swarm.json` reflecting the chosen workers, roles, detected harness, and session-default models.
+2. Synthesize swarm configuration reflecting the chosen workers, roles, detected harness, and session-default models (zero on-disk JSON).
 3. Run `garden prompts` which writes individual prompt cards to `/tmp/garden-<project>/<worker>.md` and all cards to `/tmp/garden-<project>/all-workers.md`.
 4. Present the operator with concise setup instructions and copy commands (NEVER paste prompt cards inline in chat):
    ```text
@@ -466,12 +466,12 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
 
 ---
 
-## 5. Configuration & Swarm Manifest Reference
+## 5. Configuration & Architecture Reference
 
 See [`docs/configuration.md`](../../docs/configuration.md) for full details on:
-- **Environment Variables**: `GARDEN_SWARM_FILE`, `GARDEN_CONFIG`, `GARDEN_PROJECT_DIR`, and `GARDEN_TERMINAL_APP`.
+- **Environment Variables**: `GARDEN_CONFIG`, `GARDEN_PROJECT_DIR`, and `GARDEN_TERMINAL_APP`.
 - **`garden.toml`**: Project-level defaults (`name`, `preferred_terminal`, `session_prefix`, `default_triad`).
-- **`garden-swarm.json`**: Swarm specification schema (`project`, `target_repo`, `orchestrator`, `shared_workspace`, `workers` array: `name`, `persona`, `role`, `harness`, `model`, `tags`, `system_prompt`, `opposing_priority`).
+- **Dynamic Swarm Synthesis**: Swarm specification schema (`project`, `target_repo`, `orchestrator`, `shared_workspace`, `workers` array: `name`, `persona`, `role`, `harness`, `model`, `tags`, `system_prompt`, `opposing_priority`) generated dynamically in-memory without on-disk JSON artifacts.
 - **The 10-Backtick Protocol**: Clean raw markdown formatting for copy-paste worker bootstrap prompts.
 
 

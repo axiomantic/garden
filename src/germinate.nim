@@ -33,7 +33,7 @@ proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, proj
     result &= "5. Report completion and return to listening: `rhizo listen " & workerName & "`\n"
   result &= PromptFence10 & "\n"
 
-proc germinateDispatch*(seedId: string, projectRoot: string = ""): (bool, string, JsonNode) =
+proc germinateDispatch*(seedId: string, projectRoot: string = "", customQueue: string = ""): (bool, string, JsonNode) =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
   var s: Seed
   try:
@@ -42,15 +42,20 @@ proc germinateDispatch*(seedId: string, projectRoot: string = ""): (bool, string
     return (false, "Seed not found: '" & seedId & "' (" & e.msg & ")", nil)
 
   let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
-  let queue = "queue:" & proj & ":tasks"
+  let queue = if customQueue.len > 0: customQueue else: "queue:" & proj & ":tasks"
   let subject = "seed-" & s.id & ": " & s.title
-  let body = "TASK_ID: seed-" & s.id & "\n" &
-             "PROJECT: " & proj & "\n" &
-             "TITLE: " & s.title & "\n" &
-             "SEASON: " & s.season & "\n" &
-             "SUNLIGHT: " & s.sunlight & "\n" &
-             "TAGS: " & s.tags.join(",") & "\n" &
-             "STATUS: DISPATCHED"
+  let taskPayload = %*{
+    "task_id": "seed-" & s.id,
+    "seed_id": s.id,
+    "project": proj,
+    "title": s.title,
+    "season": s.season,
+    "sunlight": s.sunlight,
+    "tags": s.tags,
+    "instructions": "Implement capabilities fulfilling '" & s.title & "'. Use isolated Vine strand.",
+    "status": "DISPATCHED"
+  }
+  let body = $taskPayload
 
   # Enqueue to Rhizo
   let cmd = "rhizo enqueue " & quoteShell(queue) & " --subject " & quoteShell(subject) & " --body " & quoteShell(body)
@@ -79,6 +84,7 @@ proc germinateDispatch*(seedId: string, projectRoot: string = ""): (bool, string
   resJson["enqueued"] = %enqueued
   resJson["message"] = %msgId
   resJson["seed"] = s.toJson()
+  resJson["task"] = taskPayload
 
   return (true, "Dispatched seed '" & s.title & "' (" & s.id & ") to " & queue, resJson)
 
@@ -259,7 +265,8 @@ proc doGerminate*(
   targetWorker: string = "",
   projectDir: string = "",
   jsonOutput: bool = false,
-  inlineOutput: bool = false
+  inlineOutput: bool = false,
+  customQueue: string = ""
 ): int =
   let normAction = action.toLowerAscii().strip()
   var ok = false
@@ -268,7 +275,7 @@ proc doGerminate*(
 
   case normAction
   of "dispatch":
-    (ok, msg, jNode) = germinateDispatch(seedId, projectDir)
+    (ok, msg, jNode) = germinateDispatch(seedId, projectDir, customQueue)
   of "prompt":
     (ok, msg, jNode) = germinatePrompt(seedId, targetWorker, projectDir, inlineOutput)
   of "inline":

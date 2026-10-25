@@ -64,7 +64,6 @@ Options for 'repurpose':
   --self-tag, -s           Offer candidate roles and allow worker to self-select matching tags
   --expected-tags <csv>    Expected capabilities or tools required
   --force, -f              Force repurposing even if worker is currently BUSY
-  --swarm-file, -S <file>  Path to garden-swarm.json manifest
   --json                   Output result as structured JSON
 
 Options for 'roadmap':
@@ -72,7 +71,7 @@ Options for 'roadmap':
   --json, -j               Output structured roadmap as JSON
   --markdown, -m           Print formatted markdown roadmap to stdout (default)
   --write, -w [path]       Write ROADMAP.md to project root or specified path
-  --sync, -s               Synchronize .garden/roadmap.json and update ROADMAP.md
+  --sync, -s               Synchronize ROADMAP.md from botanical seeds
   --project-dir, -p <dir>  Target project directory
 
 Options for 'update':
@@ -94,12 +93,12 @@ Options for 'plant':
 
 Options for 'germinate':
   --worker, -w <name>      Filter prompt generation to target worker (for 'prompt')
+  --queue, -q <name>       Target queue for 'dispatch' (default: queue:<project>:tasks)
   --inline, -i             Print raw 10-backtick prompt cards directly to stdout
   --project-dir, -p <dir>  Target project directory
   --json                   Output result as structured JSON
 
 Options for 'prompts' and 'launch':
-  --swarm-file, -f <file>  Path to garden-swarm.json manifest
   --worker, -w <name>      Filter prompt output to a specific worker
   --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)
   --inline, -i             Print raw 10-backtick prompt cards directly to stdout
@@ -108,19 +107,19 @@ Options for 'prompts' and 'launch':
   --project-dir, -p <dir>  Target project directory (default: current root)
 
 Options for 'roster-guard':
-  --swarm-file, -f <file>  Path to garden-swarm.json manifest
   --json                   Output verification result as JSON
 
 Options for 'session':
   save [--agent <name>] [--role <role>] [--orchestrator <orch>]
   load [--json]
   clear [--json]
+  (Note: on-disk session.json is eliminated; state is dynamic via Redis/environment)
 
 Options for 'status':
   --json                   Output telemetry as JSON
 
 Options for 'teardown':
-  --swarm-file <file>      Path to garden-swarm.json to close mapped agents
+  Tears down all active project workers registered in Redis
 """
 
 proc findProjectRoot*(startDir: string = ""): string =
@@ -132,7 +131,7 @@ proc findProjectRoot*(startDir: string = ""): string =
     let envCfg = getEnv("GARDEN_CONFIG", "")
     if (envCfg.len > 0 and fileExists(envCfg)) or
        fileExists(dir / "garden.toml") or 
-       fileExists(dir / "garden-swarm.json") or 
+       dirExists(dir / ".garden") or 
        dirExists(dir / ".git") or
        fileExists(dir / ".git"):
       return dir
@@ -238,8 +237,7 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
   ## 1. Explicit CLI option (-a, --orchestrator, --orchestrator-agent)
   ## 2. Active session RHIZO_AGENT_NAME (excluding fake '-orchestrator' suffixes)
   ## 3. Discovered Rhizo leader via 'rhizo leader status orchestrator:<project>'
-  ## 4. Persisted session in .garden/session.json
-  ## 5. Active agent on the cluster tagged 'orchestrator' or 'lead' in 'rhizo who'
+  ## 4. Active agent on the cluster tagged 'orchestrator' or 'lead' in 'rhizo who'
   if optOrchestratorAgent.strip().len > 0:
     return optOrchestratorAgent.strip()
 
@@ -260,20 +258,9 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
     discard
 
   let root = findProjectRoot()
-  let sessFile = root / ".garden" / "session.json"
-  if fileExists(sessFile):
-    try:
-      let sj = parseJson(readFile(sessFile))
-      if sj.hasKey("orchestrator"):
-        let so = sj["orchestrator"].getStr().strip()
-        if so.len > 0 and not so.endsWith("-orchestrator"):
-          return so
-      if sj.hasKey("agent"):
-        let sa = sj["agent"].getStr().strip()
-        if sa.len > 0 and not sa.endsWith("-orchestrator"):
-          return sa
-    except CatchableError:
-      discard
+  let legacySess = root / ".garden" / "session.json"
+  if fileExists(legacySess):
+    try: removeFile(legacySess) except CatchableError: discard
 
   try:
     let (whoOut, whoCode) = execCmdEx("rhizo who --json")
@@ -298,19 +285,29 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
 
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
-  let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
-  var swarmFile = if swarmFilePath.len > 0: swarmFilePath
-                  elif envSwarm.len > 0 and fileExists(envSwarm): envSwarm
-                  elif fileExists(root / "garden-swarm.json"): root / "garden-swarm.json"
-                  else: ""
-
   let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
   let discoveredOrch = discoverOrchestrator(projName, optOrchestratorAgent)
   let effectiveOrch = if discoveredOrch.len > 0: discoveredOrch else: "orchestrator"
 
-  if swarmFile.len > 0 and fileExists(swarmFile):
+  result.project = projName
+  result.targetRepo = root
+  result.orchestrator = effectiveOrch
+  result.orchestratorAgent = effectiveOrch
+
+  # Purge any legacy garden-swarm.json if found
+  let legacySwarm = root / "garden-swarm.json"
+  if fileExists(legacySwarm):
+    try: removeFile(legacySwarm) except CatchableError: discard
+
+  # Optional custom manifest ONLY if an explicit custom file path was passed and it is NOT garden-swarm.json
+  let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
+  var customFile = if swarmFilePath.len > 0 and not swarmFilePath.endsWith("garden-swarm.json"): swarmFilePath
+                   elif envSwarm.len > 0 and not envSwarm.endsWith("garden-swarm.json") and fileExists(envSwarm): envSwarm
+                   else: ""
+
+  if customFile.len > 0 and fileExists(customFile):
     try:
-      let sJson = parseJson(readFile(swarmFile))
+      let sJson = parseJson(readFile(customFile))
       result.project = if sJson.hasKey("project"): sJson["project"].getStr(projName) else: projName
       result.targetRepo = if sJson.hasKey("target_repo"): sJson["target_repo"].getStr(root) else: root
       
@@ -351,7 +348,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
           spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr() else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
           result.workers.add(spec)
     except CatchableError as e:
-      stderr.writeLine("[garden] Warning: Failed to parse swarm file '" & swarmFile & "': " & e.msg)
+      stderr.writeLine("[garden] Warning: Failed to parse custom swarm file: " & e.msg)
 
   if result.workers.len == 0:
     # Synthesize default balanced triad dynamically on the fly from project/seed requirements
@@ -1189,9 +1186,6 @@ default_triad = ["architect", "auditor", "implementer"]
   echo "[garden] Initialization complete for " & root
   return 0
 
-proc doLaunch*(projectDir: string, swarmFile: string, targetWorker: string, writeFileParam: string, jsonOutput: bool, optOrchAgent: string = "", inlineOutput: bool = false): int =
-  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput)
-
 proc doStatus*(jsonOutput: bool): int =
   try:
     let root = findProjectRoot()
@@ -1379,106 +1373,85 @@ proc doSession*(action: string, agentName: string = "", role: string = "", orche
   let root = if projectDir.len > 0: findProjectRoot(projectDir) else: findProjectRoot()
   let gardenDir = root / ".garden"
   let sessionFile = gardenDir / "session.json"
+  if fileExists(sessionFile):
+    try: removeFile(sessionFile) except CatchableError: discard
+
   let projName = if root.len > 0: root.splitPath.tail.toLowerAscii().replace(" ", "-") else: getCurrentDir().splitPath.tail.toLowerAscii().replace(" ", "-")
+
+  let effectiveAgent = if agentName.len > 0: agentName else: getEnv("RHIZO_AGENT_NAME", "")
+  let effectiveRole = if role.len > 0: role else: "worker"
+  let effectiveOrch = if orchestrator.len > 0: orchestrator
+                      else: (let o = discoverOrchestrator(projName); if o.len > 0: o else: "orchestrator")
 
   case action.toLowerAscii()
   of "save", "set":
-    createDir(gardenDir)
-    var current = newJObject()
-    if fileExists(sessionFile):
-      try: current = parseJson(readFile(sessionFile)) except CatchableError: discard
-    let effectiveAgent = if agentName.len > 0: agentName
-                         elif current.hasKey("agent"): current["agent"].getStr()
-                         else: getEnv("RHIZO_AGENT_NAME", "")
-    let effectiveRole = if role.len > 0: role
-                        elif current.hasKey("role"): current["role"].getStr()
-                        else: "worker"
-    let effectiveOrch = if orchestrator.len > 0: orchestrator
-                        elif current.hasKey("orchestrator"): current["orchestrator"].getStr()
-                        else: (let o = discoverOrchestrator(projName); if o.len > 0: o else: "orchestrator")
     let data = %*{
       "agent": effectiveAgent,
       "project": projName,
       "role": effectiveRole,
       "orchestrator": effectiveOrch,
       "workspace": root,
+      "on_disk_json": false,
       "updated_at": now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
     }
-    writeFile(sessionFile, pretty(data))
     if jsonOutput:
       echo pretty(data)
     else:
-      echo "[garden session] Saved active session state to " & sessionFile
+      echo "[garden session] Active session (session.json eliminated; managed dynamically): @" & effectiveAgent
     return 0
 
   of "load", "get", "show":
-    if not fileExists(sessionFile):
-      if jsonOutput:
-        echo $(%*{"status": "error", "message": "No active session file found at " & sessionFile})
-      else:
-        stderr.writeLine("[garden session] No active session file found at " & sessionFile)
-      return 1
-    let content = readFile(sessionFile)
+    let data = %*{
+      "agent": effectiveAgent,
+      "project": projName,
+      "role": effectiveRole,
+      "orchestrator": effectiveOrch,
+      "workspace": root,
+      "on_disk_json": false
+    }
     if jsonOutput:
-      echo content
+      echo pretty(data)
     else:
-      try:
-        let j = parseJson(content)
-        echo "Active Garden Session:"
-        echo "  Agent       : @" & j.getOrDefault("agent").getStr("")
-        echo "  Project     : " & j.getOrDefault("project").getStr("")
-        echo "  Role        : " & j.getOrDefault("role").getStr("")
-        echo "  Orchestrator: @" & j.getOrDefault("orchestrator").getStr("")
-        echo "  Updated     : " & j.getOrDefault("updated_at").getStr("")
-      except CatchableError:
-        echo content
+      echo "Active Garden Session (Dynamic Redis/Environment):"
+      echo "  Agent       : @" & effectiveAgent
+      echo "  Project     : " & projName
+      echo "  Role        : " & effectiveRole
+      echo "  Orchestrator: @" & effectiveOrch
     return 0
 
   of "clear", "rm", "delete":
-    if fileExists(sessionFile):
-      try:
-        removeFile(sessionFile)
-        if jsonOutput:
-          echo $(%*{"status": "ok", "message": "Cleared session file"})
-        else:
-          echo "[garden session] Cleared session file: " & sessionFile
-      except CatchableError as e:
-        stderr.writeLine("[garden session] Failed to remove session file: " & e.msg)
-        return 1
+    if jsonOutput:
+      echo $(%*{"status": "ok", "message": "Session state cleared (session.json purged)"})
     else:
-      if jsonOutput:
-        echo $(%*{"status": "ok", "message": "No session file to clear"})
-      else:
-        echo "[garden session] No session file to clear."
+      echo "[garden session] Cleared session state (session.json purged)"
     return 0
 
   else:
-    stderr.writeLine("[garden session] Error: Unknown session action '" & action & "'. Valid actions: save, load, clear.")
+    stderr.writeLine("[garden session] Unknown action: " & action & " (valid: save, load, clear)")
     return 1
 
-proc doTeardown*(swarmFileParam: string): int =
+proc doTeardown*(swarmFileParam: string = ""): int =
   let root = findProjectRoot()
+  let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
 
-  # 1. Gracefully close registered agents in Redis
-  var swarmFile = swarmFileParam
-  if swarmFile.len == 0 and fileExists(root / "garden-swarm.json"):
-    swarmFile = root / "garden-swarm.json"
+  # 1. Purge legacy garden-swarm.json if present
+  let legacySwarm = root / "garden-swarm.json"
+  if fileExists(legacySwarm):
+    try: removeFile(legacySwarm) except CatchableError: discard
 
-  if swarmFile.len > 0 and fileExists(swarmFile):
-    try:
-      let sJson = parseJson(readFile(swarmFile))
-      if sJson.hasKey("workers"):
-        for w in sJson["workers"]:
-          if w.hasKey("name"):
-            let wname = w["name"].getStr()
-            echo "[garden] Closing agent @" & wname & " in Redis..."
-            discard execCmdEx("rhizo close " & quoteShell(wname))
-    except CatchableError: discard
-  else:
-    # Default triad close with project prefix
-    let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
-    for role in ["architect", "auditor", "implementer"]:
-      let wname = proj & "-" & role
+  # 2. Redis-native dynamic discovery of active project workers
+  let cluster = queryClusterAgents(proj)
+  var closed: seq[string] = @[]
+  if cluster.projectActive.len > 0:
+    for ca in cluster.projectActive:
+      echo "[garden] Closing active project agent @" & ca.agent & " in Redis..."
+      discard execCmdEx("rhizo close " & quoteShell(ca.agent))
+      closed.add(ca.agent)
+
+  # Default triad close with project prefix if not already closed
+  for role in ["architect", "auditor", "implementer"]:
+    let wname = proj & "-" & role
+    if wname notin closed:
       echo "[garden] Closing agent @" & wname & " in Redis..."
       try:
         discard execCmdEx("rhizo close " & quoteShell(wname))
@@ -1556,10 +1529,11 @@ proc doPlant*(
         echo "  Tags:     " & seed.tags.join(", ")
       echo "  File:     " & seed.filePath
 
-    # Auto-sync .garden/roadmap.json and update ROADMAP.md if present
+    # Auto-sync ROADMAP.md from botanical seeds if present
     try:
       let rm = buildRoadmap(root)
-      discard saveRoadmap(rm, root, writeMarkdown = fileExists(root / "ROADMAP.md"))
+      if fileExists(root / "ROADMAP.md"):
+        discard saveRoadmap(rm, root, writeMarkdown = true)
     except CatchableError:
       discard
 
@@ -1573,13 +1547,15 @@ proc doRoadmap*(season: string = "", projectDir: string = "", jsonOutput: bool =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
   let rm = buildRoadmap(root, season)
 
-  # Always persist structured JSON to .garden/roadmap.json
-  let (jsonPath, mdPath) = saveRoadmap(rm, root, writeMarkdown = writeMarkdown, markdownPath = markdownPath)
+  # In-memory botanical roadmap compilation: zero JSON written to disk!
+  var mdPath = ""
+  if writeMarkdown:
+    let (_, mPath) = saveRoadmap(rm, root, writeMarkdown = true, markdownPath = markdownPath)
+    mdPath = mPath
 
   if jsonOutput:
     echo pretty(rm.toJson())
   elif writeMarkdown:
-    echo "[garden roadmap] Persisted roadmap JSON to " & jsonPath
     echo "[garden roadmap] Wrote re-entrant Markdown roadmap to " & mdPath
   else:
     echo rm.toMarkdown()
@@ -1691,6 +1667,7 @@ proc main() =
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var jsonOutput = false
     var inlineOutput = false
+    var customQueue = ""
     var i = 2
     while i < params.len:
       let a = params[i]
@@ -1705,6 +1682,10 @@ proc main() =
         inc i; targetWorker = params[i]
       elif a.startsWith("--worker="):
         targetWorker = a[9..^1]
+      elif (a in ["--queue", "-q"]) and i + 1 < params.len:
+        inc i; customQueue = params[i]
+      elif a.startsWith("--queue="):
+        customQueue = a[8..^1]
       elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
         inc i; projectDir = params[i]
       elif a.startsWith("--project-dir="):
@@ -1717,7 +1698,7 @@ proc main() =
       stderr.writeLine("Usage: garden germinate " & action & " <seed_id> [options...]")
       quit(1)
 
-    quit(doGerminate(action, seedId, targetWorker, projectDir, jsonOutput, inlineOutput))
+    quit(doGerminate(action, seedId, targetWorker, projectDir, jsonOutput, inlineOutput, customQueue))
   of "repurpose":
     var workers: seq[string] = @[]
     var projectParam = ""

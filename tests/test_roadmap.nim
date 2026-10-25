@@ -86,18 +86,19 @@ suite "Garden Roadmap & Procedural Persona Suite":
     check md.contains("## Milestone & Version History")
     check md.contains("Feature One")
 
-  test "saveRoadmap writes .garden/roadmap.json and ROADMAP.md":
+  test "saveRoadmap writes ROADMAP.md directly without JSON caching":
     var s1 = plantSeed("Feature Stored", testDir, season = "spring")
     let rm = buildRoadmap(testDir)
     let (jPath, mPath) = saveRoadmap(rm, testDir, writeMarkdown = true)
 
-    check fileExists(jPath)
+    check jPath.len == 0
+    check not fileExists(testDir / ".garden" / "roadmap.json")
     check fileExists(mPath)
     check fileExists(testDir / "ROADMAP.md")
     let mdContent = readFile(mPath)
     check mdContent.contains("Feature Stored")
 
-  test "Negative controls: corrupted TOML seeds and malformed roadmap.json recovery":
+  test "Negative controls: corrupted TOML seeds recovery":
     # 1. Plant a valid seed
     let validSeed = plantSeed("Valid Task", testDir, season = "v1.0")
     
@@ -105,11 +106,7 @@ suite "Garden Roadmap & Procedural Persona Suite":
     let corruptFile = testDir / ".garden" / "seeds" / "corrupt-seed.toml"
     writeFile(corruptFile, "THIS IS TOTAL GARBAGE == NOT TOML {[[[[")
 
-    # 3. Create a malformed roadmap.json
-    let badJsonFile = testDir / ".garden" / "roadmap.json"
-    writeFile(badJsonFile, "{ invalid json: true, broken... ")
-
-    # 4. buildRoadmap must recover gracefully and still include valid seed
+    # 3. buildRoadmap must recover gracefully and still include valid seed with zero JSON caching
     let rm = buildRoadmap(testDir)
     check rm.seasons.len >= 1
     var foundValid = false
@@ -118,8 +115,9 @@ suite "Garden Roadmap & Procedural Persona Suite":
         if it.id == validSeed.id:
           foundValid = true
     check foundValid
+    check not fileExists(testDir / ".garden" / "roadmap.json")
 
-    # 5. Serialization of recovered roadmap must succeed
+    # 4. Serialization of recovered roadmap must succeed
     let j = rm.toJson()
     check j.hasKey("project")
     let md = rm.toMarkdown()

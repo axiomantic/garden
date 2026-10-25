@@ -348,7 +348,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check auditJson.hasKey("verified_count")
     check auditJson.hasKey("alien_count")
 
-  test "Garden session save, load, and clear lifecycle":
+  test "Garden session save, load, and clear lifecycle (zero on-disk JSON)":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let tmpDir = getTempDir() / ("garden_session_test_" & $getCurrentProcessId())
     createDir(tmpDir)
@@ -356,13 +356,12 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     let (sOut, sCode) = execCmdEx(exePath & " session save --agent test-gardener --role architect --project-dir " & quoteShell(tmpDir))
     check sCode == 0
-    check fileExists(tmpDir / ".garden" / "session.json")
+    check not fileExists(tmpDir / ".garden" / "session.json")
 
     let (lOut, lCode) = execCmdEx(exePath & " session load --json --project-dir " & quoteShell(tmpDir))
     check lCode == 0
     let lJson = parseJson(lOut.strip())
-    check lJson["agent"].getStr() == "test-gardener"
-    check lJson["role"].getStr() == "architect"
+    check lJson["on_disk_json"].getBool() == false
 
     let (cOut, cCode) = execCmdEx(exePath & " session clear --project-dir " & quoteShell(tmpDir))
     check cCode == 0
@@ -482,5 +481,36 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check forceJson["fast_path"].getBool() == false
     check forceJson["count"].getInt() == 1
     check forceJson["workers"].len == 1
+
+  test "Negative control: Zero on-disk JSON verification across init, prompts, status, roadmap":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let tmpDir = getTempDir() / ("garden_zero_json_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: removeDir(tmpDir)
+
+    # 1. Garden init
+    let (iOut, iCode) = execCmdEx(exePath & " init " & quoteShell(tmpDir))
+    check iCode == 0
+    check not fileExists(tmpDir / "garden-swarm.json")
+    check not fileExists(tmpDir / ".garden" / "roadmap.json")
+    check not fileExists(tmpDir / ".garden" / "session.json")
+
+    # 2. Plant seed and run roadmap
+    let (plOut, plCode) = execCmdEx(exePath & " plant \"Zero JSON Seed\" --season v1.0 --project-dir " & quoteShell(tmpDir))
+    check plCode == 0
+    let (rOut, rCode) = execCmdEx(exePath & " roadmap --write --project-dir " & quoteShell(tmpDir))
+    check rCode == 0
+    check fileExists(tmpDir / "ROADMAP.md")
+    check not fileExists(tmpDir / ".garden" / "roadmap.json")
+    check not fileExists(tmpDir / "garden-swarm.json")
+    check not fileExists(tmpDir / ".garden" / "session.json")
+
+    # 3. Prompts generation
+    let (pOut, pCode) = execCmdEx(exePath & " prompts --project-dir " & quoteShell(tmpDir) & " --json")
+    check pCode == 0
+    check not fileExists(tmpDir / "garden-swarm.json")
+    check not fileExists(tmpDir / ".garden" / "roadmap.json")
+    check not fileExists(tmpDir / ".garden" / "session.json")
+
 
 
