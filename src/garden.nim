@@ -263,14 +263,14 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
     try: removeFile(legacySess) except CatchableError: discard
 
   try:
-    let (whoOut, whoCode) = execCmdEx("rhizo who --json")
+    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
     if whoCode == 0 and whoOut.strip().len > 0:
       let wJson = parseJson(whoOut.strip())
       if wJson.kind == JArray:
         for item in wJson:
           let itemProj = if item.hasKey("project"): item["project"].getStr().toLowerAscii() else: ""
           let itemAgent = if item.hasKey("agent"): item["agent"].getStr().strip() else: ""
-          if itemProj == project.toLowerAscii() and itemAgent.len > 0:
+          if (itemProj == project.toLowerAscii() or project.len == 0 or project == "default") and itemAgent.len > 0:
             if item.hasKey("tags") and item["tags"].kind == JArray:
               for t in item["tags"]:
                 if t.getStr() in ["orchestrator", "lead"] and not itemAgent.endsWith("-orchestrator"):
@@ -283,9 +283,13 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
 
   return ""
 
-proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = ""): SwarmConfig =
+proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = "", optProject: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
-  let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
+  let envProj = getEnv("RHIZO_PROJECT", getEnv("GARDEN_PROJECT", "")).strip()
+  let projName = if optProject.len > 0: optProject.toLowerAscii().replace(" ", "-")
+                 elif envProj.len > 0: envProj.toLowerAscii().replace(" ", "-")
+                 elif root.len > 0 and root != "/": root.lastPathPart.toLowerAscii().replace(" ", "-")
+                 else: "default"
   let discoveredOrch = discoverOrchestrator(projName, optOrchestratorAgent)
   let effectiveOrch = if discoveredOrch.len > 0: discoveredOrch else: "orchestrator"
 
@@ -1281,10 +1285,31 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
   if cfg.orchestratorAgent.len > 0 and normSender == cfg.orchestratorAgent.toLowerAscii.strip(): return true
   for w in cfg.workers:
     if normSender == w.name.toLowerAscii.strip(): return true
+
+  # Dynamic Redis discovery fallback
+  try:
+    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+    if whoCode == 0 and whoOut.strip().len > 0:
+      let wJson = parseJson(whoOut.strip())
+      if wJson.kind == JArray:
+        for item in wJson:
+          let itemProj = if item.hasKey("project"): item["project"].getStr().toLowerAscii() else: ""
+          let itemAgent = if item.hasKey("agent"): item["agent"].getStr().strip() else: ""
+          if itemAgent.toLowerAscii == normSender:
+            if cfg.project.len > 0 and itemProj.len > 0 and itemProj != cfg.project.toLowerAscii():
+              return false
+            if item.hasKey("tags") and item["tags"].kind == JArray:
+              for t in item["tags"]:
+                let lowTag = t.getStr().toLowerAscii()
+                if lowTag in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer"]:
+                  return true
+  except CatchableError:
+    discard
+
   return false
 
-proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string = "", projectDir: string = "", fix: bool = false): int =
-  let cfg = loadSwarmConfig(projectDir, swarmFile)
+proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string = "", projectDir: string = "", fix: bool = false, optProject: string = ""): int =
+  let cfg = loadSwarmConfig(projectDir, swarmFile, optProject = optProject)
   let normSender = sender.toLowerAscii.strip()
 
   if normSender.len > 0 and normSender != "audit":
@@ -1861,6 +1886,7 @@ proc main() =
     var fix = false
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
+    var optProject = ""
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -1876,10 +1902,13 @@ proc main() =
       elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
         inc i; projectDir = params[i]
       elif a.startsWith("--project-dir="): projectDir = a[14..^1]
+      elif (a in ["--project", "-P"]) and i + 1 < params.len:
+        inc i; optProject = params[i]
+      elif a.startsWith("--project="): optProject = a[10..^1]
       elif not a.startsWith("-") and sender.len == 0:
         sender = a
       inc i
-    quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir, fix))
+    quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir, fix, optProject))
   of "session":
     if params.len < 2:
       stderr.writeLine("Usage: garden session <save|load|clear> [options...]")

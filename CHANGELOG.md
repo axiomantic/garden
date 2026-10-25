@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dynamic Redis Swarm Roster Guard & Project Tenancy Alignment (`src/garden.nim`)**:
+  - Upgraded `doRosterGuard` and `validateRosterSender` to support pure Redis dynamic cluster agent verification via `rhizo who --all --json`.
+  - Added support for `--project, -P <proj>` flag and environment variable `RHIZO_PROJECT` / `GARDEN_PROJECT` to prevent working-directory project mismatches in multi-project and test environments.
+  - Enforced authorized role validation across active swarm roles (`orchestrator`, `lead`, `worker`, `implementer`, `architect`, `auditor`, `reviewer`, `dev`, `engineer`), automatically quarantining unauthorized or alien infiltrators.
 - **Pure Redis Swarm Discovery, In-Memory Roadmap & Zero-JSON Purge (`src/garden.nim`, `src/roadmap.nim`, `src/seed.nim`, `src/germinate.nim`, `package.json`, `tests/test_roadmap.nim`, `tests/test_garden.nim`, `tests/test_germinate.nim`)**:
   - **Complete Elimination of On-Disk JSON**: Completely removed all code paths reading or writing `garden-swarm.json`, `.garden/roadmap.json`, and `.garden/session.json`. Purged legacy manifest and cache files from disk upon discovery.
   - **Dynamic Redis Swarm Discovery**: Replaced static manifest inspection with pure Redis cluster discovery via `queryClusterAgents` and `rhizo who --all --json`. Swarm status, teardown, and on-ramp dynamically discover active workers, capability tags, and in-flight busy states directly from Redis.
