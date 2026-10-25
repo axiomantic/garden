@@ -1298,10 +1298,17 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
           if itemAgent.toLowerAscii == normSender:
             if cfg.project.len > 0 and itemProj.len > 0 and itemProj != cfg.project.toLowerAscii():
               return false
+            # Verified member of the project roster in Redis
+            if cfg.project.len > 0 and itemProj == cfg.project.toLowerAscii():
+              return true
+            # For unscoped or matching agents, verify role or tags
+            let normLower = normSender.toLowerAscii()
+            for r in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
+              if normLower.contains(r): return true
             if item.hasKey("tags") and item["tags"].kind == JArray:
               for t in item["tags"]:
                 let lowTag = t.getStr().toLowerAscii()
-                if lowTag in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer"]:
+                if lowTag in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
                   return true
   except CatchableError:
     discard
