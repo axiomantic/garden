@@ -9,7 +9,7 @@ import update
 import roadmap
 
 const
-  GardenVersion = "0.2.24"
+  GardenVersion = "0.2.25"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
@@ -298,20 +298,27 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
   result.orchestrator = effectiveOrch
   result.orchestratorAgent = effectiveOrch
 
-  # Purge any legacy garden-swarm.json if found
+  # Migration / legacy reading: read legacy garden-swarm.json if present, then purge
   let legacySwarm = root / "garden-swarm.json"
-  if fileExists(legacySwarm):
-    try: removeFile(legacySwarm) except CatchableError: discard
-
-  # Optional custom manifest ONLY if an explicit custom file path was passed and it is NOT garden-swarm.json
   let envSwarm = getEnv("GARDEN_SWARM_FILE", "")
   var customFile = if swarmFilePath.len > 0 and not swarmFilePath.endsWith("garden-swarm.json"): swarmFilePath
                    elif envSwarm.len > 0 and not envSwarm.endsWith("garden-swarm.json") and fileExists(envSwarm): envSwarm
                    else: ""
 
-  if customFile.len > 0 and fileExists(customFile):
+  var sJson: JsonNode = nil
+  if fileExists(legacySwarm):
     try:
-      let sJson = parseJson(readFile(customFile))
+      sJson = parseJson(readFile(legacySwarm))
+      removeFile(legacySwarm)
+    except CatchableError: discard
+  elif customFile.len > 0 and fileExists(customFile):
+    try:
+      sJson = parseJson(readFile(customFile))
+    except CatchableError as e:
+      stderr.writeLine("[garden] Warning: Failed to parse custom swarm file: " & e.msg)
+
+  if not sJson.isNil:
+    try:
       result.project = if sJson.hasKey("project"): sJson["project"].getStr(projName) else: projName
       result.targetRepo = if sJson.hasKey("target_repo"): sJson["target_repo"].getStr(root) else: root
       
@@ -1286,7 +1293,7 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
   for w in cfg.workers:
     if normSender == w.name.toLowerAscii.strip(): return true
 
-  # Dynamic Redis discovery fallback
+  # Dynamic Redis discovery fallback (when sender is not in static config)
   try:
     let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
     if whoCode == 0 and whoOut.strip().len > 0:
@@ -1298,18 +1305,24 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
           if itemAgent.toLowerAscii == normSender:
             if cfg.project.len > 0 and itemProj.len > 0 and itemProj != cfg.project.toLowerAscii():
               return false
-            # Verified member of the project roster in Redis
-            if cfg.project.len > 0 and itemProj == cfg.project.toLowerAscii():
-              return true
-            # For unscoped or matching agents, verify role or tags
+            # For dynamic Redis discovery, verify role or tags
             let normLower = normSender.toLowerAscii()
+            var roleOrTagOk = false
             for r in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
-              if normLower.contains(r): return true
-            if item.hasKey("tags") and item["tags"].kind == JArray:
+              if normLower.contains(r):
+                roleOrTagOk = true
+                break
+            if not roleOrTagOk and item.hasKey("tags") and item["tags"].kind == JArray:
               for t in item["tags"]:
                 let lowTag = t.getStr().toLowerAscii()
                 if lowTag in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
-                  return true
+                  roleOrTagOk = true
+                  break
+            if not roleOrTagOk and item.hasKey("role"):
+              let lowRole = item["role"].getStr().toLowerAscii()
+              if lowRole in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
+                roleOrTagOk = true
+            return roleOrTagOk
   except CatchableError:
     discard
 

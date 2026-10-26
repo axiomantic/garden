@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.25] - 2026-10-25
+
 ### Added
 - **Dynamic Redis Swarm Roster Guard & Project Tenancy Alignment (`src/garden.nim`)**:
   - Upgraded `doRosterGuard` and `validateRosterSender` to support pure Redis dynamic cluster agent verification via `rhizo who --all --json`.

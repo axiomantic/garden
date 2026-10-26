@@ -1,6 +1,6 @@
 {
   "name": "@axiomantic/garden",
-  "version": "0.2.24",
+  "version": "0.2.25",
   "description": "Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies on top of Rhizo & Vine",
   "main": "bin/run.js",
   "bin": {
@@ -50,8 +50,8 @@
   },
   "homepage": "https://github.com/axiomantic/garden#readme",
   "dependencies": {
-    "@axiomantic/rhizo": "^0.2.25",
-    "@axiomantic/vine": "^0.2.13",
+    "@axiomantic/rhizo": "^0.2.27",
+    "@axiomantic/vine": "^0.2.15",
     "rift-snapshot": "^0.0.13"
   }
 }
