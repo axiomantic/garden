@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.26] - 2026-10-28
+
 ### Added
 - **Cross-Project Worker Poaching Protection & Tenancy Guard (`src/garden.nim`, `src/guide.nim`)**:
   - `queryClusterAgents` isolates active listeners belonging to other named projects into `foreignProjectPeers`, preventing them from being placed in `availableIdlePeers`.
