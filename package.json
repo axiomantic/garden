@@ -50,7 +50,7 @@
   },
   "homepage": "https://github.com/axiomantic/garden#readme",
   "dependencies": {
-    "@axiomantic/rhizo": "^0.2.27",
+    "@axiomantic/rhizo": "^0.2.24",
     "@axiomantic/vine": "^0.2.15",
     "rift-snapshot": "^0.0.13"
   }
