@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Cross-Project Worker Poaching Protection & Tenancy Guard (`src/garden.nim`, `src/guide.nim`)**:
+  - `queryClusterAgents` isolates active listeners belonging to other named projects into `foreignProjectPeers`, preventing them from being placed in `availableIdlePeers`.
+  - Added `--allow-cross-project` flag to `garden repurpose` and enforced a strict rejection guard (exit code 1) when attempting to repurpose a worker currently assigned to another project without explicit authorization.
+  - Upgraded `doPrompts` to surface `foreign_project_peers` in JSON telemetry and notify operators when foreign workers are protected against cross-project hijacking.
+  - Bumped embedded guide to `v2.7` replacing the global Fleet-First Mandate with the Project-Scoped Fleet Mandate & Anti-Hijacking Invariant.
+
 ## [0.2.25] - 2026-10-25
 
 ### Added

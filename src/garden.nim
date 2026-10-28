@@ -63,6 +63,7 @@ Options for 'repurpose':
   --tags, -t <csv>         Target taxonomy tags
   --self-tag, -s           Offer candidate roles and allow worker to self-select matching tags
   --expected-tags <csv>    Expected capabilities or tools required
+  --allow-cross-project    Allow repurposing a worker currently assigned to another project
   --force, -f              Force repurposing even if worker is currently BUSY
   --json                   Output result as structured JSON
 
@@ -611,6 +612,7 @@ type
     projectActive*: seq[ClusterWorkerInfo]
     availableIdlePeers*: seq[ClusterWorkerInfo]
     busyClusterPeers*: seq[ClusterWorkerInfo]
+    foreignProjectPeers*: seq[ClusterWorkerInfo]
     allAgents*: seq[ClusterWorkerInfo]
 
 proc queryClusterAgents*(currentProject: string = "", targetWorkers: seq[WorkerSpec] = @[]): ClusterCategorization =
@@ -665,12 +667,17 @@ proc queryClusterAgents*(currentProject: string = "", targetWorkers: seq[WorkerS
           break
       
       let isProjMatch = curProjLower.len > 0 and ca.project.toLowerAscii() == curProjLower
+      let isUnassignedPool = ca.project.toLowerAscii() in ["", "default", "unassigned"] or
+                             ("pool" in ca.tags) or ("float" in ca.tags) or ("shared" in ca.tags)
 
       if isProjMatch or isTarget:
         result.projectActive.add(ca)
-      else:
+      elif isUnassignedPool:
         if not isBusy and (ca.state.toUpperAscii().startsWith("IDLE") or ca.state.len == 0):
           result.availableIdlePeers.add(ca)
+      else:
+        # Dedicated worker on another named project: PROTECTED against automatic poaching!
+        result.foreignProjectPeers.add(ca)
 
 proc doPrompts*(
   projectDir: string,
@@ -827,6 +834,15 @@ proc doPrompts*(
     for ip in availableIdlePeers: jIdle.add(%ip.agent)
     jObj["idle_cluster_peers"] = jIdle
 
+    var jForeign = newJArray()
+    for fp in categorization.foreignProjectPeers:
+      var jf = newJObject()
+      jf["agent"] = %fp.agent
+      jf["project"] = %fp.project
+      jf["tags"] = %fp.tags
+      jForeign.add(jf)
+    jObj["foreign_project_peers"] = jForeign
+
     var jBusy = newJArray()
     for bp in busyPeers: jBusy.add(%bp.agent)
     jObj["busy_cluster_peers"] = jBusy
@@ -875,6 +891,10 @@ proc doPrompts*(
       for sc in suggestedRepurposeCmds:
         echo "    " & sc
       echo ""
+    elif categorization.foreignProjectPeers.len > 0:
+      echo "  FOREIGN PROJECT WORKERS PROTECTED: Detected " & $categorization.foreignProjectPeers.len & " active worker(s) dedicated to other projects."
+      echo "  Cross-project poaching is prohibited. Bootstrap dedicated workers below."
+      echo ""
     echo "Once pasted, verify cluster registration readiness with:"
     echo "  rhizo who"
     echo ""
@@ -916,6 +936,10 @@ proc doPrompts*(
       echo "--------------------------------------------------------------------------------"
       echo "PATHWAY B: FRESH SESSION BOOTSTRAPPING (Prompt Card Files)"
       echo "--------------------------------------------------------------------------------"
+    elif categorization.foreignProjectPeers.len > 0:
+      echo "Detected " & $categorization.foreignProjectPeers.len & " active worker(s) dedicated to other projects (protected from poaching)."
+      echo "Bootstrap dedicated workers for project '" & cfg.project & "' below:"
+      echo ""
     echo "Generated " & $selectedWorkers.len & " worker bootstrap prompt card(s) in:"
     echo "  " & tempBaseDir & "/"
     echo ""
@@ -969,7 +993,8 @@ proc doRepurpose*(
   expectedTagsParam: string = "",
   force: bool = false,
   swarmFileParam: string = "",
-  jsonOutput: bool = false
+  jsonOutput: bool = false,
+  allowCrossProject: bool = false
 ): int =
   let root = findProjectRoot()
   let targetProj = if projectParam.len > 0: projectParam.strip()
@@ -989,7 +1014,14 @@ proc doRepurpose*(
   var targetWorkers = workers
   if targetWorkers.len == 0:
     if categorization.availableIdlePeers.len == 0:
-      let errMsg = "No idle cluster workers found to repurpose. Start new sessions or pass specific worker names."
+      var errMsg = "No unassigned idle cluster workers found to repurpose."
+      if categorization.foreignProjectPeers.len > 0:
+        var foreignNames: seq[string] = @[]
+        for fp in categorization.foreignProjectPeers:
+          foreignNames.add("@" & fp.agent & " (" & fp.project & ")")
+        errMsg &= " Detected " & $categorization.foreignProjectPeers.len & " worker(s) dedicated to other projects (" & foreignNames.join(", ") & "), but cross-project worker hijacking is prohibited. Generate dedicated workers via 'garden prompts' or pass worker names with --allow-cross-project to override."
+      else:
+        errMsg &= " Start new sessions or pass specific worker names."
       if jsonOutput:
         echo $(%*{"status": "error", "error": errMsg})
       else:
@@ -999,6 +1031,26 @@ proc doRepurpose*(
     let needed = if cfg.workers.len > categorization.projectActive.len: cfg.workers.len - categorization.projectActive.len else: 1
     for i in 0 ..< min(needed, categorization.availableIdlePeers.len):
       targetWorkers.add(categorization.availableIdlePeers[i].agent)
+
+  # Check for cross-project worker hijacking unless --allow-cross-project is passed
+  if not allowCrossProject:
+    for tw in targetWorkers:
+      let twLower = tw.toLowerAscii()
+      for ca in categorization.allAgents:
+        if ca.agent.toLowerAscii() == twLower:
+          let caProjLower = ca.project.toLowerAscii()
+          let isForeignProject = caProjLower.len > 0 and
+                                 caProjLower != targetProj.toLowerAscii() and
+                                 caProjLower notin ["", "default", "unassigned"] and
+                                 not (("pool" in ca.tags) or ("float" in ca.tags) or ("shared" in ca.tags))
+          if isForeignProject:
+            let errMsg = "Worker '@" & tw & "' is currently assigned to project '" & ca.project & "'. Cross-project worker hijacking is prohibited. Generate dedicated workers for project '" & targetProj & "' via 'garden prompts' or pass --allow-cross-project to override."
+            if jsonOutput:
+              echo $(%*{"status": "error", "error": errMsg, "agent": tw, "project": ca.project, "target_project": targetProj})
+            else:
+              stderr.writeLine("[garden repurpose] Error: " & errMsg)
+            return 1
+          break
 
   # Check for busy workers unless force is enabled (Negative Control)
   for tw in targetWorkers:
@@ -1752,6 +1804,7 @@ proc main() =
     var selfTag = false
     var expectedTagsParam = ""
     var force = false
+    var allowCrossProject = false
     var swarmFileParam = getEnv("GARDEN_SWARM_FILE", "")
     var jsonOutput = false
     var i = 1
@@ -1766,6 +1819,8 @@ proc main() =
         selfTag = true
       elif a in ["--force", "-f"]:
         force = true
+      elif a in ["--allow-cross-project", "--cross-project"]:
+        allowCrossProject = true
       elif (a in ["--project", "-p"]) and i + 1 < params.len:
         inc i; projectParam = params[i]
       elif a.startsWith("--project="):
@@ -1789,7 +1844,7 @@ proc main() =
       elif not a.startsWith("-"):
         workers.add(a)
       inc i
-    quit(doRepurpose(workers, projectParam, roleParam, tagsParam, selfTag, expectedTagsParam, force, swarmFileParam, jsonOutput))
+    quit(doRepurpose(workers, projectParam, roleParam, tagsParam, selfTag, expectedTagsParam, force, swarmFileParam, jsonOutput, allowCrossProject))
   of "init":
     var targetDir = ""
     var force = false

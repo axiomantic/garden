@@ -76,15 +76,15 @@ suite "Garden Guide Management & Marker Suite":
     check ok == false
     check msg.contains("Malformed markers")
 
-  test "Guide v2.6 incorporates Autonomous Dispatch, ask_question discipline, and Fleet-First Mandate":
-    check GuideVersion == "v2.6"
-    check CanonicalGuideContent.contains("<!-- BEGIN GARDEN GUIDE [v2.6] -->")
+  test "Guide v2.7 incorporates Autonomous Dispatch, ask_question discipline, and Project-Scoped Fleet Mandate":
+    check GuideVersion == "v2.7"
+    check CanonicalGuideContent.contains("<!-- BEGIN GARDEN GUIDE [v2.7] -->")
     check CanonicalGuideContent.contains("Pre-Authorized Directives & Autonomous Dispatch")
     check CanonicalGuideContent.contains("Mandatory `ask_question` Tool Discipline")
-    check CanonicalGuideContent.contains("Fleet-First Mandate")
+    check CanonicalGuideContent.contains("Project-Scoped Fleet Mandate & Anti-Hijacking Invariant")
     check CanonicalGuideContent.contains("Orchestrator Non-Implementation Invariant")
     check CanonicalGuideContent.contains("Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED")
-    check CanonicalGuideContent.contains("When online workers exist, NEVER output copy-paste prompt cards to the human operator")
+    check CanonicalGuideContent.contains("Cross-project worker poaching is strictly prohibited")
 
 suite "Garden CLI Compilation & Telemetry Suite":
 
@@ -389,6 +389,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j.hasKey("fast_path")
     check j.hasKey("already_listening")
     check j.hasKey("idle_cluster_peers")
+    check j.hasKey("foreign_project_peers")
     check j.hasKey("busy_cluster_peers")
     check j.hasKey("suggested_repurpose_commands")
 
@@ -420,6 +421,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     # Query cluster to find an actual busy worker
     let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
     var busyAgent = ""
+    var busyAgentProj = ""
     if whoCode == 0 and whoOut.strip().len > 0:
       try:
         let parsed = parseJson(whoOut.strip())
@@ -428,23 +430,68 @@ suite "Garden CLI Compilation & Telemetry Suite":
           let state = item.getOrDefault("state").getStr("")
           if state.toUpperAscii().startsWith("BUSY"):
             busyAgent = item.getOrDefault("agent").getStr("")
+            busyAgentProj = item.getOrDefault("project").getStr("")
             if busyAgent.len > 0: break
       except CatchableError: discard
 
     if busyAgent.len > 0:
+      let targetProj = if busyAgentProj.len > 0: busyAgentProj else: "test-proj"
       # 1. Attempting without --force fails
-      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project test-proj --json")
+      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --json")
       check errCode != 0
       let errJson = parseJson(errOut.strip())
       check errJson["status"].getStr() == "error"
       check errJson["error"].getStr().contains("BUSY")
 
       # 2. Overriding with --force succeeds
-      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project test-proj --force --json")
+      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --force --json")
       check fCode == 0
       let fJson = parseJson(fOut.strip())
       check fJson["status"].getStr() == "ok"
       check fJson["repurposed_workers"][0]["agent"].getStr() == busyAgent
+
+  test "Garden repurpose negative control: foreign project worker rejected without --allow-cross-project, overrides with flag":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    
+    # Query cluster to find an actual foreign worker on a different project
+    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+    var foreignAgent = ""
+    var originalProj = ""
+    var originalTags: seq[string] = @[]
+    if whoCode == 0 and whoOut.strip().len > 0:
+      try:
+        let parsed = parseJson(whoOut.strip())
+        let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
+        for item in list:
+          let proj = item.getOrDefault("project").getStr("")
+          let ag = item.getOrDefault("agent").getStr("")
+          let st = item.getOrDefault("state").getStr("")
+          if proj.len > 0 and proj != "test-anti-poach-proj" and not st.toUpperAscii().startsWith("BUSY"):
+            foreignAgent = ag
+            originalProj = proj
+            if item.hasKey("tags") and item["tags"].kind == JArray:
+              for t in item["tags"]: originalTags.add(t.getStr())
+            break
+      except CatchableError: discard
+
+    if foreignAgent.len > 0:
+      # 1. Attempting without --allow-cross-project fails with cross-project rejection error
+      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --json")
+      check errCode != 0
+      let errJson = parseJson(errOut.strip())
+      check errJson["status"].getStr() == "error"
+      check errJson["error"].getStr().contains("Cross-project")
+
+      # 2. Overriding with --allow-cross-project succeeds
+      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --allow-cross-project --json")
+      check fCode == 0
+      let fJson = parseJson(fOut.strip())
+      check fJson["status"].getStr() == "ok"
+      check fJson["repurposed_workers"][0]["agent"].getStr() == foreignAgent
+
+      # Restore worker back to original project and tags
+      let restoreCmd = "rhizo reassign " & quoteShell(foreignAgent) & " --project " & quoteShell(originalProj) & " --tags " & quoteShell(originalTags.join(","))
+      discard execCmdEx(restoreCmd)
 
   test "Garden prompts fast-path skips card generation when project active workers >= target":
     let tmpDir = getTempDir() / ("garden_fast_path_test_" & $getCurrentProcessId())
