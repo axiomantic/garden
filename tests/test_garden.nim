@@ -515,14 +515,15 @@ suite "Garden CLI Compilation & Telemetry Suite":
     }""")
 
     # 1. Fast-Path Activated (without --force-prompts) if active garden workers exist on cluster
-    let (whoOut, whoCode) = execCmdEx("rhizo who --project garden --json")
     var hasActiveGardenWorker = false
-    if whoCode == 0 and whoOut.strip().len > 0:
-      try:
+    try:
+      let (whoOut, whoCode) = execCmdEx("rhizo who --project garden --json")
+      if whoCode == 0 and whoOut.strip().len > 0:
         let parsed = parseJson(whoOut.strip())
         let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
         hasActiveGardenWorker = list.len > 0
-      except CatchableError: discard
+    except CatchableError:
+      hasActiveGardenWorker = false
 
     if hasActiveGardenWorker:
       let (fpOut, fpCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --json")
