@@ -514,12 +514,22 @@ suite "Garden CLI Compilation & Telemetry Suite":
       ]
     }""")
 
-    # 1. Fast-Path Activated (without --force-prompts)
-    let (fpOut, fpCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --json")
-    check fpCode == 0
-    let fpJson = parseJson(fpOut.strip())
-    check fpJson["fast_path"].getBool() == true
-    check fpJson["active_workers_count"].getInt() >= 1
+    # 1. Fast-Path Activated (without --force-prompts) if active garden workers exist on cluster
+    let (whoOut, whoCode) = execCmdEx("rhizo who --project garden --json")
+    var hasActiveGardenWorker = false
+    if whoCode == 0 and whoOut.strip().len > 0:
+      try:
+        let parsed = parseJson(whoOut.strip())
+        let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
+        hasActiveGardenWorker = list.len > 0
+      except CatchableError: discard
+
+    if hasActiveGardenWorker:
+      let (fpOut, fpCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --json")
+      check fpCode == 0
+      let fpJson = parseJson(fpOut.strip())
+      check fpJson["fast_path"].getBool() == true
+      check fpJson["active_workers_count"].getInt() >= 1
 
     # 2. Force Prompts Flag overrides fast-path
     let (forceOut, forceCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --force-prompts --json")
