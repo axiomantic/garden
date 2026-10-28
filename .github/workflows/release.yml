@@ -57,7 +57,7 @@ jobs:
           tar -czf dist/garden-linux-arm64.tar.gz -C dist/linux-arm64 garden
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-assets
           path: |
@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-assets
           path: |
@@ -151,7 +151,7 @@ jobs:
           }
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-assets
           path: |
