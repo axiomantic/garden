@@ -45,8 +45,8 @@ The orchestrator inspects the cluster state via `rhizo who --all --json`:
    If and ONLY if the cluster is completely cold (0 active workers online across the machine) AND the operator has not specified an execution mode:
    The orchestrator MUST invoke the interactive `ask_question` tool to solicit the operator's preference (Swarm vs Inline).
    Dumping multiple-choice numbered lists (`1, 2, 3`) or routing questionnaires in raw chat text is STRICTLY PROHIBITED.
-3. **Fleet-First Mandate (Zero Prompt-Card Overhead When Workers Are Online)**:
-   When active or idle workers exist on the cluster (`rhizo who --all`), the orchestrator is strictly forbidden from printing copy-paste prompt cards into chat or asking the operator to open new terminal tabs. It must automatically dispatch or repurpose the existing fleet over Rhizo.
+3. **Project-Scoped Fleet Mandate & Anti-Hijacking Invariant**:
+   When active or idle workers exist FOR THIS PROJECT (or in the unassigned pool: project 'unassigned'/'default' or tagged 'pool'/'float'/'shared'), the orchestrator must automatically dispatch or repurpose them over Rhizo without prompt cards. However, workers assigned to other named projects are protected; cross-project worker hijacking is strictly prohibited. If only foreign project workers exist, the orchestrator MUST NOT hijack them, but must instead bootstrap dedicated workers via prompt cards (`garden prompts` / `garden launch`).
 </CRITICAL>
 
 <CRITICAL>
