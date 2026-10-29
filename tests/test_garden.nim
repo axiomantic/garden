@@ -570,5 +570,275 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not fileExists(tmpDir / ".garden" / "roadmap.json")
     check not fileExists(tmpDir / ".garden" / "session.json")
 
+suite "Role-Aware Bootstrap & Harness Wakeup Suite":
+
+  test "resolveWorkerProfile correctly handles explicit profiles":
+    var wImpl = WorkerSpec(name: "worker-1", role: "Custom", profile: "implementation")
+    check resolveWorkerProfile(wImpl) == wpImplementation
+
+    var wInvestig = WorkerSpec(name: "worker-2", role: "Custom", profile: "investigation")
+    check resolveWorkerProfile(wInvestig) == wpInvestigation
+
+    var wVerif = WorkerSpec(name: "worker-3", role: "Custom", profile: "verification")
+    check resolveWorkerProfile(wVerif) == wpVerification
+
+    var wAudit = WorkerSpec(name: "worker-4", role: "Custom", profile: "audit")
+    check resolveWorkerProfile(wAudit) == wpAudit
+
+  test "resolveWorkerProfile correctly handles custom role with no 'audit' in name":
+    var wSentinel = WorkerSpec(name: "sentinel", role: "Security Arbiter", profile: "audit")
+    check resolveWorkerProfile(wSentinel) == wpAudit
+
+    var wReviewer = WorkerSpec(name: "reviewer", role: "Architecture Reviewer", profile: "investigation")
+    check resolveWorkerProfile(wReviewer) == wpInvestigation
+
+    var wBench = WorkerSpec(name: "benchmarker", role: "Performance Tester", profile: "verification")
+    check resolveWorkerProfile(wBench) == wpVerification
+
+  test "resolveWorkerProfile legacy fallback without explicit profile":
+    var wAuditRole = WorkerSpec(name: "worker-a", role: "Verification & Adversarial Auditor")
+    check resolveWorkerProfile(wAuditRole) == wpAudit
+
+    var wVerifTags = WorkerSpec(name: "worker-b", role: "Tester", tags: @["qa", "test"])
+    check resolveWorkerProfile(wVerifTags) == wpVerification
+
+    var wInvestigRole = WorkerSpec(name: "worker-c", role: "Research & Analysis")
+    check resolveWorkerProfile(wInvestigRole) == wpInvestigation
+
+    var wDefault = WorkerSpec(name: "worker-d", role: "General Lead")
+    check resolveWorkerProfile(wDefault) == wpImplementation
+
+  test "generateWorkerPrompt for investigator does NOT contain strand creation, changelog, or submit":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "analyst",
+      persona: "Briar",
+      role: "Architecture Investigator",
+      harness: "Claude Code CLI",
+      tags: @["testproj", "investigation"],
+      profile: "investigation",
+      systemPrompt: "Investigate contracts."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("Profile / Capability**: Investigation & Review (Non-Modifying / Read-Only)")
+    check prompt.contains("NON-IMPLEMENTING / READ-ONLY")
+    check prompt.contains("You MUST NOT edit application source files")
+    check not prompt.contains("vine new")
+    check not prompt.contains("vine submit")
+    check not prompt.contains("CHANGELOG.md")
+    check not prompt.contains("vine changelog")
+
+  test "generateWorkerPrompt for verifier allows running checks, forbids modifying source/tests":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "tester",
+      persona: "Thistle",
+      role: "Performance Verifier",
+      harness: "Claude Code CLI",
+      tags: @["testproj", "qa"],
+      profile: "verification",
+      systemPrompt: "Verify test suite."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("Profile / Capability**: Verification & Quality Assurance")
+    check prompt.contains("VERIFICATION & QA ENGINEER")
+    check prompt.contains("Execute test suites, linters, static analyzers")
+    check prompt.contains("You must NEVER modify application source code")
+    check not prompt.contains("vine submit")
+    check not prompt.contains("vine new")
+    check not prompt.contains("vine changelog")
+
+  test "generateWorkerPrompt for auditor contains Key 3 Five-Pillar audit and prohibits self-audit":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "sentinel", # Notice: NO 'audit' in name!
+      persona: "Rowan",
+      role: "Integrity Gatekeeper", # Notice: NO 'audit' in role!
+      harness: "Claude Code CLI",
+      tags: @["testproj", "gate"],
+      profile: "audit",
+      systemPrompt: "Enforce Key 3."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("Profile / Capability**: Adversarial Audit (Key 3 Gate)")
+    check prompt.contains("Key 3 Adversarial Auditor Protocol")
+    check prompt.contains("vine audit reject")
+    check prompt.contains("vine audit approve")
+    check prompt.contains("SELF-AUDIT IS STRICTLY FORBIDDEN")
+    check prompt.contains("ZERO IMPLEMENTATION EDITING")
+    check not prompt.contains("vine submit")
+    check not prompt.contains("vine new")
+
+  test "generateWorkerPrompt for implementer contains strand, changelog, gate, submit":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "builder",
+      persona: "Fern",
+      role: "DevEx Lead",
+      harness: "Claude Code CLI",
+      tags: @["testproj", "dev"],
+      profile: "implementation",
+      systemPrompt: "Implement cleanly."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("Profile / Capability**: Implementation & Feature Engineering")
+    check prompt.contains("vine new <task_id>")
+    check prompt.contains("vine changelog")
+    check prompt.contains("vine gate")
+    check prompt.contains("vine submit")
+    check prompt.contains("Two-Point Diff Mandate")
+    check prompt.contains("YOU ARE NOT THE AUDITOR")
+
+  test "generateWorkerPrompt for Codex uses RHIZO_WAKE, distinguishes payload from wake, and forbids scheduled polling":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "builder",
+      persona: "Fern",
+      role: "DevEx Lead",
+      harness: "ChatGPT Desktop / Codex",
+      tags: @["testproj", "dev"],
+      profile: "implementation",
+      systemPrompt: "Implement cleanly."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("Codex Native Wakeup Protocol (`RHIZO_WAKE`)")
+    check prompt.contains("send_message_to_thread")
+    check prompt.contains("Distinguish Payload Transport from Idle Wakeup")
+    check prompt.contains("Scheduled Polling & Watchdogs PROHIBITED")
+    check not prompt.contains("STEP 1: INSPECT COMPLETED BACKGROUND LISTENER")
+    # Verify hook install is commented or optional, not unconditionally executed
+    check prompt.contains("# rhizo hook install --codex")
+
+  test "generateWorkerPrompt for OpenCode / Pi does not instruct worker to run blocking listener":
+    let cfg = SwarmConfig(project: "testproj", targetRepo: "/tmp/testrepo", orchestrator: "orch")
+    let w = WorkerSpec(
+      name: "builder",
+      persona: "Fern",
+      role: "DevEx Lead",
+      harness: "OpenCode",
+      tags: @["testproj", "dev"],
+      profile: "implementation",
+      systemPrompt: "Implement cleanly."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    check prompt.contains("In-Process Ear Active")
+    check prompt.contains("DO NOT launch a redundant blocking shell listener")
+    check not prompt.contains("Arm single-shot listener for incoming directives:\nrhizo listen")
+
+  test "SKILL.md is reconciled with skills/garden/SKILL.md":
+    let rootSkill = readFile(getCurrentDir() / "SKILL.md")
+    let pkgSkill = readFile(getCurrentDir() / "skills" / "garden" / "SKILL.md")
+    check rootSkill == pkgSkill
+
+  test "hasHelpFlag detects --help, -h, help and respects -- barrier":
+    check hasHelpFlag(@["--help"])
+    check hasHelpFlag(@["-h"])
+    check hasHelpFlag(@["help"])
+    check hasHelpFlag(@["some", "--help"])
+    check not hasHelpFlag(@["some", "--"])
+    check not hasHelpFlag(@["some", "--", "--help"])
+    check not hasHelpFlag(@["some", "--other"])
+
+  test "garden binary handles --help on subcommands without executing them":
+    let binPath = getCurrentDir() / "bin" / "garden"
+    let subcmds = @["init", "plant", "roadmap", "germinate", "repurpose", "prompts", "launch", "status", "guide", "update"]
+    for s in subcmds:
+      let (outp, code) = execCmdEx(binPath & " " & s & " --help")
+      check code == 0
+      check outp.contains("Usage: garden " & s)
+
+    # Test help <subcmd> syntax
+    let (outp2, code2) = execCmdEx(binPath & " help init")
+    check code2 == 0
+    check outp2.contains("Usage: garden init")
+
+  test "parseTomlSwarmConfig extracts worker profile and capability correctly":
+    let toml = """
+[project]
+name = "custom-toml-proj"
+
+[orchestrator]
+name = "lead"
+agent = "lead-orch"
+
+[[workers]]
+name = "reviewer"
+persona = "Sage"
+role = "Code Reviewer"
+profile = "investigation"
+harness = "Claude Code CLI"
+system_prompt = "Review code carefully."
+opposing_priority = "Thoroughness"
+tags = ["custom-toml-proj", "reviewer"]
+
+[[workers]]
+name = "tester"
+persona = "Flint"
+role = "Test Verifier"
+capability = "verification"
+tags = ["custom-toml-proj", "tester"]
+
+[[workers]]
+name = "auditor"
+persona = "Adversary"
+role = "Security Auditor"
+profile = "audit"
+"""
+    let j = parseTomlSwarmConfig(toml)
+    check j["project"].getStr() == "custom-toml-proj"
+    check j["orchestrator"]["name"].getStr() == "lead"
+    check j["workers"].len == 3
+
+    check j["workers"][0]["name"].getStr() == "reviewer"
+    check j["workers"][0]["profile"].getStr() == "investigation"
+    check j["workers"][0]["role"].getStr() == "Code Reviewer"
+
+    check j["workers"][1]["name"].getStr() == "tester"
+    check j["workers"][1]["capability"].getStr() == "verification"
+
+    check j["workers"][2]["name"].getStr() == "auditor"
+    check j["workers"][2]["profile"].getStr() == "audit"
+
+  test "loadSwarmConfig parses profile from custom swarm TOML file":
+    let tmpDir = getTempDir() / "garden_toml_test_" & $getCurrentProcessId()
+    createDir(tmpDir)
+    defer: (try: removeDir(tmpDir) except CatchableError: discard)
+
+    let tomlPath = tmpDir / "swarm.toml"
+    let tomlContent = """
+[project]
+name = "toml-swarm-test"
+
+[[workers]]
+name = "investigator"
+persona = "Sherlock"
+role = "Read-Only Inspector"
+profile = "investigation"
+harness = "Claude Code CLI"
+
+[[workers]]
+name = "auditor"
+persona = "Judge"
+role = "Independent Auditor"
+profile = "audit"
+"""
+    writeFile(tomlPath, tomlContent)
+
+    let cfg = loadSwarmConfig(projectDir = tmpDir, swarmFilePath = tomlPath)
+    check cfg.project == "toml-swarm-test"
+    check cfg.workers.len == 2
+    check cfg.workers[0].name.endsWith("investigator")
+    check cfg.workers[0].profile == "investigation"
+    check cfg.workers[1].name.endsWith("auditor")
+    check cfg.workers[1].profile == "audit"
+
+    # Verify generated prompt for investigator does NOT contain strand creation or commit
+    let invPrompt = generateWorkerPrompt(cfg, cfg.workers[0])
+    check invPrompt.contains("Profile / Capability**: Investigation & Review (Non-Modifying / Read-Only)")
+    check not invPrompt.contains("vine new <task_id>")
+    check not invPrompt.contains("vine changelog")
+
+
+
 
 

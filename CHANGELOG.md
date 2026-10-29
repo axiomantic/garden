@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.27] - 2026-10-29
+
+### Added
+- **Role-Aware Worker Bootstrap Profiles (`src/garden.nim`, `tests/test_garden.nim`)**:
+  - Introduced explicit `WorkerProfile` (`wpImplementation`, `wpInvestigation`, `wpVerification`, `wpAudit`) and `resolveWorkerProfile` to decouple worker capabilities from persona names.
+  - Tailored bootstrap prompt cards to strictly assigned capabilities:
+    - **Investigation / Review**: Strictly read-only; prohibited from editing application code, creating Vine strands, writing changelog entries, or submitting code.
+    - **Verification / QA**: Authorized to execute test suites, linters, and static analyzers; forbidden from modifying production source or application tests.
+    - **Adversarial Audit**: Directed to conduct Five-Pillar Key 3 adversarial reviews and issue ratification decisions (`vine audit approve/reject`); strictly forbidden from self-audit or writing implementation code.
+    - **Implementation**: Retains full strand provisioning, gate execution, changelog upkeep, and submission responsibilities.
+- **Harness-Aware Wakeup Guidance & Idle Protocol Alignment (`src/garden.nim`, `tests/test_garden.nim`)**:
+  - Aligned generated prompt cards with the official `RHIZO_WAKE` protocol for Codex sessions (`send_message_to_thread`), clearly distinguishing payload transport from idle chat wakeup.
+  - Prohibited periodic scheduled polling/watchdog loops as a substitute for event-driven wakeup.
+  - Removed unconditional Codex hook installation commands from generated onboarding blocks.
+  - Added in-process ear capability detection for OpenCode and Pi harnesses, eliminating redundant blocking shell listeners.
+- **Native TOML Swarm Configuration Support (`src/garden.nim`, `tests/test_garden.nim`)**:
+  - Added `parseTomlSwarmConfig` to support TOML-based swarm configurations natively (`[[workers]]`, `[workers.<name>]`, `[orchestrator]`, `[project]`).
+  - Automatically parses and preserves `profile` and `capability` fields into `WorkerSpec.profile` without requiring an intermediate JSON conversion.
+  - Automatically discovers and loads custom worker definitions directly from `garden.toml` when present in the project root.
+- **Canonical Path Resolution for Symlinks and Windows Drive Letters (`src/garden.nim`, `src/seed.nim`)**:
+  - Added `canonicalizePath` (`expandFilename`) across project root discovery and path comparisons, resolving symlinked development trees and Windows drive-letter casing discrepancies.
+
+### Fixed
+- **Subcommand `--help` Interception & Execution Guard (`src/garden.nim`, `tests/test_garden.nim`)**:
+  - Added `hasHelpFlag` and `printSubcommandHelp` to intercept `--help` and `-h` across all subcommands (`init`, `plant`, `prompts`, `germinate`, `repurpose`, `status`, etc.) early with exit code 0.
+  - Prevented operational commands (such as `garden init --help`) from creating files or executing tasks when help flags are passed.
+  - Expanded `printHelp()` to exhaustively document options for `init` and `guide`.
+
 ## [0.2.26] - 2026-10-28
 
 ### Added
