@@ -104,8 +104,8 @@ Instead, it acts as an **Intelligent Intake Concierge**:
 
 0. **Fast-Path Check for Pre-Authorized Directives & Active Swarm**:
    - **Pre-Authorized Directives & Autonomous Dispatch**: If the operator instructs "work on this with your workers" (or similar delegation phrases), or whenever active cluster workers already exist on the Rhizo cluster (`rhizo who`), the Orchestrator MUST NOT stop to ask routing questions. It is fully pre-authorized to act! It must immediately break down work, provision isolated Vine strands (`vine new <task>`), and dispatch directly over Rhizo (`rhizo send`) or enqueue to work queues (`rhizo enqueue`).
-   - **Fleet-First Mandate**: When online workers exist anywhere in the cluster, NEVER output copy-paste prompt cards to the human operator. Dispatch or repurpose existing workers over Rhizo (`rhizo send` / `garden repurpose`).
-   - **Mandatory `ask_question` Tool Discipline**: Only during a true cold start with 0 cluster workers online and no explicit delegation directive may the orchestrator solicit routing input. In that case, the orchestrator MUST invoke the interactive `ask_question` tool. Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED.
+   - **Project-Scoped Fleet Mandate & Anti-Hijacking Invariant**: Workers assigned to a named project belong exclusively to that project. Cross-project worker hijacking is strictly prohibited by default. When online workers exist FOR THIS PROJECT (or in the unassigned pool: project 'unassigned'/'default' or tagged 'pool'/'float'/'shared'), dispatch or repurpose existing workers over Rhizo (`rhizo send` / `garden repurpose`). If only workers belonging to other named projects are online and no unassigned workers are available, the orchestrator MUST NOT hijack foreign workers; it MUST bootstrap dedicated workers for the project via prompt cards (`garden prompts` / `garden launch`).
+   - **Mandatory `ask_question` Tool Discipline**: Only during a true cold start with 0 cluster workers online for this project and no explicit delegation directive may the orchestrator solicit routing input. In that case, the orchestrator MUST invoke the interactive `ask_question` tool. Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED.
 
 1. **Evaluate Request Scope & Blast Radius (Cold Start Only)**:
    - **High Complexity / Architectural Shifts / New Subsystems / Multi-File Migrations**: The request impacts foundational contracts, multiple modules, or shared abstractions. Requires empirical research, RFC design, adversarial review, and parallel strand isolation. Recommend **Option 1**.
@@ -132,10 +132,11 @@ Instead, it acts as an **Intelligent Intake Concierge**:
 #### Adaptive Swarm On-Ramp & Dynamic Worker Repurposing (First-Look Invariant)
 
 Before asking ANY intake questions or presenting configuration modals, the designated orchestrator MUST run `rhizo who --all --json` to inspect the cluster across all projects.
-Garden automatically categorizes cluster listeners into three operational pools:
+Garden automatically categorizes cluster listeners into four operational pools:
 1. **`projectActive`**: Active listeners already registered on the target project.
-2. **`availableIdlePeers`**: Active idle listeners currently registered under other projects, immediately available for dynamic repurposing.
-3. **`busyClusterPeers`**: Active listeners executing in-flight tasks (`BUSY`), guarded from unintentional reassignment.
+2. **`availableIdlePeers`**: Active idle listeners in the unassigned pool (project is empty, `default`, or `unassigned`, or tagged `pool`/`float`/`shared`), immediately available for dynamic repurposing.
+3. **`foreignProjectPeers`**: Active listeners registered to other named projects, **protected against cross-project poaching** (repurposing rejected unless `--allow-cross-project` is explicitly passed).
+4. **`busyClusterPeers`**: Active listeners executing in-flight tasks (`BUSY`), guarded from unintentional reassignment (requires `--force`).
 
 ##### Fast-Path: Re-using an Active / Existing Swarm
 If active, healthy workers on the target project meet or exceed the target worker count (`projectActive >= targetWorkers`):
@@ -145,10 +146,10 @@ If active, healthy workers on the target project meet or exceed the target worke
 - **Bypass**: To force prompt card regeneration despite active workers, pass `--force-prompts` to `garden prompts` or `garden launch`.
 
 ##### Dual-Pathway Swarm On-Ramp (When Additional Workers Needed)
-When target project workers are needed and idle cluster peers exist, Garden surfaces two distinct pathways:
+When target project workers are needed and unassigned idle cluster peers exist, Garden surfaces two distinct pathways:
 
-- **Pathway A (Dynamic Repurposing via `garden repurpose`)**:
-  Repurpose existing idle cluster listeners directly into the target project without opening new terminal windows or copying prompt cards:
+- **Pathway A (Dynamic Worker Repurposing via `garden repurpose`)**:
+  Repurpose existing unassigned idle cluster listeners directly into the target project without opening new terminal windows or copying prompt cards:
   ```bash
   garden repurpose <worker1> <worker2> \
     --project <target-project> \
@@ -164,10 +165,10 @@ When target project workers are needed and idle cluster peers exist, Garden surf
       --expected-tags "backend,frontend,qa,audit"
     ```
     The recipient worker inspects its local toolchain, self-selects a compatible role, adds corresponding tags (`rhizo tag add <tags>`), and replies with `WORKER_READY`.
-  - **Negative Control & Safety Guardrail**: Repurposing rejects workers that are actively `BUSY` on tasks to prevent disrupting active workflows. Repurposing a busy worker requires the explicit `--force` flag.
+  - **Negative Control & Tenancy Guardrail**: Repurposing rejects workers belonging to other named projects unless `--allow-cross-project` is specified. It also rejects workers that are actively `BUSY` on tasks (requires `--force`).
 
-- **Pathway B (Fresh Session Bootstrapping)**:
-  When zero cluster listeners exist or the operator prefers isolated fresh sessions, Garden generates self-contained 10-backtick prompt cards in `/tmp/garden-<project>/` via `garden prompts` (or `garden launch`).
+- **Pathway B (Fresh Session Bootstrapping via Prompt Cards)**:
+  When zero unassigned cluster listeners exist (even if workers from other projects are online) or the operator prefers isolated fresh sessions, Garden generates self-contained 10-backtick prompt cards in `/tmp/garden-<project>/` via `garden prompts` (or `garden launch`). Dedicated prompt cards are the primary and intended mechanism for spinning up workers for a new project!
 
 <CRITICAL>
 Operator-Named Worker Delegation Mandate:

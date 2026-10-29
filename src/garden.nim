@@ -14,6 +14,12 @@ const
   PromptFence10 = "``````````"
 
 type
+  WorkerProfile* = enum
+    wpImplementation, wpInvestigation, wpVerification, wpAudit
+
+  HarnessType* = enum
+    htAntigravity, htClaudeCode, htCodex, htOpenCode, htPi, htGeneric
+
   WorkerSpec* = object
     name*: string
     persona*: string
@@ -21,6 +27,7 @@ type
     harness*: string
     model*: string
     tags*: seq[string]
+    profile*: string
     systemPrompt*: string
     opposingPriority*: string
     startupCommand*: string
@@ -155,6 +162,42 @@ proc detectCurrentHarness*(): string =
     "Pi"
   else:
     "Antigravity / Claude Code"
+
+proc normalizeHarness*(h: string): HarnessType =
+  let hl = h.toLowerAscii
+  if hl.contains("antigravity"):
+    return htAntigravity
+  elif hl.contains("claude"):
+    return htClaudeCode
+  elif hl.contains("codex") or hl.contains("chatgpt"):
+    return htCodex
+  elif hl.contains("opencode"):
+    return htOpenCode
+  elif hl.contains("pi"):
+    return htPi
+  else:
+    return htGeneric
+
+proc resolveWorkerProfile*(w: WorkerSpec): WorkerProfile =
+  let p = w.profile.toLowerAscii.strip()
+  if p in ["implementation", "implementer", "impl", "dev", "coder", "build"]:
+    return wpImplementation
+  elif p in ["investigation", "investigator", "research", "researcher", "review", "reviewer", "read-only", "readonly"]:
+    return wpInvestigation
+  elif p in ["verification", "verifier", "qa", "test", "tester"]:
+    return wpVerification
+  elif p in ["audit", "auditor", "adversarial-audit", "adversarial-auditor"]:
+    return wpAudit
+
+  # Legacy & heuristic fallback if explicit profile is not provided
+  let combined = (w.role & " " & w.tags.join(" ") & " " & w.name).toLowerAscii
+  if combined.contains("audit"):
+    return wpAudit
+  elif combined.contains("verif") or combined.contains("qa") or combined.contains("tester"):
+    return wpVerification
+  elif combined.contains("investig") or combined.contains("review") or combined.contains("research") or combined.contains("read-only") or combined.contains("readonly"):
+    return wpInvestigation
+  return wpImplementation
 
 type
   WhimsicalTheme* = enum
@@ -358,6 +401,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
           spec.systemPrompt = if w.hasKey("system_prompt"): w["system_prompt"].getStr() else: ""
           spec.opposingPriority = if w.hasKey("opposing_priority"): w["opposing_priority"].getStr() else: ""
           spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr() else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
+          spec.profile = if w.hasKey("profile"): w["profile"].getStr() elif w.hasKey("capability"): w["capability"].getStr() else: ""
           result.workers.add(spec)
     except CatchableError as e:
       stderr.writeLine("[garden] Warning: Failed to parse custom swarm file: " & e.msg)
@@ -407,7 +451,8 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: archTags,
-      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Work in isolated Vine strands.",
+      profile: "investigation",
+      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Operate as an investigator and architectural reviewer.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
       startupCommand: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
     ))
@@ -419,6 +464,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: auditTags,
+      profile: "audit",
       systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <strand> --auditor " & auditName & " --reason <reason>'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <strand> --auditor " & auditName & "'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
@@ -431,6 +477,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       harness: curHarness,
       model: "Session Default (active in window/tab)",
       tags: implTags,
+      profile: "implementation",
       systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands." & seedContext & " You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
       startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
@@ -452,6 +499,9 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
 
 proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   let tagsStr = w.tags.join(",")
+  let profile = resolveWorkerProfile(w)
+  let harnessKind = normalizeHarness(w.harness)
+
   result = "# Swarm Worker Bootstrap: " & w.persona & " (@" & w.name & ")\n\n"
   result &= "You are **" & w.persona & "**, serving as **" & w.role & "** for project **" & cfg.project & "**.\n"
   result &= "> [!IMPORTANT]\n"
@@ -460,6 +510,12 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "### 1. Identity & Mandate\n"
   result &= "- **Agent Codename**: `" & w.name & "`\n"
   result &= "- **Role**: " & w.role & "\n"
+  let profileTitle = case profile
+    of wpImplementation: "Implementation & Feature Engineering"
+    of wpInvestigation: "Investigation & Review (Non-Modifying / Read-Only)"
+    of wpVerification: "Verification & Quality Assurance"
+    of wpAudit: "Adversarial Audit (Key 3 Gate)"
+  result &= "- **Profile / Capability**: " & profileTitle & "\n"
   if w.opposingPriority.len > 0:
     result &= "- **Opposing Priority**: " & w.opposingPriority & "\n"
   result &= "- **Orchestrator**: `@" & cfg.orchestrator & "`\n\n"
@@ -470,19 +526,33 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "### 2. Immediate Onboarding Actions (FIRST TURN EXECUTION)\n"
   result &= "<CRITICAL>\n"
   result &= "DO NOT output conversational greetings. DO NOT ask 'How can I help?'.\n"
-  result &= "Execute these shell commands right now in your VERY FIRST tool turn to register, announce arrival, and arm:\n\n"
+  result &= "Execute these shell commands right now in your VERY FIRST tool turn to register and announce arrival:\n\n"
   result &= "```bash\n"
   result &= "cd \"" & cfg.targetRepo & "\"\n"
   result &= "export RHIZO_AGENT_NAME=\"" & w.name & "\"\n"
   result &= "rhizo open \"" & w.name & "\" \"" & tagsStr & "\"\n"
-  result &= "# If running in Codex, install turn-end Stop hook interlock:\n"
-  result &= "rhizo hook install --codex --agent \"" & w.name & "\"\n\n"
-  result &= "# 1. Broadcast Mutual Arrival Handshake (WAKES orchestrator if idle):\n"
-  result &= "rhizo send --to \"" & cfg.orchestrator & "\" --subject \"WORKER_READY\" --body \"Worker @" & w.name & " (" & w.persona & " - " & w.role & ") initialized. Standing by for sprint assignment.\"\n\n"
-  result &= "# 2. Arm single-shot listener for incoming directives:\n"
-  result &= "rhizo listen \"" & w.name & "\"\n"
-  result &= "```\n"
-  result &= "The listener is ARM NOW, NOT ARM WHEN DONE.\n"
+  if harnessKind == htCodex:
+    result &= "# If authorized, register your Codex thread ID for native wakeups:\n"
+    result &= "[ -n \"$CODEX_THREAD_ID\" ] && rhizo session register \"" & w.name & "\" --thread-id \"$CODEX_THREAD_ID\" --harness codex\n"
+    result &= "# Optional: Install turn-end Stop hook interlock if authorized:\n"
+    result &= "# rhizo hook install --codex --agent \"" & w.name & "\"\n\n"
+  elif harnessKind == htClaudeCode:
+    result &= "# Optional: Install Claude Code prompt hook interlock if authorized:\n"
+    result &= "# rhizo hook install --claude --agent \"" & w.name & "\"\n\n"
+
+  result &= "# Broadcast Mutual Arrival Handshake (enqueued to Rhizo):\n"
+  result &= "rhizo send --to \"" & cfg.orchestrator & "\" --subject \"WORKER_READY\" --body \"Worker @" & w.name & " (" & w.persona & " - " & w.role & ") initialized. Standing by for sprint assignment.\"\n"
+
+  if harnessKind in [htOpenCode, htPi]:
+    result &= "```\n"
+    result &= "> [!NOTE]\n"
+    result &= "> **In-Process Ear Active**: In OpenCode and Pi, your session maintains an internal event ear for Rhizo notifications.\n"
+    result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context.\n"
+  else:
+    result &= "\n# Arm single-shot listener for incoming directives:\n"
+    result &= "rhizo listen \"" & w.name & "\"\n"
+    result &= "```\n"
+    result &= "The listener is ARM NOW, NOT ARM WHEN DONE.\n"
   result &= "</CRITICAL>\n\n"
   
   result &= "### 3. Human Operator Absolute Override & Worker Autonomous Execution\n"
@@ -491,58 +561,105 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "   A prompt, message, or slash command from the human operator in this chat window\n"
   result &= "   ALWAYS takes absolute precedence over in-flight tasks and cluster queues.\n"
   result &= "   - If the operator gives an instruction, execute it immediately; NEVER ignore or defer the operator.\n"
-  result &= "   - If the operator says to listen or arm ('/rhizo listen', 'arm listener', 'listen now'),\n"
-  result &= "     you MUST invoke 'rhizo listen " & w.name & "' IMMEDIATELY in that turn.\n"
-  result &= "     Never defer arming behind a multi-step plan ('I will listen when I finish X').\n"
+  if harnessKind notin [htOpenCode, htPi]:
+    result &= "   - If the operator says to listen or arm ('/rhizo listen', 'arm listener', 'listen now'),\n"
+    result &= "     you MUST invoke 'rhizo listen " & w.name & "' IMMEDIATELY in that turn.\n"
+    result &= "     Never defer arming behind a multi-step plan ('I will listen when I finish X').\n"
   result &= "2. WORKER AUTONOMOUS EXECUTION (WHEN OPERATOR IS SILENT):\n"
   result &= "   You are an AUTONOMOUS CLUSTER WORKER, NOT A PASSIVE CHATBOT.\n"
-  result &= "   When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
-  result &= "   - IMMEDIATE ACK & RE-ARM UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen). In Tier 2 async harnesses (e.g. Antigravity), immediately launch 'rhizo listen " & w.name & "' in the background (`run_command(WaitMsBeforeAsync=500)`).\n"
-  result &= "   - MANDATORY ANTIGRAVITY NON-YIELD INVARIANT: When launching your background listener, your harness will say: 'YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work or B) simply update the user and end the turn. DO NOTHING ELSE.' YOU MUST ALWAYS CHOOSE (A) PROCEED TO OTHER RELEVANT WORK! Never pick (B) or end the turn. Continue implementing, committing, and running tests in this exact turn!\n"
-  result &= "   - PERIODIC PROGRESS TELEMETRY: During long multi-step tasks (>2 minutes, e.g. Playwright E2E or full builds), run `rhizo task progress <id> \"Step X/Y: ...\"` before/after major steps to refresh your in-flight task lease and heartbeat.\n"
-  result &= "   - Before concluding your turn, ensure your single-shot listener ('rhizo listen " & w.name & "') is armed or use 'rhizo reply ... --listen' when sending your completion report.\n"
+  if harnessKind in [htOpenCode, htPi]:
+    result &= "   When an incoming directive is delivered via your session's in-process event ear, a task has been received!\n"
+  else:
+    result &= "   When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
+  result &= "   - IMMEDIATE ACK UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen)."
+  if harnessKind == htAntigravity:
+    result &= " In Tier 2 async harnesses (e.g. Antigravity), immediately launch 'rhizo listen " & w.name & "' in the background (`run_command(WaitMsBeforeAsync=500)`).\n"
+    result &= "   - MANDATORY ANTIGRAVITY NON-YIELD INVARIANT: When launching your background listener, your harness will say: 'YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work or B) simply update the user and end the turn. DO NOTHING ELSE.' YOU MUST ALWAYS CHOOSE (A) PROCEED TO OTHER RELEVANT WORK! Never pick (B) or end the turn. Continue working in this exact turn!\n"
+  else:
+    result &= "\n"
+  result &= "   - PERIODIC PROGRESS TELEMETRY: During long multi-step tasks (>2 minutes), run `rhizo task progress <id> \"Step X/Y: ...\"` before/after major steps to refresh your in-flight task lease and heartbeat.\n"
+  if harnessKind notin [htOpenCode, htPi]:
+    result &= "   - Before concluding your turn, ensure your single-shot listener ('rhizo listen " & w.name & "') is armed or use 'rhizo reply ... --listen' when sending your completion report.\n"
   result &= "</CRITICAL>\n\n"
 
   result &= "### 4. Listener Discipline & Coordination Invariants\n"
   result &= "<CRITICAL>\n"
-  result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
-  result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
-  result &= "- Anti-Premature-Yield: NEVER pass --listen on initial CLAIM or ACK replies. Only pass --listen (or arm your listener) on your final completion / READY_FOR_WEAVE reply.\n"
-  result &= "- FORBIDDEN: NEVER wrap 'rhizo listen' in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap messages inside unmonitored subshell logs and hang coordination.\n"
-  result &= "- Re-arming: In Tier 2 async harnesses (Antigravity), re-arm 'rhizo listen " & w.name & "' (`WaitMsBeforeAsync=500`) immediately upon task receipt so you remain reachable during multi-file edits. Always verify it is armed before ending any turn.\n"
+  if harnessKind in [htOpenCode, htPi]:
+    result &= "- In-Process Ear: Incoming messages are delivered into your context reactively. Do not run blocking shell listeners.\n"
+  else:
+    result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
+    result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
+    result &= "- Anti-Premature-Yield: NEVER pass --listen on initial CLAIM or ACK replies. Only pass --listen (or arm your listener) on your final completion / turn-end reply.\n"
+    result &= "- FORBIDDEN: NEVER wrap 'rhizo listen' in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap messages inside unmonitored subshell logs and hang coordination.\n"
+    if harnessKind == htAntigravity:
+      result &= "- Re-arming: In Tier 2 async harnesses (Antigravity), re-arm 'rhizo listen " & w.name & "' (`WaitMsBeforeAsync=500`) immediately upon task receipt so you remain reachable during long work turns. Always verify it is armed before ending any turn.\n"
   result &= "</CRITICAL>\n\n"
   
-  result &= "### 5. Task Execution & Workspace Protocol\n"
-  result &= "- **Claiming & Progress Telemetry**:\n"
-  result &= "  - From a work queue: `rhizo claim queue:" & cfg.project & ":tasks --lease 300`\n"
-  result &= "  - Direct task claim & lease extension: `rhizo task claim <task_id> --lease 900`\n"
-  result &= "  - In-flight progress heartbeat (>2m tasks): `rhizo task progress <task_id> \"Step X/Y: Running E2E...\"`\n"
-  result &= "- **Distributed Locks**: If modifying shared resources, acquire a fencing token first:\n"
-  result &= "  `rhizo lock <resource> --fencing`\n"
-  result &= "- **Isolated Workspaces (Vine Strands)**:\n"
-  result &= "  Always isolate task changes inside a dedicated Vine strand:\n"
-  result &= "  `vine new <task_id>`\n"
-  result &= "- **Pre-Weave Changelog Discipline**:\n"
-  result &= "  If the project has a changelog (CHANGELOG.md), record your user-facing changes under '## [Unreleased]':\n"
-  result &= "  `vine changelog \"Description of changes\"` (or `vine changelog --ensure-unreleased`)\n"
-  result &= "- **Verification & Three-Key Gate Protocol**:\n"
-  result &= "  Verify before reporting completion with Keys 1 & 2 of the Three-Key Gate (verifies mergeability, tests, and changelog update):\n"
-  result &= "  `vine gate`\n"
-  result &= "- **THE WORKER IS NOT THE AUDITOR INVARIANT (MANDATORY)**:\n"
-  result &= "  <CRITICAL>\n"
-  result &= "  YOU ARE NOT THE AUDITOR. An implementer or worker MUST NEVER attempt to audit or approve their own strand ('vine audit approve' on your own strand will fail with Exit Code 6: Self-audit violation). The Key 3 Adversarial Audit MUST be performed by an independent Adversarial Auditor session created by the Orchestrator.\n"
-  result &= "  Once your tests and changelog pass, submit your strand for independent audit with `vine submit` (or `vine gate --submit`), notify the Orchestrator (@" & cfg.orchestrator & "), and await the auditor's review.\n"
-  result &= "  If the auditor rejects your strand ('AUDIT_REJECTED'), inspect the findings, fix them in your strand, and re-submit with `vine submit`.\n"
-  result &= "  </CRITICAL>\n"
-  result &= "- **Reporting & Acknowledging**:\n"
-  result &= "  Send status updates or gate reports back to the Orchestrator:\n"
-  result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
+  case profile
+  of wpImplementation:
+    result &= "### 5. Task Execution & Workspace Protocol (Implementation Lead)\n"
+    result &= "- **Claiming & Progress Telemetry**:\n"
+    result &= "  - From a work queue: `rhizo claim queue:" & cfg.project & ":tasks --lease 300`\n"
+    result &= "  - Direct task claim & lease extension: `rhizo task claim <task_id> --lease 900`\n"
+    result &= "  - In-flight progress heartbeat (>2m tasks): `rhizo task progress <task_id> \"Step X/Y: Running E2E...\"`\n"
+    result &= "- **Distributed Locks**: If modifying shared resources, acquire a fencing token first:\n"
+    result &= "  `rhizo lock <resource> --fencing`\n"
+    result &= "- **Isolated Workspaces (Vine Strands)**:\n"
+    result &= "  Always isolate task changes inside a dedicated Vine strand:\n"
+    result &= "  `vine new <task_id>`\n"
+    result &= "- **Pre-Weave Changelog Discipline**:\n"
+    result &= "  If the project has a changelog (CHANGELOG.md), record your user-facing changes under '## [Unreleased]':\n"
+    result &= "  `vine changelog \"Description of changes\"` (or `vine changelog --ensure-unreleased`)\n"
+    result &= "- **Verification & Three-Key Gate Protocol**:\n"
+    result &= "  Verify before reporting completion with Keys 1 & 2 of the Three-Key Gate (verifies mergeability, tests, and changelog update):\n"
+    result &= "  `vine gate`\n"
+    result &= "- **THE WORKER IS NOT THE AUDITOR INVARIANT (MANDATORY)**:\n"
+    result &= "  <CRITICAL>\n"
+    result &= "  YOU ARE NOT THE AUDITOR. An implementer or worker MUST NEVER attempt to audit or approve their own strand ('vine audit approve' on your own strand will fail with Exit Code 6: Self-audit violation). The Key 3 Adversarial Audit MUST be performed by an independent Adversarial Auditor session created by the Orchestrator.\n"
+    result &= "  Once your tests and changelog pass, submit your strand for independent audit with `vine submit` (or `vine gate --submit`), notify the Orchestrator (@" & cfg.orchestrator & "), and await the auditor's review.\n"
+    result &= "  If the auditor rejects your strand ('AUDIT_REJECTED'), inspect the findings, fix them in your strand, and re-submit with `vine submit`.\n"
+    result &= "  </CRITICAL>\n"
+    result &= "- **Reporting & Acknowledging**:\n"
+    result &= "  Send status updates or gate reports back to the Orchestrator:\n"
+    result &= "  `rhizo ack queue:" & cfg.project & ":tasks <task_id>`\n\n"
 
-  if w.name.toLowerAscii.contains("audit") or w.role.toLowerAscii.contains("audit"):
-    result &= "### 5b. Key 3 Adversarial Auditor Protocol (YOUR PRIMARY MANDATE)\n"
+    result &= "### 6. Closed-Circuit & Holistic Integration Invariant (No Shelfware / No Stubs)\n"
+    result &= "<CRITICAL>\n"
+    result &= "- Two-Point Diff Mandate: Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Code tested only by its own unit tests is strictly prohibited as incomplete shelfware.\n"
+    result &= "- Holistic Integration (No Stubs / No Toys): The producer and consumer must actually holistically integrate with the system. It must NOT be a toy, stub, mock, or heuristic approximation of the feature. It must handle real application state, live events, and production errors.\n"
+    result &= "- Aggressive Replacement Purge (Zero Dead Code): Any existing code, configurations, or fallbacks that your feature is intended to replace or upgrade MUST BE DELETED in the same strand. Do not preserve obsolete logic as a fallback, and do not leave commented-out shims in the codebase.\n"
+    result &= "</CRITICAL>\n\n"
+
+  of wpInvestigation:
+    result &= "### 5. Investigation, Research & Review Protocol (NON-IMPLEMENTING / READ-ONLY)\n"
+    result &= "<CRITICAL>\n"
+    result &= "YOU ARE AN INVESTIGATOR AND REVIEWER. You are NOT an implementation coder.\n"
+    result &= "- READ-ONLY DISCIPLINE: You MUST NOT edit application source files, test suites, or build configurations.\n"
+    result &= "- NO WORKSPACE MUTATIONS: Do NOT create code branches or strands, do NOT update project changelogs, and do NOT commit or submit implementation deliverables.\n"
+    result &= "- EMPIRICAL EVIDENCE: Ground all findings, architectural reviews, and recommendations in real code citations (exact file paths, line numbers, test runs, AST inspects, and git blame).\n"
+    result &= "- DELIVERABLES: Your deliverables are structured research documents, RFC proposals, architecture reviews, or audit feedback delivered over Rhizo to the Orchestrator (`rhizo reply` or `rhizo send`).\n"
+    result &= "- Task Claiming: Claim assigned investigation tasks via `rhizo task claim <task_id> --no-vine --lease 900`.\n"
+    result &= "</CRITICAL>\n\n"
+
+  of wpVerification:
+    result &= "### 5. Verification & Quality Assurance Protocol (CHECKS ONLY / NO SOURCE EDITS)\n"
+    result &= "<CRITICAL>\n"
+    result &= "YOU ARE A VERIFICATION & QA ENGINEER. Your mandate is rigorous testing and reproduction.\n"
+    result &= "- PERMITTED ACTIONS:\n"
+    result &= "  * Execute test suites, linters, static analyzers, repro scripts, and benchmark pipelines.\n"
+    result &= "  * Generate temporary disposable test outputs, reproduction traces, or cache artifacts in `/tmp` or `.cache`.\n"
+    result &= "- STRICT PROHIBITION AGAINST CHANGING APPLICATION SOURCE OR TESTS:\n"
+    result &= "  * You must NEVER modify application source code or alter tests to force them green (anti-green mirage).\n"
+    result &= "  * Do NOT modify changelogs or submit code deliverables.\n"
+    result &= "- DELIVERABLES: Output empirical verification matrices, reproduction scripts, defect traces, and test coverage evidence over Rhizo to @" & cfg.orchestrator & ".\n"
+    result &= "- Task Claiming: Claim assigned verification tasks via `rhizo task claim <task_id> --no-vine --lease 900`.\n"
+    result &= "</CRITICAL>\n\n"
+
+  of wpAudit:
+    result &= "### 5. Key 3 Adversarial Auditor Protocol (YOUR PRIMARY MANDATE)\n"
     result &= "<CRITICAL>\n"
     result &= "YOU ARE THE DESIGNATED ADVERSARIAL AUDITOR. You enforce Key 3 of the Three-Key Gate.\n"
-    result &= "- When a worker submits a strand (`vine submit`), inspect their strand directory under the presumption of guilt.\n"
+    result &= "- When an implementer finishes work and requests review, inspect their submitted strand directory under the presumption of guilt.\n"
     result &= "- Verify the Five Pillars:\n"
     result &= "  1. Closed-Circuit Two-Point Diff: Provider wired to real Consumer call-site.\n"
     result &= "  2. Holistic Integration: Real errors and application state handled (no hollow stubs/toys).\n"
@@ -554,37 +671,39 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "- IF 100% SOUND & CLEAN: Ratify approval and generate cryptographic audit token:\n"
     result &= "  `vine audit approve <strand_path> --auditor \"" & w.name & "\" --notes \"<notes>\"`\n"
     result &= "- SELF-AUDIT IS STRICTLY FORBIDDEN: You must never audit or approve your own strand.\n"
+    result &= "- ZERO IMPLEMENTATION EDITING: You audit and ratify others' strands; you do not implement code.\n"
     result &= "</CRITICAL>\n\n"
 
-  result &= "### 6. Closed-Circuit & Holistic Integration Invariant (No Shelfware / No Stubs)\n"
-  result &= "<CRITICAL>\n"
-  result &= "- Two-Point Diff Mandate: Never build isolated code in a vacuum. Every deliverable must exhibit a Two-Point Diff: the Provider (new capability) and the Consumer (live production call-site, router, UI canvas, or CLI entrypoint). Code tested only by its own unit tests is strictly prohibited as incomplete shelfware.\n"
-  result &= "- Holistic Integration (No Stubs / No Toys): The producer and consumer must actually holistically integrate with the system. It must NOT be a toy, stub, mock, or heuristic approximation of the feature. It must handle real application state, live events, and production errors.\n"
-  result &= "- Aggressive Replacement Purge (Zero Dead Code): Any existing code, configurations, or fallbacks that your feature is intended to replace or upgrade MUST BE DELETED in the same strand. Do not preserve obsolete logic as a fallback, and do not leave commented-out shims in the codebase.\n"
-  result &= "</CRITICAL>\n\n"
-
-  result &= "### 7. Scheduled Watchdog & Health Check Protocol (ONLY for OpenAI Codex / ChatGPT CLI)\n"
-  result &= "NOTE: If running in Google Antigravity or OpenCode: DO NOT set up recurring scheduled tasks. Antigravity's native background listener task (`run_command`) and OpenCode's background ear reactively wake the session on message receipt without timers.\n\n"
-  result &= "If running in Codex Desktop / CLI where background processes cannot reactively wake the harness, use this exact prompt template for recurring health checks:\n\n"
-  result &= "```text\n"
-  result &= "Verify Rhizo listener and task execution for @" & w.name & " in " & cfg.targetRepo & ".\n"
-  result &= "STEP 1: INSPECT COMPLETED BACKGROUND LISTENER PROCESSES / HOOKS FIRST:\n"
-  result &= "  Check recently completed background listener tasks / processes in your harness task manager.\n"
-  result &= "  Did any completed listener task deliver an incoming message or task directive that has NOT been acted upon in this chat?\n"
-  result &= "  IF YES: DO NOT STAY QUIET! Extract the delivered message payload, immediately begin work on the task (claim, execute in your Vine strand, and report), and rearm your single-shot listener ('rhizo listen " & w.name & "').\n"
-  result &= "STEP 2: INSPECT ACTIVE RUNNING TASKS:\n"
-  result &= "  Check your active tasks right now. Is an active single-shot background listener task currently running ('rhizo listen " & w.name & "')?\n"
-  result &= "  IF NO: Immediately launch a single-shot background listener process ('rhizo listen " & w.name & "'). Do not wait.\n"
-  result &= "STEP 3: RUN RHIZO PROBE & INBOX DRAIN:\n"
-  result &= "  Source ~/.profile and run `rhizo --project " & cfg.project & " probe " & w.name & " --json`.\n"
-  result &= "  If 'inbox_depth' > 0, run `rhizo --project " & cfg.project & " drain 10 " & w.name & " --format json`.\n"
-  result &= "  If unread tasks were returned by drain: DO NOT STAY QUIET! Immediately process them, begin execution, and rearm your listener.\n"
-  result &= "STEP 4: STAY QUIET CRITERIA:\n"
-  result &= "  ONLY stay quiet (with zero or minimal chat output) if:\n"
-  result &= "  - An active background listener process IS currently running right now, AND\n"
-  result &= "  - All completed background listener processes / hooks have already been fully processed, AND\n"
-  result &= "  - The inbox has 0 unread messages.\n"
-  result &= "```\n\n"
+  # Section 7: Harness-Aware Wakeup Guidance
+  case harnessKind
+  of htCodex:
+    result &= "### 7. Codex Native Wakeup Protocol (`RHIZO_WAKE`)\n"
+    result &= "<CRITICAL>\n"
+    result &= "Autonomous Wakeup Invariant on OpenAI Codex:\n"
+    result &= "- Distinguish Payload Transport from Idle Wakeup: Messages and task directives MUST always be dispatched through Rhizo first (`rhizo send <agent> \"<subject>\" \"<body>\"`).\n"
+    result &= "- Shell Listeners & Hooks Do Not Wake Idle Codex: A running background listener or turn-end Stop hook alone cannot resume an idle Codex session when a new message arrives.\n"
+    result &= "- Scheduled Polling & Watchdogs PROHIBITED: Do NOT configure recurring timers, cron schedules, or infinite shell loops (`while true; do rhizo listen; done`). Scheduled polling exhausts token budgets and is strictly forbidden.\n"
+    result &= "- Native Wake Mechanism: To wake an idle Codex session, the sender invokes Codex's native tool:\n"
+    result &= "    send_message_to_thread(thread_id=\"<thread_id>\", message=\"RHIZO_WAKE\")\n"
+    result &= "- Wakeup Rules:\n"
+    result &= "  * Send exactly 'RHIZO_WAKE'.\n"
+    result &= "  * One wake per actionable batch: Enqueue all batch tasks to Rhizo before sending a single wake.\n"
+    result &= "  * Anti-Ping-Pong: NEVER wake for routine ACKs or replies. Routine ACKs must not trigger wakeups.\n"
+    result &= "  * Payload Preservation: If native wake fails or is unauthorized, queued work remains safely in the Rhizo queue. Never equate a successful enqueue with task execution.\n"
+    result &= "- Upon Receiving 'RHIZO_WAKE' in this session:\n"
+    result &= "  1. Inspect completed supervised listener output for delivered payloads.\n"
+    result &= "  2. Drain and process pending messages: `rhizo drain 10 " & w.name & " --format json`.\n"
+    result &= "  3. Execute assigned tasks according to your profile and re-arm listener: `rhizo listen " & w.name & "`.\n"
+    result &= "</CRITICAL>\n\n"
+  of htOpenCode, htPi:
+    result &= "### 7. In-Process Event Stream (OpenCode / Pi)\n"
+    result &= "Your session receives incoming Rhizo messages reactively through its native event ear. Scheduled polling and blocking shell listeners are not required.\n\n"
+  of htAntigravity:
+    result &= "### 7. Reactive Process Wakeup (Google Antigravity)\n"
+    result &= "Antigravity sessions wake reactively when background tasks terminate. Launch `rhizo listen " & w.name & "` via `run_command` with `WaitMsBeforeAsync=500` to maintain continuous reachability without scheduled polling.\n\n"
+  of htClaudeCode, htGeneric:
+    result &= "### 7. Supervised Single-Shot Listener Discipline\n"
+    result &= "Run `rhizo listen " & w.name & "` as a single-shot blocking foreground command. When a message arrives, the process exits cleanly with the delivered payload. Scheduled polling and infinite loops are strictly prohibited.\n\n"
   
   result &= "### 8. Compaction State Rider\n"
   result &= "Whenever context summarization or compaction occurs, preserve this block verbatim:\n"
