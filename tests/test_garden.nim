@@ -730,5 +730,28 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     let pkgSkill = readFile(getCurrentDir() / "skills" / "garden" / "SKILL.md")
     check rootSkill == pkgSkill
 
+  test "hasHelpFlag detects --help, -h, help and respects -- barrier":
+    check hasHelpFlag(@["--help"])
+    check hasHelpFlag(@["-h"])
+    check hasHelpFlag(@["help"])
+    check hasHelpFlag(@["some", "--help"])
+    check not hasHelpFlag(@["some", "--"])
+    check not hasHelpFlag(@["some", "--", "--help"])
+    check not hasHelpFlag(@["some", "--other"])
+
+  test "garden binary handles --help on subcommands without executing them":
+    let binPath = getCurrentDir() / "bin" / "garden"
+    let subcmds = @["init", "plant", "roadmap", "germinate", "repurpose", "prompts", "launch", "status", "guide", "update"]
+    for s in subcmds:
+      let (outp, code) = execCmdEx(binPath & " " & s & " --help")
+      check code == 0
+      check outp.contains("Usage: garden " & s)
+
+    # Test help <subcmd> syntax
+    let (outp2, code2) = execCmdEx(binPath & " help init")
+    check code2 == 0
+    check outp2.contains("Usage: garden init")
+
+
 
 

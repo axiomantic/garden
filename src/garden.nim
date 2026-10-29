@@ -64,6 +64,16 @@ Subcommands:
   version, -v, --version   Print Garden version and exit
   help, -h, --help         Print this help message
 
+Options for 'init':
+  [dir]                    Target directory (default: current directory)
+  --force, -f              Force overwrite existing garden.toml
+  --orchestrator, -a <name> Set default orchestrator agent name
+
+Options for 'guide':
+  install [path]           Install Garden Guide into AGENTS.md (default) or specified file
+  check [path]             Verify Garden Guide installation integrity
+  uninstall [path]         Remove Garden Guide from AGENTS.md or specified file
+
 Options for 'repurpose':
   --project, -p <proj>     Target project codename (default: current project)
   --role, -r <role>        Target role assignment
@@ -1777,18 +1787,123 @@ proc doRoadmap*(season: string = "", projectDir: string = "", jsonOutput: bool =
     echo rm.toMarkdown()
   return 0
 
+proc hasHelpFlag*(args: seq[string]): bool =
+  for a in args:
+    if a == "--":
+      return false
+    if a in ["--help", "-h", "help"]:
+      return true
+  return false
+
+proc printSubcommandHelp*(subcmd: string, args: seq[string] = @[]): bool =
+  let cmd = subcmd.toLowerAscii
+  case cmd
+  of "init":
+    echo "Usage: garden init [dir] [--force/-f] [--orchestrator/-a <agent>]"
+    echo ""
+    echo "Options:"
+    echo "  [dir]                    Target directory (default: current directory)"
+    echo "  --force, -f              Force overwrite existing garden.toml"
+    echo "  --orchestrator, -a <name> Set default orchestrator agent name"
+    return true
+  of "plant":
+    echo "Usage: garden plant <title> [--season <name>] [--sunlight <level>] [--tags <csv>] [--id <id>] [--project-dir <dir>] [--list] [--json]"
+    echo ""
+    echo "Options:"
+    echo "  --season <name>          Seasonal allocation (e.g. spring, summer, autumn, winter)"
+    echo "  --sunlight <level>       Priority sunlight requirement (low, medium, high, blazing)"
+    echo "  --tags, -t <csv>         Comma-separated taxonomy tags"
+    echo "  --id <id>                Explicit custom seed identifier"
+    echo "  --project-dir, -p <dir>  Target project directory"
+    echo "  --list, -l               List all sown seeds"
+    echo "  --json                   Output result as structured JSON"
+    return true
+  of "roadmap":
+    echo "Usage: garden roadmap [--season <name>] [--markdown] [--write [path]] [--sync] [--project-dir <dir>] [--json]"
+    echo ""
+    echo "Options:"
+    echo "  --season, -S <name>      Filter roadmap to specific season/milestone"
+    echo "  --markdown, -m           Print formatted markdown roadmap to stdout (default)"
+    echo "  --write, -w [path]       Write ROADMAP.md to project root or specified path"
+    echo "  --sync, -s               Synchronize ROADMAP.md from botanical seeds"
+    echo "  --project-dir, -p <dir>  Target project directory"
+    echo "  --json, -j               Output structured roadmap as JSON"
+    return true
+  of "germinate":
+    echo "Usage: garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]"
+    echo ""
+    echo "Options:"
+    echo "  --worker, -w <name>      Filter prompt generation to target worker (for 'prompt')"
+    echo "  --queue, -q <name>       Target queue for 'dispatch' (default: queue:<project>:tasks)"
+    echo "  --inline, -i             Print raw 10-backtick prompt cards directly to stdout"
+    echo "  --project-dir, -p <dir>  Target project directory"
+    echo "  --json                   Output result as structured JSON"
+    return true
+  of "repurpose":
+    echo "Usage: garden repurpose [workers...] [--project <proj>] [--role <role>] [--tags <csv>] [--self-tag] [--expected-tags <csv>] [--allow-cross-project] [--force] [--json]"
+    echo ""
+    echo "Options:"
+    echo "  --project, -p <proj>     Target project codename (default: current project)"
+    echo "  --role, -r <role>        Target role assignment"
+    echo "  --tags, -t <csv>         Target taxonomy tags"
+    echo "  --self-tag, -s           Offer candidate roles and allow worker to self-select matching tags"
+    echo "  --expected-tags <csv>    Expected capabilities or tools required"
+    echo "  --allow-cross-project    Allow repurposing a worker currently assigned to another project"
+    echo "  --force, -f              Force repurposing even if worker is currently BUSY"
+    echo "  --json                   Output result as structured JSON"
+    return true
+  of "prompts", "launch":
+    echo "Usage: garden " & cmd & " [--worker <name>] [--write [file]] [--inline] [--force-prompts] [--project-dir <dir>] [--json]"
+    echo ""
+    echo "Options:"
+    echo "  --worker, -w <name>      Filter prompt output to a specific worker"
+    echo "  --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)"
+    echo "  --inline, -i             Print raw 10-backtick prompt cards directly to stdout"
+    echo "  --force-prompts, --cards Force prompt card generation (skips fast-path)"
+    echo "  --project-dir, -p <dir>  Target project directory (default: current root)"
+    echo "  --json                   Output prompts as JSON"
+    return true
+  of "status":
+    echo "Usage: garden status [--json]"
+    return true
+  of "guide":
+    echo "Usage: garden guide <install|check|uninstall> [path]"
+    return true
+  of "roster-guard":
+    echo "Usage: garden roster-guard <sender> [--json] [--fix] [--swarm-file <file>] [--project-dir <dir>] [--project <proj>]"
+    return true
+  of "session":
+    echo "Usage: garden session <save|load|clear> [options...]"
+    echo "  save   [--agent <name>] [--role <role>] [--orchestrator <orch>]"
+    echo "  load   [--json]"
+    echo "  clear  [--json]"
+    return true
+  of "update":
+    echo "Usage: garden update [--check] [--apply] [--skip <pkg@ver>] [--disable] [--enable] [--json]"
+    return true
+  of "teardown":
+    echo "Usage: garden teardown [--project <name>]"
+    return true
+  else:
+    return false
+
 proc main() =
   let params = commandLineParams()
-  if params.len == 0:
+  if params.len == 0 or params[0] in ["help", "-h", "--help"]:
+    if params.len > 1 and printSubcommandHelp(params[1], params[2..^1]):
+      quit(0)
     printHelp()
     quit(0)
 
   let subcmd = params[0].toLowerAscii()
 
-  case subcmd
-  of "help", "-h", "--help":
+  if hasHelpFlag(params[1..^1]):
+    if printSubcommandHelp(subcmd, params[1..^1]):
+      quit(0)
     printHelp()
     quit(0)
+
+  case subcmd
   of "version", "-v", "--version":
     echo "garden v" & GardenVersion
     quit(0)
