@@ -140,10 +140,19 @@ Options for 'teardown':
   Tears down all active project workers registered in Redis
 """
 
+proc canonicalizePath*(p: string): string =
+  if p.len == 0: return ""
+  try:
+    if dirExists(p) or fileExists(p):
+      return expandFilename(p).normalizedPath
+  except CatchableError:
+    discard
+  return p.normalizedPath
+
 proc findProjectRoot*(startDir: string = ""): string =
   let envDir = getEnv("GARDEN_PROJECT_DIR", "")
   if envDir.len > 0 and dirExists(envDir):
-    return envDir.normalizedPath
+    return canonicalizePath(envDir)
   var dir = if startDir.len > 0: startDir else: getCurrentDir()
   while dir.len > 0:
     let envCfg = getEnv("GARDEN_CONFIG", "")
@@ -152,12 +161,12 @@ proc findProjectRoot*(startDir: string = ""): string =
        dirExists(dir / ".garden") or 
        dirExists(dir / ".git") or
        fileExists(dir / ".git"):
-      return dir
+      return canonicalizePath(dir)
     let parent = dir.parentDir()
     if parent == dir:
       break
     dir = parent
-  return startDir
+  return canonicalizePath(startDir)
 
 proc detectCurrentHarness*(): string =
   if getEnv("ANTIGRAVITY_APP_DIR", "").len > 0:
@@ -337,6 +346,122 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
 
   return ""
 
+proc unquoteToml(s: string): string =
+  let t = s.strip()
+  if (t.startsWith("\"\"\"") and t.endsWith("\"\"\"")) or (t.startsWith("'''") and t.endsWith("'''")):
+    if t.len >= 6:
+      return t[3 .. ^4].strip()
+  elif (t.startsWith("\"") and t.endsWith("\"")) or (t.startsWith("'") and t.endsWith("'")):
+    if t.len >= 2:
+      return t[1 .. ^2].replace("\\\"", "\"").replace("\\n", "\n")
+  return t
+
+proc parseTomlArray(val: string): seq[string] =
+  var s = val.strip()
+  if s.startsWith("[") and s.endsWith("]"):
+    s = s[1..^2].strip()
+  if s.len == 0: return @[]
+  var current = ""
+  var inQuote = false
+  var quoteChar = '"'
+  for c in s:
+    if not inQuote and (c == '"' or c == '\''):
+      inQuote = true
+      quoteChar = c
+      current.add(c)
+    elif inQuote and c == quoteChar:
+      inQuote = false
+      current.add(c)
+    elif not inQuote and c == ',':
+      let clean = current.strip().unquoteToml()
+      if clean.len > 0: result.add(clean)
+      current = ""
+    else:
+      current.add(c)
+  let clean = current.strip().unquoteToml()
+  if clean.len > 0: result.add(clean)
+
+proc parseTomlSwarmConfig*(content: string): JsonNode =
+  result = newJObject()
+  result["workers"] = newJArray()
+
+  var curSection = ""
+  var curWorker: JsonNode = nil
+
+  template flushWorker() =
+    if not curWorker.isNil:
+      result["workers"].add(curWorker)
+      curWorker = nil
+
+  for rawLine in content.splitLines():
+    var line = rawLine.strip()
+    if line.len == 0 or line.startsWith("#") or line.startsWith(";"):
+      continue
+
+    var inQuotes = false
+    var cleanLine = ""
+    for i, c in line:
+      if c == '"' or c == '\'':
+        inQuotes = not inQuotes
+      elif c == '#' and not inQuotes:
+        break
+      cleanLine.add(c)
+    cleanLine = cleanLine.strip()
+    if cleanLine.len == 0: continue
+
+    # Check for array of tables: [[workers]] or [[worker]]
+    if cleanLine.startsWith("[[") and cleanLine.endsWith("]]"):
+      flushWorker()
+      let tableName = cleanLine[2 .. ^3].strip().toLowerAscii
+      if tableName in ["workers", "worker", "swarm.workers", "swarm.worker"]:
+        curSection = "workers"
+        curWorker = newJObject()
+      else:
+        curSection = tableName
+      continue
+
+    # Check for table header: [section]
+    if cleanLine.startsWith("[") and cleanLine.endsWith("]"):
+      flushWorker()
+      curSection = cleanLine[1 .. ^2].strip().toLowerAscii
+      if curSection.startsWith("workers.") or curSection.startsWith("worker."):
+        let parts = curSection.split('.')
+        let workerName = if parts.len > 1: parts[1] else: "worker"
+        curSection = "workers"
+        curWorker = newJObject()
+        curWorker["name"] = %workerName
+      continue
+
+    let eqIdx = cleanLine.find('=')
+    if eqIdx > 0:
+      let key = cleanLine[0 ..< eqIdx].strip().toLowerAscii.replace("-", "_")
+      let rawVal = cleanLine[eqIdx + 1 .. ^1].strip()
+
+      if curSection == "workers" and not curWorker.isNil:
+        if rawVal.startsWith("[") and rawVal.endsWith("]"):
+          let arr = parseTomlArray(rawVal)
+          var jArr = newJArray()
+          for item in arr: jArr.add(%item)
+          curWorker[key] = jArr
+        else:
+          curWorker[key] = %rawVal.unquoteToml()
+      elif curSection in ["orchestrator", "swarm.orchestrator"]:
+        if not result.hasKey("orchestrator") or result["orchestrator"].kind != JObject:
+          result["orchestrator"] = newJObject()
+        result["orchestrator"][key] = %rawVal.unquoteToml()
+      elif curSection in ["project", "swarm", ""]:
+        if key in ["project", "name"]:
+          if not result.hasKey("project") or curSection == "project":
+            result["project"] = %rawVal.unquoteToml()
+        elif key in ["target_repo", "repo"]:
+          result["target_repo"] = %rawVal.unquoteToml()
+        elif key in ["orchestrator", "orchestrator_agent"]:
+          result[key] = %rawVal.unquoteToml()
+      else:
+        discard
+
+  flushWorker()
+
 proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOrchestratorAgent: string = "", optProject: string = ""): SwarmConfig =
   let root = if projectDir.len > 0: projectDir else: findProjectRoot()
   let envProj = getEnv("RHIZO_PROJECT", getEnv("GARDEN_PROJECT", "")).strip()
@@ -367,9 +492,25 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     except CatchableError: discard
   elif customFile.len > 0 and fileExists(customFile):
     try:
-      sJson = parseJson(readFile(customFile))
+      let content = readFile(customFile)
+      if customFile.endsWith(".toml") or (not content.strip().startsWith("{") and not content.strip().startsWith("[")):
+        try:
+          sJson = parseTomlSwarmConfig(content)
+        except CatchableError:
+          sJson = parseJson(content)
+      else:
+        try:
+          sJson = parseJson(content)
+        except CatchableError:
+          sJson = parseTomlSwarmConfig(content)
     except CatchableError as e:
       stderr.writeLine("[garden] Warning: Failed to parse custom swarm file: " & e.msg)
+  elif fileExists(root / DefaultConfigFileName):
+    try:
+      let tomlContent = readFile(root / DefaultConfigFileName)
+      if tomlContent.contains("[[workers]]") or tomlContent.contains("[[worker]]") or tomlContent.contains("[workers."):
+        sJson = parseTomlSwarmConfig(tomlContent)
+    except CatchableError: discard
 
   if not sJson.isNil:
     try:

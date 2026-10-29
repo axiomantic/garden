@@ -752,6 +752,93 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     check code2 == 0
     check outp2.contains("Usage: garden init")
 
+  test "parseTomlSwarmConfig extracts worker profile and capability correctly":
+    let toml = """
+[project]
+name = "custom-toml-proj"
+
+[orchestrator]
+name = "lead"
+agent = "lead-orch"
+
+[[workers]]
+name = "reviewer"
+persona = "Sage"
+role = "Code Reviewer"
+profile = "investigation"
+harness = "Claude Code CLI"
+system_prompt = "Review code carefully."
+opposing_priority = "Thoroughness"
+tags = ["custom-toml-proj", "reviewer"]
+
+[[workers]]
+name = "tester"
+persona = "Flint"
+role = "Test Verifier"
+capability = "verification"
+tags = ["custom-toml-proj", "tester"]
+
+[[workers]]
+name = "auditor"
+persona = "Adversary"
+role = "Security Auditor"
+profile = "audit"
+"""
+    let j = parseTomlSwarmConfig(toml)
+    check j["project"].getStr() == "custom-toml-proj"
+    check j["orchestrator"]["name"].getStr() == "lead"
+    check j["workers"].len == 3
+
+    check j["workers"][0]["name"].getStr() == "reviewer"
+    check j["workers"][0]["profile"].getStr() == "investigation"
+    check j["workers"][0]["role"].getStr() == "Code Reviewer"
+
+    check j["workers"][1]["name"].getStr() == "tester"
+    check j["workers"][1]["capability"].getStr() == "verification"
+
+    check j["workers"][2]["name"].getStr() == "auditor"
+    check j["workers"][2]["profile"].getStr() == "audit"
+
+  test "loadSwarmConfig parses profile from custom swarm TOML file":
+    let tmpDir = getTempDir() / "garden_toml_test_" & $getCurrentProcessId()
+    createDir(tmpDir)
+    defer: (try: removeDir(tmpDir) except CatchableError: discard)
+
+    let tomlPath = tmpDir / "swarm.toml"
+    let tomlContent = """
+[project]
+name = "toml-swarm-test"
+
+[[workers]]
+name = "investigator"
+persona = "Sherlock"
+role = "Read-Only Inspector"
+profile = "investigation"
+harness = "Claude Code CLI"
+
+[[workers]]
+name = "auditor"
+persona = "Judge"
+role = "Independent Auditor"
+profile = "audit"
+"""
+    writeFile(tomlPath, tomlContent)
+
+    let cfg = loadSwarmConfig(projectDir = tmpDir, swarmFilePath = tomlPath)
+    check cfg.project == "toml-swarm-test"
+    check cfg.workers.len == 2
+    check cfg.workers[0].name.endsWith("investigator")
+    check cfg.workers[0].profile == "investigation"
+    check cfg.workers[1].name.endsWith("auditor")
+    check cfg.workers[1].profile == "audit"
+
+    # Verify generated prompt for investigator does NOT contain strand creation or commit
+    let invPrompt = generateWorkerPrompt(cfg, cfg.workers[0])
+    check invPrompt.contains("Profile / Capability**: Investigation & Review (Non-Modifying / Read-Only)")
+    check not invPrompt.contains("vine new <task_id>")
+    check not invPrompt.contains("vine changelog")
+
+
 
 
 

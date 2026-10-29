@@ -54,10 +54,19 @@ proc slugify*(s: string): string =
     res = "seed"
   return res
 
+proc canonicalizePath*(p: string): string =
+  if p.len == 0: return ""
+  try:
+    if dirExists(p) or fileExists(p):
+      return expandFilename(p).normalizedPath
+  except CatchableError:
+    discard
+  return p.normalizedPath
+
 proc findProjectRoot*(startDir: string = ""): string =
   let envDir = getEnv("GARDEN_PROJECT_DIR", "")
   if envDir.len > 0 and dirExists(envDir):
-    return envDir.normalizedPath
+    return canonicalizePath(envDir)
   var dir = if startDir.len > 0: startDir else: getCurrentDir()
   while dir.len > 0:
     let envCfg = getEnv("GARDEN_CONFIG", "")
@@ -66,12 +75,12 @@ proc findProjectRoot*(startDir: string = ""): string =
        dirExists(dir / ".garden") or 
        dirExists(dir / ".git") or
        fileExists(dir / ".git"):
-      return dir
+      return canonicalizePath(dir)
     let parent = dir.parentDir()
     if parent == dir:
       break
     dir = parent
-  return if startDir.len > 0: startDir else: getCurrentDir()
+  return canonicalizePath(if startDir.len > 0: startDir else: getCurrentDir())
 
 proc getSeedsDir*(projectRoot: string = ""): string =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
