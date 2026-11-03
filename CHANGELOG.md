@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated Section 7 to document the continuous ambient ear streaming via `agentapi send-message` and automatic hook lease management.
   - Aligned `src/guide.nim` and skills documentation to reflect Tier 1 continuous ear support.
 
+### Removed
+- **Clipboard Helper Command Output (`src/garden.nim`, `src/germinate.nim`, `SKILL.md`, `skills/launch-workers/SKILL.md`)**:
+  - Removed `getCopyCommand` and `copy_command` / `Copy Command:` outputs (`pbcopy < ...`, `clip < ...`, `xclip < ...`) from bootstrap and germination prompt outputs.
+  - Simplified prompt presentation to cleanly display prompt card file paths without clipboard wrapper noise.
+
 ## [0.2.27] - 2026-10-29
 
 ### Added

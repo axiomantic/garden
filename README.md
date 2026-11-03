@@ -182,10 +182,10 @@ Garden utilizes the **Active Swarm Fast-Path (First-Look Invariant)**:
 
 ### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
 Garden writes `garden-swarm.json` and runs `garden prompts` to write prompt cards directly to temporary files (`/tmp/garden-<project>/<worker>.md`) rather than flooding the chat window with thousands of lines of raw text:
-- The Orchestrator displays concise session assignments with clickable file links and OS copy commands:
-  1. Open **Tab 1 / Window 1**: Paste Prompt 1 (`pbcopy < /tmp/garden-<project>/<project>-auditor.md`)
-  2. Open **Tab 2 / Window 2**: Paste Prompt 2 (`pbcopy < /tmp/garden-<project>/<project>-architect.md`)
-  3. Open **Tab 3 / Window 3**: Paste Prompt 3 (`pbcopy < /tmp/garden-<project>/<project>-implementer.md`)
+- The Orchestrator displays concise session assignments with clickable file links:
+  1. Open **Tab 1 / Window 1**: Reference Prompt 1 (`/tmp/garden-<project>/<project>-auditor.md`)
+  2. Open **Tab 2 / Window 2**: Reference Prompt 2 (`/tmp/garden-<project>/<project>-architect.md`)
+  3. Open **Tab 3 / Window 3**: Reference Prompt 3 (`/tmp/garden-<project>/<project>-implementer.md`)
 - Each session enters the project directory, exports `RHIZO_AGENT_NAME`, registers on the Redis bus (`rhizo open`), and arms its single-shot listener (`rhizo listen`).
 - The Orchestrator confirms all workers are live via `rhizo who --json` before dispatching tasks!
 

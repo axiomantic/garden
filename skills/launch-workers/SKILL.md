@@ -19,7 +19,7 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    <CRITICAL>
    `garden prompts` and `garden launch` automatically write worker prompt cards to `/tmp/garden-<project>/<worker-name>.md` and a combined roster to `/tmp/garden-<project>/all-workers.md`.
    Orchestrator agents MUST NEVER dump thousands of lines of prompt text inline into the chat conversation. Dumping cards inline exhausts token context budgets, causes scrolling fatigue, and triggers chat UI rendering bugs.
-   Instead, orchestrators MUST output concise session assignments with clickable file links and OS-calibrated clipboard copy commands (e.g. `pbcopy < /tmp/garden-<project>/<worker>.md`).
+   Instead, orchestrators MUST output concise session assignments with clickable file links (e.g. `/tmp/garden-<project>/<worker>.md`).
    Inside the generated files and when `--inline` is passed, blocks are wrapped in 10 backticks (``````````markdown) to protect nested markdown and shell code blocks.
    </CRITICAL>
 3. **Single-Shot Listener Discipline**:
@@ -115,11 +115,11 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
    - **Session 3 (@<project>-implementer)**: e.g. Antigravity IDE (Window 3) or OpenCode $\to$ Paste Card 3
 2. **Harness & Model Agnostic Flexibility**:
    Explicitly reassure the operator: *"Workers can run in ANY coding harness (Antigravity, Claude Code, OpenCode, Pi, Cursor) and inherit the active model configured in that window/session. Coordination occurs strictly over Rhizo (local Redis) and Vine (Rift strands)."*
-3. **Temp File Links & Clipboard Copy Commands (Zero Inline Chat Flooding)**:
-   NEVER paste the multi-page prompt card bodies inline into chat. Output the concise list of workers with clickable file links and OS-calibrated clipboard copy commands:
-   - **@<project>-architect**: `pbcopy < /tmp/garden-<project>/<project>-architect.md`
-   - **@<project>-auditor**: `pbcopy < /tmp/garden-<project>/<project>-auditor.md`
-   - **@<project>-implementer**: `pbcopy < /tmp/garden-<project>/<project>-implementer.md`
+3. **Temp File Links (Zero Inline Chat Flooding)**:
+   NEVER paste the multi-page prompt card bodies inline into chat. Output the concise list of workers with clickable file links:
+   - **@<project>-architect**: `/tmp/garden-<project>/<project>-architect.md`
+   - **@<project>-auditor**: `/tmp/garden-<project>/<project>-auditor.md`
+   - **@<project>-implementer**: `/tmp/garden-<project>/<project>-implementer.md`
    - **All Combined**: `/tmp/garden-<project>/all-workers.md`
 4. **Immediate Autonomous Onboarding**:
    Each prompt instructs the pasted session to immediately:

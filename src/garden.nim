@@ -1040,7 +1040,6 @@ proc doPrompts*(
   type GeneratedCard = object
     worker: WorkerSpec
     filePath: string
-    copyCmd: string
     promptText: string
     promptBlock: string
     header: string
@@ -1067,7 +1066,6 @@ proc doPrompts*(
     generatedCards.add(GeneratedCard(
       worker: w,
       filePath: workerFilePath,
-      copyCmd: getCopyCommand(workerFilePath),
       promptText: promptText,
       promptBlock: promptBlock,
       header: header,
@@ -1141,7 +1139,6 @@ proc doPrompts*(
       jw["model"] = %card.worker.model
       jw["tags"] = %card.worker.tags
       jw["file_path"] = %card.filePath
-      jw["copy_command"] = %card.copyCmd
       jw["prompt"] = %card.promptText
       jPrompts.add(jw)
     jObj["workers"] = jPrompts
@@ -1228,7 +1225,6 @@ proc doPrompts*(
       echo "  " & $(idx + 1) & ". @" & w.name & " (" & w.persona & " - " & w.role & ")"
       echo "     Harness:      " & w.harness & " | Model: " & w.model
       echo "     Prompt File:  " & card.filePath
-      echo "     Copy Command: " & card.copyCmd
       echo ""
     echo "  All Cards Combined:"
     echo "     File: " & allWorkersFilePath
@@ -1240,9 +1236,8 @@ proc doPrompts*(
       echo ""
     echo "Instructions for operator:"
     echo "  1. Open a new terminal tab / session for each worker in your detected harness."
-    echo "  2. Copy each prompt card (using the copy command above or opening the file)."
-    echo "  3. Paste into the corresponding session."
-    echo "  4. Verify cluster registration: rhizo who"
+    echo "  2. Pass each worker's prompt file into its session (e.g. paste the file path)."
+    echo "  3. Verify cluster registration: rhizo who"
     echo ""
     echo "CRITICAL ORCHESTRATOR MANDATE:"
     echo "  You MUST arm your background listener NOW in this very turn before yielding:"
