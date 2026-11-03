@@ -187,7 +187,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["workers"][0]["name"].getStr() == "garden-architect"
     check j.hasKey("temp_dir")
     check j["workers"][0].hasKey("file_path")
-    check j["workers"][0].hasKey("copy_command")
+    check not j["workers"][0].hasKey("copy_command")
     check fileExists(j["workers"][0]["file_path"].getStr())
     check j["workers"][0]["persona"].getStr().len > 0
     check j["workers"][0]["prompt"].getStr().contains("garden-architect")

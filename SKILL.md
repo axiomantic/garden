@@ -214,11 +214,11 @@ Upon receiving the operator's response:
 1. Run `garden init` if `garden.toml` or `AGENTS.md` is not yet initialized.
 2. Synthesize swarm configuration reflecting the chosen workers, roles, detected harness, and session-default models (zero on-disk JSON).
 3. Run `garden prompts` which writes individual prompt cards to `/tmp/garden-<project>/<worker>.md` and all cards to `/tmp/garden-<project>/all-workers.md`.
-4. Present the operator with concise setup instructions and copy commands (NEVER paste prompt cards inline in chat):
+4. Present the operator with concise setup instructions with clickable prompt file paths (NEVER paste prompt cards inline in chat):
    ```text
    1. Open X terminal tabs or windows in your detected coding harness.
-   2. Copy each worker's prompt card from its file (e.g. `pbcopy < /tmp/garden-<project>/<worker>.md`) and paste into its session.
-   3. Once pasted, tell me here (or I will automatically detect them online via `rhizo who`).
+   2. Pass each worker's prompt card into its session (e.g. paste or reference /tmp/garden-<project>/<worker>.md).
+   3. Once launched, tell me here (or I will automatically detect them online via `rhizo who`).
    ```
 5. Register the orchestrator's presence (`rhizo open <project>-orchestrator`) and arm the listener.
 6. Poll or await cluster readiness gate (`rhizo who --json`) before proceeding to Phase 3.

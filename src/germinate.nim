@@ -88,14 +88,6 @@ proc germinateDispatch*(seedId: string, projectRoot: string = "", customQueue: s
 
   return (true, "Dispatched seed '" & s.title & "' (" & s.id & ") to " & queue, resJson)
 
-proc getCopyCommand*(filePath: string): string =
-  when defined(macosx) or defined(darwin):
-    result = "pbcopy < " & filePath
-  elif defined(windows):
-    result = "clip < " & filePath
-  else:
-    result = "xclip -selection clipboard < " & filePath
-
 proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: string = "", inlineOutput: bool = false): (bool, string, JsonNode) =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
   var s: Seed
@@ -146,16 +138,13 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
     allPromptsBuf &= "## @" & w.name & " (" & w.role & ")\n\n"
     allPromptsBuf &= p & "\n\n"
 
-    let copyCmd = getCopyCommand(workerFilePath)
     summaryMsg &= "  " & $(idx + 1) & ". @" & w.name & " (" & w.role & ")\n"
-    summaryMsg &= "     File: " & workerFilePath & "\n"
-    summaryMsg &= "     Copy: " & copyCmd & "\n\n"
+    summaryMsg &= "     File: " & workerFilePath & "\n\n"
 
     var jw = newJObject()
     jw["worker"] = %w.name
     jw["role"] = %w.role
     jw["file_path"] = %workerFilePath
-    jw["copy_command"] = %copyCmd
     jw["prompt"] = %p
     jPrompts.add(jw)
 

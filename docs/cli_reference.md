@@ -55,7 +55,7 @@ garden prompts [--worker <name>] [--inline] [--write <file>] [--json]
 ```
 - Reads `garden-swarm.json`.
 - By default, writes each prompt card to `/tmp/garden-<project>/<worker-name>.md` and a combined roster to `/tmp/garden-<project>/all-workers.md` to prevent flooding chat with raw text.
-- Emits ready-to-run copy commands (e.g. `pbcopy < /tmp/garden-<project>/<worker-name>.md`).
+- Emits clean prompt file paths for direct referencing in new sessions.
 - Pass `--inline` to output raw 10-backtick markdown blocks directly to stdout.
 - Configures agent identity (`rhizo open <name>`), single-shot listener discipline (`rhizo listen <name>`), and isolated Vine strand directories.
 
