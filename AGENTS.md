@@ -134,7 +134,7 @@ npm install -g @axiomantic/rhizo @axiomantic/vine
 * **No Workspace-Scoped Identity Files**:
   Agent identity is strictly decoupled from directory paths. Never create or read `.rhizo.agent` or `.vine.agent` in any project or strand directory.
 * **Zero Dirty Commits**:
-  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.vine.json`, `workspaces/`).
+  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`*.lock`, `.rhizo.*`, `workspaces/`). Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero state files in the working tree).
 * **Post-Compaction Ceremony Restoration**:
   Whenever context compaction occurs in a session that used Vine (or Rhizo/Garden), the compaction summary MUST include the mandatory directive commanding the resurrected agent to re-read `vine` (and `rhizo`/`garden` if active) and inspect active strands before touching canonical trunk files. This directive must remain intact across all future compactions.
 * **Compaction Recovery**:
@@ -142,7 +142,7 @@ npm install -g @axiomantic/rhizo @axiomantic/vine
   ```bash
   vine list 2>/dev/null || rift list 2>/dev/null || ls -la ~/Development/workspaces/ 2>/dev/null || true
   ```
-  If an assigned task has an active `.vine.json`, re-anchor to that directory instead of touching the canonical repository root.
+  If an assigned task has an active strand, re-anchor to that directory instead of touching the canonical repository root.
 * **Closed-Circuit Two-Point Diff & Holistic Integration Mandate**:
   Never construct isolated code in a vacuum. Every strand deliverable must contain both a Provider (new capability) and an active Consumer call-site (live entrypoint, router, CLI dispatcher, or UI). Modules tested solely by their own test suites are strictly prohibited as incomplete shelfware. Furthermore, the integration must be holistic (no toys, stubs, mocks, or shallow heuristics). Any legacy or obsolete code targeted for replacement MUST be deleted in the same strand—never preserved as a vestigial fallback or commented out.
 * **Literal Fidelity & Reference Parity Mandate (Anti-Approximation)**:
@@ -247,18 +247,11 @@ export UV_LINK_MODE="clone"
 export NIMCACHE="$CACHE_ROOT/nimcache"
 ```
 
-#### Step 6: Initialize Strand Manifest (`.vine.json`)
-```json
-{
-  "task_id": "<task-id>",
-  "project": "<project>",
-  "strand_path": "<strand-dir>",
-  "branch": "<branch>",
-  "base_branch": "<base-branch>",
-  "base_commit": "<base-commit-sha>",
-  "status": "IN_PROGRESS",
-  "created_at": "2026-09-26T12:00:00Z"
-}
+#### Step 6: Strand Identity & Redis State Registration
+Vine automatically configures strand identity directly into `.git/config` (`vine.taskId`, `vine.project`) and registers authoritative runtime state in Redis (`vine:strand:<task_id>`), completely eliminating on-disk `.vine.json` state files in the working tree:
+```bash
+git config vine.taskId "<task-id>"
+git config vine.project "<project>"
 ```
 
 ---

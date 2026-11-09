@@ -56,14 +56,22 @@ For all parallel development tracks:
    ```bash
    vine new <task_id> --branch strand/<task_id> --worktree
    ```
+   *Note: Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk `.vine.json` state files).*
 2. **Execute Work Inside Strand**:
    - Implement code changes.
    - Run local unit tests and formatters.
 3. **Three-Key Gate Verification**:
-   - **Worker**: Runs `vine submit --author <worker>` (evaluates Key 1 mechanical merge-tree + Key 2 live compiler/test suite + changelog).
-   - **Independent Auditor**: Inspects Five Pillars and runs `vine audit approve --auditor <auditor>` (Key 3 ratification, stamps `audit_token`). Remember: THE WORKER IS NOT THE AUDITOR.
-4. **Trunk Weaving**:
-   *Orchestrator fast-forwards ratified branch into main:*
+   - **Worker**: Runs `vine submit --author <worker>` (evaluates Key 1 mechanical merge-tree + Key 2 live compiler/test suite + changelog, and stamps cryptographic delivery ticket / `gate_token`).
+   - **Independent Auditor**: Inspects Five Pillars and runs:
+     ```bash
+     # To ratify approval and weave:
+     vine audit approve <task_id> --auditor <auditor> --ticket <hex> --weave --listen
+     # Or to reject if defects are found:
+     vine audit reject <task_id> --auditor <auditor> --ticket <hex> --reason "<findings>" --listen
+     ```
+     Remember: THE WORKER IS NOT THE AUDITOR.
+4. **Trunk Weaving & DAG Cascading**:
+   *Fast-forwards ratified branch into main, automatically calls `rhizo task complete <task_id>`, and unblocks downstream DAG child tasks (`BLOCKED` $\rightarrow$ `QUEUED`):*
    ```bash
    vine weave
    ```

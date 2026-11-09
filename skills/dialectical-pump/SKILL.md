@@ -240,20 +240,20 @@ sequenceDiagram
 > [!CRITICAL]
 > **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`). The audit MUST be performed by an independent Adversarial Auditor session.
 
-1. **Defect Issuance**: If defects are discovered, the Auditor runs `vine audit reject --reason "<defects>"` and records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
+1. **Defect Issuance**: If defects are discovered, the Auditor runs `vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen` and records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
 2. **In-Strand Remediation**: The worker fixes findings strictly inside the isolated Vine strand.
-3. **The Delta Re-Pump**: When resubmitting with `vine submit`, the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
+3. **The Delta Re-Pump**: When resubmitting with `vine submit` (which generates a refreshed delivery ticket), the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
 4. **Exit Condition**: The pump loops until **ZERO open defects of severity CRIT, HIGH, or MED remain**, and all low/nit items are resolved or empirically justified.
 
 ### Step 4.4: Gate Clearance & Cryptographic Token
 
 When all findings reach 0, the independent auditor ratifies Key 3:
 ```bash
-vine audit approve --auditor <auditor_name>
+vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --weave --listen
 ```
-This mechanically verifies Keys 1 & 2, checks that the strand has zero uncommitted changes, ensures `auditor != author`, and stamps a cryptographic `audit_token` in `.vine.json`.
+This mechanically verifies Keys 1 & 2 against the delivery ticket, checks that the strand has zero uncommitted changes, ensures `auditor != author`, and stamps a cryptographic `audit_token`. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk state files).
 
-Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token are permitted to weave into trunk (`vine weave`).
+Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token are permitted to weave into trunk (`vine weave`, which automatically invokes `rhizo task complete` and promotes downstream DAG child tasks from `BLOCKED` to `QUEUED`).
 
 ---
 
