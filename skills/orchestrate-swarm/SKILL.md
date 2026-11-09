@@ -149,26 +149,22 @@ stateDiagram-v2
     [*] --> DRAFTED : rhizo task create <id>
     DRAFTED --> BLOCKED : Unmet DAG dependencies (depends_on)
     DRAFTED --> QUEUED : Zero unmet dependencies
-    BLOCKED --> QUEUED : Parent task COMPLETED (Auto-promoted by Lua engine)
+    BLOCKED --> QUEUED : Parent task COMPLETED (Auto-promoted by vine weave)
 
-    QUEUED --> DELIVERED : Listener pops message (Transport Receipt emitted)
-    DELIVERED --> CLAIMED : Worker acknowledges (Acquires monotonic lease)
-    DELIVERED --> ORPHANED : Receipt timeout (180s without claim)
-
-    CLAIMED --> IN_PROGRESS : Worker provisions strand (vine new <id>)
+    QUEUED --> IN_PROGRESS : Task claimed / delivered (rhizo claim / rhizo task claim)
     IN_PROGRESS --> IN_PROGRESS : Progress reported (rhizo task progress, lease extended)
     IN_PROGRESS --> GATE_EVALUATING : Verification initiated (vine submit / vine gate)
     IN_PROGRESS --> YIELDED : rhizo task yield (Returned to pool)
     IN_PROGRESS --> ORPHANED : Lease expires without progress
 
     GATE_EVALUATING --> IN_PROGRESS : Gate failed (Tests red, changelog missing, or merge conflict)
-    GATE_EVALUATING --> READY_FOR_AUDIT : Keys 1 & 2 PASSED (vine submit, gate token stamped)
+    GATE_EVALUATING --> READY_FOR_AUDIT : Keys 1 & 2 PASSED (vine submit, delivery ticket stamped)
 
-    READY_FOR_AUDIT --> AUDIT_RATIFIED : Key 3 PASSED (vine audit approve, audit token stamped)
-    READY_FOR_AUDIT --> AUDIT_REJECTED : Key 3 FAILED (vine audit reject)
+    READY_FOR_AUDIT --> AUDIT_RATIFIED : Key 3 PASSED (vine audit approve --ticket <hex>, audit token stamped)
+    READY_FOR_AUDIT --> AUDIT_REJECTED : Key 3 FAILED (vine audit reject --ticket <hex> --reason "...")
     AUDIT_REJECTED --> IN_PROGRESS : Remediate defects in strand
 
-    AUDIT_RATIFIED --> COMPLETED : vine weave && rhizo task complete (Unblocks downstream DAG children)
+    AUDIT_RATIFIED --> COMPLETED : vine weave (Auto-completes task via rhizo task complete & unblocks DAG children)
 
     ORPHANED --> QUEUED : Re-queued for retry (attempts < 3)
     ORPHANED --> DEAD_LETTER : Max delivery retries exceeded (attempts >= 3)
@@ -187,51 +183,42 @@ stateDiagram-v2
      +---------+      Unmet deps
      | DRAFTED | ──────────────────► [ BLOCKED ]
      +---------+                         │
-          │ Zero deps                    │ Parent task COMPLETED
+          │ Zero deps                    │ Parent task COMPLETED (Auto-promoted by vine weave)
           ▼                              ▼
      +---------+ ◄───────────────────────+
      | QUEUED  |
      +---------+
           │
-          │ rhizo listen pops task (Transport Receipt emitted)
-          ▼
-    +-----------+      180s Receipt Timeout
-    | DELIVERED | ─────────────────────────────────► [ ORPHANED ]
-    +-----------+                                          │
-          │                                                │ Attempts >= 3
-          │ rhizo task claim / rhizo reply                 ▼
-          ▼                                         [ DEAD_LETTER ]
-     +---------+
-     | CLAIMED |
-     +---------+
-          │
-          │ vine new <task_id> (Provision strand)
+          │ Task claimed / delivered (rhizo claim / rhizo task claim / rhizo send)
+          │ Collapses DELIVERED ➔ CLAIMED ➔ IN_PROGRESS with monotonic lease
           ▼
    +-------------+      Lease expires
    | IN_PROGRESS | ────────────────────────────────► [ ORPHANED ]
-   +-------------+
-     │        ▲
-     │ vine   │ Gate fails
-     │ submit │ (Tests red or conflict)
+   +-------------+                                         │
+     │        ▲                                            │ Attempts >= 3
+     │ vine   │ Gate fails                                 ▼
+     │ submit │ (Tests red or conflict)             [ DEAD_LETTER ]
      ▼        │
   +-----------------+
   | GATE_EVALUATING |
   +-----------------+
           │
-          │ Keys 1 & 2 PASSED (vine submit: merge-tree + live test suite green)
+          │ Keys 1 & 2 PASSED (vine submit: delivery ticket stamped)
           ▼
   +------------------+
-  | READY_FOR_AUDIT  | ◄──────────────────────┐
-  +------------------+                        │
-     │            │                           │
-     │ approve    │ reject                    │ Remediate
-     ▼            ▼                           │
-  +------------+ +----------------+           │
-  | AUDIT_     | | AUDIT_REJECTED | ──────────┘
+  | READY_FOR_AUDIT  | ◄──────────────────────────────┐
+  +------------------+                                │
+     │            │                                   │
+     │ approve    │ reject                            │ Remediate
+     │ --ticket   │ --ticket                          │
+     ▼            ▼                                   │
+  +------------+ +----------------+                   │
+  | AUDIT_     | | AUDIT_REJECTED | ──────────────────┘
   | RATIFIED   | +----------------+
   +------------+
           │
-          │ vine weave && rhizo task complete
+          │ vine weave (or vine audit approve --weave)
+          │ Auto-executes rhizo task complete & unblocks DAG children
           ▼
     +-----------+
     | COMPLETED | ──► Auto-promotes BLOCKED child tasks to QUEUED!
@@ -245,19 +232,13 @@ stateDiagram-v2
 | **`DRAFTED`** | `rhizo task create <id> --title <t>` | Creates immutable task contract hash `task:<id>` in Redis. | N/A |
 | **`BLOCKED`** | Evaluated on create | Stamped if `depends_on` contains incomplete tasks. Workers cannot claim. | N/A |
 | **`QUEUED`** | Auto on create or parent complete | Pushed to queue/inbox. Available for worker consumption. | N/A |
-| **`DELIVERED`** | `rhizo listen` consumes payload | **Atomically moves into `task:<id>` DELIVERED state**. Instant transport receipt emitted to orchestrator. Mirrored to local `~/.config/rhizo/current_task.json` for turn-end hook interlocks. | 180s Receipt Timeout $
-ightarrow$ `ORPHANED` |
-| **`CLAIMED`** | `rhizo task claim <id>` / `rhizo reply` | Worker acquires monotonic fencing lease. Isolated Vine strand provisioned (`vine new <id>`). Turn-end hook blocks until work starts. | Lease expires $
-ightarrow$ `ORPHANED` |
-| **`IN_PROGRESS`** | Worker coding in strand | Enforces single-active-lease invariant. Periodic `rhizo task progress` extends lease. | Lease expires $
-ightarrow$ `ORPHANED` |
+| **`IN_PROGRESS`** | `rhizo task claim <id>` / `rhizo claim` / task delivery | **Collapsed claim & delivery**: Worker acquires monotonic fencing lease and enters isolated Vine strand (`vine new <id>`). Zero on-disk manifests; strand identity is stored in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis. Periodic `rhizo task progress` extends lease. | Lease expires $\rightarrow$ `ORPHANED` |
 | **`GATE_EVALUATING`**| `vine submit` / `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite + changelog) evaluated. | Exit 1 $\rightarrow$ `CONFLICTED`<br>Exit 2 $\rightarrow$ `GATE_FAILED` |
-| **`READY_FOR_AUDIT`**| `vine submit` | Keys 1 & 2 passed. Strand submitted for independent adversarial review. | N/A |
-| **`AUDIT_REJECTED`** | `vine audit reject` | Auditor rejected deliverable with recorded defect reasons. Worker returns to `IN_PROGRESS` for delta remediation. | N/A |
-| **`AUDIT_RATIFIED`** | `vine audit approve` | Key 3 passed! Cryptographic `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). | N/A |
-| **`COMPLETED`** | `vine weave && rhizo task complete` | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **Downstream DAG dependencies automatically unblocked (`BLOCKED` $\rightarrow$ `QUEUED`)!** | N/A |
-| **`ORPHANED`** | Receipt timeout or lease expired | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 
-ightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
+| **`READY_FOR_AUDIT`**| `vine submit` | Keys 1 & 2 passed. Cryptographic delivery ticket (`gate_token`) stamped into strand state. Strand submitted for independent adversarial review. | N/A |
+| **`AUDIT_REJECTED`** | `vine audit reject <task_id> --auditor <name> --ticket <hex> --reason "..." --listen` | Auditor rejected deliverable with recorded defect reasons against delivery ticket. Worker returns to `IN_PROGRESS` for delta remediation. | N/A |
+| **`AUDIT_RATIFIED`** | `vine audit approve <task_id> --auditor <name> --ticket <hex> [--weave] [--listen]` | Key 3 passed! Cryptographic delivery ticket verified and `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). | N/A |
+| **`COMPLETED`** | `vine weave` (or `vine audit approve --weave`) | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **`vine weave` automatically invokes `rhizo task complete`**, auto-promoting downstream DAG dependencies (`BLOCKED` $\rightarrow$ `QUEUED`)! | N/A |
+| **`ORPHANED`** | Lease expired without progress | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 \rightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
 | **`YIELDED`** | `rhizo task yield <id>` | Worker gracefully steps aside. Task returned to `QUEUED`. | N/A |
 | **`DEAD_LETTER`** | Retries exhausted ($\ge 3$) | Moved to dead-letter queue. Alerts orchestrator and operator. | Requires manual operator triage |
 
@@ -337,25 +318,26 @@ rhizo probe <worker>
 ```
 
 ### SOP 3: Enforcing the Three-Key Gate & Independent Adversarial Audit
-When a worker finishes implementation in their strand, they run `vine submit --author <worker>` and report readiness:
+When a worker finishes implementation in their strand, they run `vine submit --author <worker>` (which generates a cryptographic delivery ticket / `gate_token`) and report readiness:
 ```json
 {
   "status": "READY_FOR_AUDIT",
   "task_id": "task-core-ds",
   "branch": "strand/task-core-ds",
   "strand_path": "/Users/eek/Development/workspaces/myproject/task-core-ds/myproject",
-  "author": "implementer"
+  "author": "implementer",
+  "ticket": "<64-char-hex-delivery-ticket>"
 }
 ```
 
 > [!CRITICAL]
 > **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`).
 > The Lead Orchestrator dispatches an audit request to the dedicated **Adversarial Auditor** session:
-> `rhizo send @auditor --subject "Audit Request: task-core-ds" --body '{"strand_path": "...", "author": "implementer"}'`
+> `rhizo send @auditor --subject "Audit Request: task-core-ds" --body '{"strand_path": "...", "author": "implementer", "ticket": "<64-char-hex-delivery-ticket>"}'`
 
 The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit Pump** under the **Presumption of Guilt**:
 
-1. **Thesis Intake**: Demand the worker's **Deliverable Claim Bundle** (task contract, Two-Point Diff mapping, test evidence, negative controls).
+1. **Thesis Intake**: Demand the worker's **Deliverable Claim Bundle** (task contract, Two-Point Diff mapping, test evidence, negative controls, delivery ticket).
 2. **Five-Pillar Presumption-of-Guilt Audit**:
    - **Changelog Gate (Key 2 Interlock)**: If the repository contains a changelog (`CHANGELOG.md`, `changelog.md`, etc.), verify that changes are documented under `## [Unreleased]`. Confirm `vine gate` passed without changelog violations (or verify worker ran `vine changelog "..."`). Reject if an existing changelog is untouched unless `--allow-no-changelog` was explicitly approved.
    - **Pillar 1 (Closed-Circuit Two-Point Diff)**: Inspect strand diff against `origin/main` (`git -C "$strand_path" diff --name-only origin/main...HEAD`). Confirm both Provider and live Consumer call-sites are modified. Reject hermetic shelfware lacking a live consumer.
@@ -364,16 +346,22 @@ The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit 
    - **Pillar 4 (Aggressive Replacement Purge)**: Ensure all superseded legacy code, fallbacks, and commented-out blocks are deleted in the strand.
    - **Pillar 5 (Structural Assertion Rigor)**: Reject partial/loose assertions (`assert "foo" in bar`). Mandate complete structural equality (`assert actual == expected`) and negative controls.
 3. **Audit Ratification or Delta Re-Pump Loop**:
-   - **If findings exist**: Auditor executes `vine audit reject --reason "<defects>" --auditor <auditor_name>` and reports findings to the worker. Worker remediates inside the strand and re-submits with `vine submit`.
+   - **If findings exist**: Auditor executes rejection against the delivery ticket:
+     ```bash
+     vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen
+     ```
+     and reports findings to the worker. Worker remediates inside the strand and re-submits with `vine submit` (obtaining a fresh delivery ticket).
    - **The Delta Re-Pump Loop**: Auditor reviews the git delta against the previous audit commit (`git diff <audit_sha>...HEAD`) and verifies clean tests. The pump repeats until **ZERO open defects of severity CRIT, HIGH, or MED remain**.
    - **When 0 defects remain**: Auditor runs:
      ```bash
-     vine audit approve --auditor <auditor_name>
+     vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --weave --listen
      ```
-     This stamps a cryptographic `audit_token` and marks the strand `AUDIT_RATIFIED`. Auditor notifies orchestrator.
-4. **Weave & Unlock (Only after Key 3 Clearance)**:
+     This verifies the delivery ticket, stamps a cryptographic `audit_token`, and marks the strand `AUDIT_RATIFIED` (and fast-forward weaves into main if `--weave` is specified). Auditor notifies orchestrator.
+4. **Weave & Auto-Complete (Only after Key 3 Clearance)**:
 ```bash
-# 1. Weave the verified, ratified strand into main (mechanically verifies audit_token)
+# 1. Weave the verified, ratified strand into main:
+# Mechanically verifies audit_token, fast-forward merges, prunes strand,
+# and automatically triggers 'rhizo task complete' to unblock downstream DAG children!
 vine weave
 
 # 2. Release any held fencing locks if applicable

@@ -616,7 +616,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       model: "Session Default (active in window/tab)",
       tags: auditTags,
       profile: "audit",
-      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <strand> --auditor " & auditName & " --reason <reason>'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <strand> --auditor " & auditName & "'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
+      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --weave --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
     ))
@@ -768,6 +768,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "- **Isolated Workspaces (Vine Strands)**:\n"
     result &= "  Always isolate task changes inside a dedicated Vine strand:\n"
     result &= "  `vine new <task_id>`\n"
+    result &= "  Vine tracks strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk `.vine.json` state files).\n"
     result &= "- **Pre-Weave Changelog Discipline**:\n"
     result &= "  If the project has a changelog (CHANGELOG.md), record your user-facing changes under '## [Unreleased]':\n"
     result &= "  `vine changelog \"Description of changes\"` (or `vine changelog --ensure-unreleased`)\n"
@@ -777,7 +778,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "- **THE WORKER IS NOT THE AUDITOR INVARIANT (MANDATORY)**:\n"
     result &= "  <CRITICAL>\n"
     result &= "  YOU ARE NOT THE AUDITOR. An implementer or worker MUST NEVER attempt to audit or approve their own strand ('vine audit approve' on your own strand will fail with Exit Code 6: Self-audit violation). The Key 3 Adversarial Audit MUST be performed by an independent Adversarial Auditor session created by the Orchestrator.\n"
-    result &= "  Once your tests and changelog pass, submit your strand for independent audit with `vine submit` (or `vine gate --submit`), notify the Orchestrator (@" & cfg.orchestrator & "), and await the auditor's review.\n"
+    result &= "  Once your tests and changelog pass, submit your strand for independent audit with `vine submit` (generates cryptographic delivery ticket / gate token), notify the Orchestrator (@" & cfg.orchestrator & "), and await the auditor's review.\n"
     result &= "  If the auditor rejects your strand ('AUDIT_REJECTED'), inspect the findings, fix them in your strand, and re-submit with `vine submit`.\n"
     result &= "  </CRITICAL>\n"
     result &= "- **Reporting & Acknowledging**:\n"
@@ -828,9 +829,9 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "  4. Replacement Purge: All legacy or obsolete code targeted for replacement is deleted.\n"
     result &= "  5. Structural Assertion Rigor: Tests assert full structural equality with negative controls.\n"
     result &= "- IF DEFECTS FOUND: Reject the strand with detailed actionable feedback:\n"
-    result &= "  `vine audit reject <strand_path> --auditor \"" & w.name & "\" --reason \"<findings>\"`\n"
+    result &= "  `vine audit reject <task_id> --auditor \"" & w.name & "\" --ticket <hex> --reason \"<findings>\" --listen`\n"
     result &= "- IF 100% SOUND & CLEAN: Ratify approval and generate cryptographic audit token:\n"
-    result &= "  `vine audit approve <strand_path> --auditor \"" & w.name & "\" --notes \"<notes>\"`\n"
+    result &= "  `vine audit approve <task_id> --auditor \"" & w.name & "\" --ticket <hex> --weave --listen`\n"
     result &= "- SELF-AUDIT IS STRICTLY FORBIDDEN: You must never audit or approve your own strand.\n"
     result &= "- ZERO IMPLEMENTATION EDITING: You audit and ratify others' strands; you do not implement code.\n"
     result &= "</CRITICAL>\n\n"

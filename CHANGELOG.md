@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Unified Work Item State Machine (WISM) Modernization & Delivery Ticket Verification (`src/garden.nim`, `SKILL.md`, `skills/`, `README.md`, `AGENTS.md`, `tests/test_garden.nim`)**:
+  - Collapsed intermediate `DELIVERED` and `CLAIMED` states into `IN_PROGRESS`: task claims (`rhizo claim`, `rhizo task claim`) and task delivery atomically acquire monotonic fencing leases and transition directly into `IN_PROGRESS`.
+  - Added cryptographic Delivery Ticket (`gate_token`) verification to Key 3 adversarial audit commands: `vine audit approve <task_id> --auditor <name> --ticket <hex> --weave --listen` and `vine audit reject <task_id> --auditor <name> --ticket <hex> --reason "..." --listen`.
+  - Documented automated DAG dependency cascading in `vine weave`: fast-forward trunk merges automatically execute `rhizo task complete <task_id>` to promote downstream dependent child tasks from `BLOCKED` to `QUEUED`.
+  - Documented that Vine tracks strand identity directly in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis, completely eliminating on-disk `.vine.json` state files in working trees.
 - **Tier 1 Continuous Ambient Ear & Lifecycle Hooks for Google Antigravity (`src/garden.nim`, `src/guide.nim`, `skills/`, `tests/test_garden.nim`)**:
   - Upgraded generated Antigravity worker prompt cards to leverage Rhizo's native Tier 1 continuous ambient ear (`--agy-ear`) and lifecycle hooks (`rhizo hook install --antigravity`).
   - Streamlined Section 2 onboarding: includes `rhizo hook install --antigravity` and marks Antigravity with the ambient ear notice, removing redundant blocking `rhizo listen` invocations.
