@@ -690,15 +690,22 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   elif harnessKind == htClaudeCode:
     result &= "# Optional: Install Claude Code prompt hook interlock if authorized:\n"
     result &= "# rhizo hook install --claude --agent \"" & w.name & "\"\n\n"
+  elif harnessKind == htAntigravity:
+    result &= "# Install Antigravity lifecycle hooks (PreInvocation, PostToolUse lease keep-alive, Stop interlock):\n"
+    result &= "rhizo hook install --antigravity --agent \"" & w.name & "\"\n\n"
 
   result &= "# Broadcast Mutual Arrival Handshake (enqueued to Rhizo):\n"
   result &= "rhizo send --to \"" & cfg.orchestrator & "\" --subject \"WORKER_READY\" --body \"Worker @" & w.name & " (" & w.persona & " - " & w.role & ") initialized. Standing by for sprint assignment.\"\n"
 
-  if harnessKind in [htOpenCode, htPi]:
+  if harnessKind in [htOpenCode, htPi, htAntigravity]:
     result &= "```\n"
     result &= "> [!NOTE]\n"
-    result &= "> **In-Process Ear Active**: In OpenCode and Pi, your session maintains an internal event ear for Rhizo notifications.\n"
-    result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context.\n"
+    if harnessKind == htAntigravity:
+      result &= "> **Continuous Ambient Ear & Hooks Active**: In Google Antigravity, 'rhizo open' automatically launches a continuous background ear ('--agy-ear') that streams incoming Rhizo directives directly into your session context via 'agentapi send-message' (and hooks automatically maintain task leases).\n"
+      result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context without manual per-turn re-arming.\n"
+    else:
+      result &= "> **In-Process Ear Active**: In OpenCode and Pi, your session maintains an internal event ear for Rhizo notifications.\n"
+      result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context.\n"
   else:
     result &= "\n# Arm single-shot listener for incoming directives:\n"
     result &= "rhizo listen \"" & w.name & "\"\n"
@@ -712,38 +719,41 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "   A prompt, message, or slash command from the human operator in this chat window\n"
   result &= "   ALWAYS takes absolute precedence over in-flight tasks and cluster queues.\n"
   result &= "   - If the operator gives an instruction, execute it immediately; NEVER ignore or defer the operator.\n"
-  if harnessKind notin [htOpenCode, htPi]:
+  if harnessKind notin [htOpenCode, htPi, htAntigravity]:
     result &= "   - If the operator says to listen or arm ('/rhizo listen', 'arm listener', 'listen now'),\n"
     result &= "     you MUST invoke 'rhizo listen " & w.name & "' IMMEDIATELY in that turn.\n"
     result &= "     Never defer arming behind a multi-step plan ('I will listen when I finish X').\n"
+  else:
+    result &= "   - If the operator asks to check or revive the listener, run 'rhizo open \"" & w.name & "\"' or 'rhizo listen \"" & w.name & "\"'\n"
+    result &= "     to verify or restart the continuous ambient ear.\n"
   result &= "2. WORKER AUTONOMOUS EXECUTION (WHEN OPERATOR IS SILENT):\n"
   result &= "   You are an AUTONOMOUS CLUSTER WORKER, NOT A PASSIVE CHATBOT.\n"
-  if harnessKind in [htOpenCode, htPi]:
+  if harnessKind == htAntigravity:
+    result &= "   When an incoming directive is delivered via 'agentapi send-message' from your continuous ambient ear, a task has been received!\n"
+  elif harnessKind in [htOpenCode, htPi]:
     result &= "   When an incoming directive is delivered via your session's in-process event ear, a task has been received!\n"
   else:
     result &= "   When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
-  result &= "   - IMMEDIATE ACK UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen)."
+  result &= "   - IMMEDIATE ACK UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen).\n"
   if harnessKind == htAntigravity:
-    result &= " In Tier 2 async harnesses (e.g. Antigravity), immediately launch 'rhizo listen " & w.name & "' in the background (`run_command(WaitMsBeforeAsync=500)`).\n"
-    result &= "   - MANDATORY ANTIGRAVITY NON-YIELD INVARIANT: When launching your background listener, your harness will say: 'YOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: A) either proceed to other relevant work or B) simply update the user and end the turn. DO NOTHING ELSE.' YOU MUST ALWAYS CHOOSE (A) PROCEED TO OTHER RELEVANT WORK! Never pick (B) or end the turn. Continue working in this exact turn!\n"
-  else:
-    result &= "\n"
+    result &= "   - CONTINUOUS EAR EXECUTION: In Antigravity, the continuous background ear ('--agy-ear' launched by 'rhizo open') pushes incoming tasks directly into the conversation via 'agentapi send-message' (and PostToolUse hooks auto-extend task leases), so execute without manual 'rhizo listen' re-arming!\n"
   result &= "   - PERIODIC PROGRESS TELEMETRY: During long multi-step tasks (>2 minutes), run `rhizo task progress <id> \"Step X/Y: ...\"` before/after major steps to refresh your in-flight task lease and heartbeat.\n"
-  if harnessKind notin [htOpenCode, htPi]:
+  if harnessKind notin [htOpenCode, htPi, htAntigravity]:
     result &= "   - Before concluding your turn, ensure your single-shot listener ('rhizo listen " & w.name & "') is armed or use 'rhizo reply ... --listen' when sending your completion report.\n"
   result &= "</CRITICAL>\n\n"
 
   result &= "### 4. Listener Discipline & Coordination Invariants\n"
   result &= "<CRITICAL>\n"
-  if harnessKind in [htOpenCode, htPi]:
-    result &= "- In-Process Ear: Incoming messages are delivered into your context reactively. Do not run blocking shell listeners.\n"
+  if harnessKind in [htOpenCode, htPi, htAntigravity]:
+    if harnessKind == htAntigravity:
+      result &= "- Continuous Ambient Ear Active: Incoming messages are delivered into your context reactively via the background ear ('--agy-ear') and 'agentapi send-message'. Do not wrap 'rhizo listen' in shell loops or manually re-arm every turn.\n"
+    else:
+      result &= "- In-Process Ear: Incoming messages are delivered into your context reactively. Do not run blocking shell listeners.\n"
   else:
     result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
     result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
     result &= "- Anti-Premature-Yield: NEVER pass --listen on initial CLAIM or ACK replies. Only pass --listen (or arm your listener) on your final completion / turn-end reply.\n"
     result &= "- FORBIDDEN: NEVER wrap 'rhizo listen' in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap messages inside unmonitored subshell logs and hang coordination.\n"
-    if harnessKind == htAntigravity:
-      result &= "- Re-arming: In Tier 2 async harnesses (Antigravity), re-arm 'rhizo listen " & w.name & "' (`WaitMsBeforeAsync=500`) immediately upon task receipt so you remain reachable during long work turns. Always verify it is armed before ending any turn.\n"
   result &= "</CRITICAL>\n\n"
   
   case profile
@@ -850,8 +860,8 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "### 7. In-Process Event Stream (OpenCode / Pi)\n"
     result &= "Your session receives incoming Rhizo messages reactively through its native event ear. Scheduled polling and blocking shell listeners are not required.\n\n"
   of htAntigravity:
-    result &= "### 7. Reactive Process Wakeup (Google Antigravity)\n"
-    result &= "Antigravity sessions wake reactively when background tasks terminate. Launch `rhizo listen " & w.name & "` via `run_command` with `WaitMsBeforeAsync=500` to maintain continuous reachability without scheduled polling.\n\n"
+    result &= "### 7. Continuous Ambient Ear & Lifecycle Hooks (Google Antigravity)\n"
+    result &= "`rhizo open` automatically launches a continuous background ear (`--agy-ear`) that streams your Redis inbox and wakes/enqueues messages directly into your Antigravity session via `agentapi send-message`, while `rhizo hook install --antigravity` provides automatic `PostToolUse` lease renewal, `PreInvocation` context anchors, and `Stop` turn-end interlocks. Manual per-turn `rhizo listen` re-arming and scheduled polling are not required.\n\n"
   of htClaudeCode, htGeneric:
     result &= "### 7. Supervised Single-Shot Listener Discipline\n"
     result &= "Run `rhizo listen " & w.name & "` as a single-shot blocking foreground command. When a message arrives, the process exits cleanly with the delivered payload. Scheduled polling and infinite loops are strictly prohibited.\n\n"

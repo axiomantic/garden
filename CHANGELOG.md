@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Tier 1 Continuous Ambient Ear & Lifecycle Hooks for Google Antigravity (`src/garden.nim`, `src/guide.nim`, `skills/`, `tests/test_garden.nim`)**:
+  - Upgraded generated Antigravity worker prompt cards to leverage Rhizo's native Tier 1 continuous ambient ear (`--agy-ear`) and lifecycle hooks (`rhizo hook install --antigravity`).
+  - Streamlined Section 2 onboarding: includes `rhizo hook install --antigravity` and marks Antigravity with the ambient ear notice, removing redundant blocking `rhizo listen` invocations.
+  - Eradicated obsolete manual mid-turn `run_command(WaitMsBeforeAsync=500)` non-yield listener re-arming instructions from Section 3.
+  - Grouped Antigravity alongside OpenCode and Pi in Section 4 listener discipline, while preserving single-shot blocking listener discipline for Claude Code, Codex, and generic shells.
+  - Updated Section 7 to document the continuous ambient ear streaming via `agentapi send-message` and automatic hook lease management.
+  - Aligned `src/guide.nim` and skills documentation to reflect Tier 1 continuous ear support.
+
 ## [0.2.27] - 2026-10-29
 
 ### Added
