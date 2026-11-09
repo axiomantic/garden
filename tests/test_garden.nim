@@ -159,8 +159,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let archContent = readFile(tmpGarden / "garden-architect.md")
     check archContent.contains("export RHIZO_AGENT_NAME=")
     check archContent.contains("rhizo open")
-    check archContent.contains("rhizo listen")
-    check archContent.contains("Single-Shot Blocking")
+    check archContent.contains("Continuous Ambient Ear")
+    check archContent.contains("agentapi send-message")
 
     # Verify --inline flag produces raw 10-backtick fence blocks in stdout
     let (iOut, iCode) = execCmdEx(exePath & " prompts --inline")
@@ -724,6 +724,75 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     check prompt.contains("In-Process Ear Active")
     check prompt.contains("DO NOT launch a redundant blocking shell listener")
     check not prompt.contains("Arm single-shot listener for incoming directives:\nrhizo listen")
+
+  test "generateWorkerPrompt for Antigravity uses continuous ambient ear and lifecycle hooks":
+    let cfg = SwarmConfig(
+      project: "testproj",
+      targetRepo: "/tmp/testproj",
+      orchestrator: "lead",
+      orchestratorAgent: "lead"
+    )
+    let w = WorkerSpec(
+      name: "agy-coder",
+      persona: "Sequoia",
+      role: "Systems Architect",
+      harness: "Antigravity IDE",
+      tags: @["testproj", "systems"],
+      profile: "implementation",
+      systemPrompt: "Architect cleanly."
+    )
+    let prompt = generateWorkerPrompt(cfg, w)
+    # Section 2 checks
+    check prompt.contains("rhizo hook install --antigravity --agent \"agy-coder\"")
+    check prompt.contains("Continuous Ambient Ear & Hooks Active")
+    check prompt.contains("agentapi send-message")
+    check not prompt.contains("Arm single-shot listener for incoming directives:\nrhizo listen")
+    # Section 3 checks: no obsolete manual run_command WaitMsBeforeAsync=500 non-yield invariant
+    check not prompt.contains("MANDATORY ANTIGRAVITY NON-YIELD INVARIANT")
+    check not prompt.contains("run_command(WaitMsBeforeAsync=500)")
+    check prompt.contains("CONTINUOUS EAR EXECUTION")
+    # Section 4 checks
+    check prompt.contains("Continuous Ambient Ear Active")
+    check not prompt.contains("Single-Shot Blocking")
+    # Section 7 checks
+    check prompt.contains("Continuous Ambient Ear & Lifecycle Hooks (Google Antigravity)")
+    check prompt.contains("--agy-ear")
+
+  test "generateWorkerPrompt for Claude Code and Codex retain single-shot blocking listener discipline":
+    let cfg = SwarmConfig(
+      project: "testproj",
+      targetRepo: "/tmp/testproj",
+      orchestrator: "lead",
+      orchestratorAgent: "lead"
+    )
+    let wClaude = WorkerSpec(
+      name: "claude-coder",
+      persona: "Briar",
+      role: "Systems Architect",
+      harness: "Claude Code CLI",
+      tags: @["testproj", "systems"],
+      profile: "implementation",
+      systemPrompt: "Build cleanly."
+    )
+    let pClaude = generateWorkerPrompt(cfg, wClaude)
+    check pClaude.contains("Arm single-shot listener for incoming directives:\nrhizo listen \"claude-coder\"")
+    check pClaude.contains("Single-Shot Blocking")
+    check pClaude.contains("rhizo listen")
+    check not pClaude.contains("Continuous Ambient Ear")
+
+    let wCodex = WorkerSpec(
+      name: "codex-coder",
+      persona: "Cedar",
+      role: "Systems Architect",
+      harness: "ChatGPT Desktop / Codex",
+      tags: @["testproj", "systems"],
+      profile: "implementation",
+      systemPrompt: "Build cleanly."
+    )
+    let pCodex = generateWorkerPrompt(cfg, wCodex)
+    check pCodex.contains("Arm single-shot listener for incoming directives:\nrhizo listen \"codex-coder\"")
+    check pCodex.contains("Single-Shot Blocking")
+    check pCodex.contains("RHIZO_WAKE")
 
   test "SKILL.md is reconciled with skills/garden/SKILL.md":
     let rootSkill = readFile(getCurrentDir() / "SKILL.md")

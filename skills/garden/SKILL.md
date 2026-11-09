@@ -456,7 +456,7 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
    - **Escalate Immediately**: Prompt the operator via `ask_question` with the diagnostic status.
    - **Actionable Remediation**: Offer options to (1) re-arm the listener in the worker's terminal session (`rhizo listen <worker>`), (2) reboot the agent harness, or (3) reassign the task via `rhizo reroute <worker> <new_worker>`.
 3. **Orchestrator Self-Audit Watchdog (ONLY for OpenAI Codex / ChatGPT)**:
-   - **Antigravity & OpenCode Exemption**: In Google Antigravity and OpenCode, DO NOT schedule timers or cron tasks (`schedule(...)`). Antigravity natively and reactively wakes up on background process completion when `rhizo listen` delivers a message.
+   - **Antigravity & OpenCode Exemption**: In Google Antigravity and OpenCode, DO NOT schedule timers or cron tasks (`schedule(...)`). Antigravity natively and reactively receives incoming messages via the continuous background ear (`--agy-ear`) and `agentapi send-message`.
    - **Codex / ChatGPT Watchdog Only**: In OpenAI Codex Desktop / CLI where background processes cannot reactively wake the harness, arm a scheduled watchdog timer or cron job with stepped backoff (15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m $\rightarrow$ Stand Down at check 4).
    - **Reset Invariant**: Resets immediately to base 15m (streak 0) on any listener failure, unread inbox backlog, outbound task dispatch (`rhizo send`/`enqueue`), worker reply, or user chat prompt.
    - When the timer fires in Codex, execute the short check: `rhizo watchdog check --agent <orchestrator> --json` and follow `next_action` (`SCHEDULE_TIMER` or `STAND_DOWN`).
