@@ -9,7 +9,7 @@ import update
 import roadmap
 
 const
-  GardenVersion = "0.2.27"
+  GardenVersion = "0.2.28"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 

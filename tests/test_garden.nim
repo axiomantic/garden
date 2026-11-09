@@ -521,7 +521,12 @@ suite "Garden CLI Compilation & Telemetry Suite":
       if whoCode == 0 and whoOut.strip().len > 0:
         let parsed = parseJson(whoOut.strip())
         let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
-        hasActiveGardenWorker = list.len > 0
+        for item in list:
+          let lis = item.getOrDefault("listener").getStr("").toUpperAscii()
+          let name = item.getOrDefault("agent").getStr("")
+          if lis == "LISTENING" and name == "garden-botanist":
+            hasActiveGardenWorker = true
+            break
     except CatchableError:
       hasActiveGardenWorker = false
 
