@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.28] - 2026-11-09
+
 ### Added
 - **Unified Work Item State Machine (WISM) Modernization & Delivery Ticket Verification (`src/garden.nim`, `SKILL.md`, `skills/`, `README.md`, `AGENTS.md`, `tests/test_garden.nim`)**:
   - Collapsed intermediate `DELIVERED` and `CLAIMED` states into `IN_PROGRESS`: task claims (`rhizo claim`, `rhizo task claim`) and task delivery atomically acquire monotonic fencing leases and transition directly into `IN_PROGRESS`.
