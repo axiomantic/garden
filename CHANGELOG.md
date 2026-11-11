@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Strict Unknown Flag Rejection & Intuitive CLI Synonyms Across All Subcommands (`src/garden.nim`, `src/germinate.nim`, `src/update.nim`, `tests/test_garden.nim`, `tests/test_germinate.nim`)**:
+  - Implemented strict unknown option rejection (exit code 2) with valid options list and usage examples across all Garden subcommands (`plant`, `roadmap`, `germinate`, `repurpose`, `prompts`, `launch`, `init`, `status`, `teardown`, `roster-guard`, `session`, `guide`, `update`), eliminating silent option discarding.
+  - Added fail-fast validation (exit code 1) for required arguments:
+    - `garden plant`: fails fast with exit code 1 if description is omitted when not in `--list` mode.
+    - `garden germinate`: requires explicit action (`dispatch`, `prompt`, `inline`, `status`) and `<seed_id>`, listing all available seeds on stderr with ID, title, and status if seed is omitted or not found.
+    - `garden repurpose`: requires at least one worker, requires `--project <project>` (rejecting silent `"default"` repurposing when no `garden.toml` exists), and requires either `--role <role>` or `--self-tag` (preventing silent blank role assignment).
+  - Added intuitive flag synonyms and argument expansions:
+    - `garden plant`: accepts title via `--title`, `--description`, `--prompt`, `-m` or positional words; accepts `--priority` as an alias for `--sunlight`, and `--milestone` / `--release` as aliases for `--season`.
+    - `garden germinate`: accepts `<seed_id>` positionally or via `--seed <id>`, `--id <id>`, `-s <id>`.
+    - `garden repurpose`: accepts worker names positionally or via `--worker <csv>`, `--workers <csv>`, `--agent <csv>`, `--to <csv>`.
+    - `garden prompts` / `garden launch`: accepts `--workers <n>` / `--count <n>`, `--harness <h>`, `--project <p>`, and `--force` / `--force-prompts`.
+  - Added comprehensive test suites in `tests/test_garden.nim` covering strict unknown option rejection across all 13 subcommands, fail-fast required argument checks, and intuitive synonym expansions.
 - **Multiplexed Router Service & Session Registry Support (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `AGENTS.md`, `tests/test_garden.nim`)**:
   - Updated worker bootstrap prompt card generation and orchestrator guidance in `src/garden.nim` for Tier 1 harnesses (Google Antigravity, OpenCode, Pi) to register identity, conversation ID, and token/address mappings via `rhizo open <name>` / `rhizo session register <name>`.
   - Documented that a single host Multiplexed Router Service (`rhizo router`) manages all message listening and routing on the host, while hooks and CLI commands automatically refresh token and address registry entries (`rhizo:agent:<name>`, `rhizo:agy_host:<machine_id>`), eliminating redundant per-turn blocking `rhizo listen` subprocesses for Tier 1 sessions.

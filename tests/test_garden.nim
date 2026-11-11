@@ -437,14 +437,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
     if busyAgent.len > 0:
       let targetProj = if busyAgentProj.len > 0: busyAgentProj else: "test-proj"
       # 1. Attempting without --force fails
-      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --json")
+      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --role \"Staff Systems Architect\" --json")
       check errCode != 0
       let errJson = parseJson(errOut.strip())
       check errJson["status"].getStr() == "error"
       check errJson["error"].getStr().contains("BUSY")
 
       # 2. Overriding with --force succeeds
-      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --force --json")
+      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --role \"Staff Systems Architect\" --force --json")
       check fCode == 0
       let fJson = parseJson(fOut.strip())
       check fJson["status"].getStr() == "ok"
@@ -476,14 +476,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     if foreignAgent.len > 0:
       # 1. Attempting without --allow-cross-project fails with cross-project rejection error
-      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --json")
+      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --role \"Staff Systems Architect\" --json")
       check errCode != 0
       let errJson = parseJson(errOut.strip())
       check errJson["status"].getStr() == "error"
       check errJson["error"].getStr().contains("Cross-project")
 
       # 2. Overriding with --allow-cross-project succeeds
-      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --allow-cross-project --json")
+      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --role \"Staff Systems Architect\" --allow-cross-project --json")
       check fCode == 0
       let fJson = parseJson(fOut.strip())
       check fJson["status"].getStr() == "ok"
@@ -922,6 +922,151 @@ profile = "audit"
     check invPrompt.contains("Profile / Capability**: Investigation & Review (Non-Modifying / Read-Only)")
     check not invPrompt.contains("vine new <task_id>")
     check not invPrompt.contains("vine changelog")
+
+suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
+
+  test "Strict Unknown Flag Rejection (exit code 2) across all subcommands":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let subcmds = @[
+      "plant", "roadmap", "germinate", "repurpose", "prompts",
+      "launch", "init", "status", "teardown", "roster-guard",
+      "session", "guide", "update"
+    ]
+    for subcmd in subcmds:
+      let (outp, code) = execCmdEx(exePath & " " & subcmd & " --bogus")
+      check code == 2
+      check outp.contains("Error: Unknown option --bogus for garden " & subcmd)
+
+  test "Fail-Fast Required Arguments (exit code 1) on plant, germinate, and repurpose":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+
+    # 1. plant without title and without --list
+    let (pOut, pCode) = execCmdEx(exePath & " plant")
+    check pCode == 1
+    check pOut.contains("Missing required description for garden plant")
+
+    # 2. germinate without seed_id
+    let (gOut, gCode) = execCmdEx(exePath & " germinate dispatch")
+    check gCode == 1
+    check gOut.contains("Missing required <seed_id> for garden germinate dispatch")
+
+    # 3. germinate with nonexistent seed_id
+    let (gOut2, gCode2) = execCmdEx(exePath & " germinate dispatch nonexistent-seed-12345")
+    check gCode2 == 1
+    check gOut2.contains("Seed not found")
+
+    # 4. repurpose without worker
+    let (rOut1, rCode1) = execCmdEx(exePath & " repurpose")
+    check rCode1 == 1
+    check rOut1.contains("Missing required worker(s)")
+
+    # 5. repurpose without project (when no garden.toml exists)
+    let (rOut2, rCode2) = execCmdEx(exePath & " repurpose test-worker-1")
+    check rCode2 == 1
+    check rOut2.contains("Missing required --project")
+
+    # 6. repurpose without role or self-tag
+    let (rOut3, rCode3) = execCmdEx(exePath & " repurpose test-worker-1 --project test-custom-proj")
+    check rCode3 == 1
+    check rOut3.contains("Missing required role assignment")
+
+  test "Intuitive Flag Synonyms on garden plant (--title, --description, --prompt, -m, --priority, --milestone, --release)":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let tmpDir = getTempDir() / ("garden_plant_aliases_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: (try: removeDir(tmpDir) except CatchableError: discard)
+
+    # --title and --priority
+    let (out1, code1) = execCmdEx(exePath & " plant --title \"Feature Alpha\" --priority blazing --milestone v1.0.0 --project-dir " & tmpDir & " --json")
+    check code1 == 0
+    let j1 = parseJson(out1.strip())
+    check j1["title"].getStr() == "Feature Alpha"
+    check j1["sunlight"].getStr() == "blazing"
+    check j1["season"].getStr() == "v1.0.0"
+
+    # --description and --release
+    let (out2, code2) = execCmdEx(exePath & " plant --description \"Feature Beta\" --release v1.1.0 --project-dir " & tmpDir & " --json")
+    check code2 == 0
+    let j2 = parseJson(out2.strip())
+    check j2["title"].getStr() == "Feature Beta"
+    check j2["season"].getStr() == "v1.1.0"
+
+    # --prompt
+    let (out3, code3) = execCmdEx(exePath & " plant --prompt \"Feature Gamma\" --project-dir " & tmpDir & " --json")
+    check code3 == 0
+    let j3 = parseJson(out3.strip())
+    check j3["title"].getStr() == "Feature Gamma"
+
+    # -m
+    let (out4, code4) = execCmdEx(exePath & " plant -m \"Feature Delta\" --project-dir " & tmpDir & " --json")
+    check code4 == 0
+    let j4 = parseJson(out4.strip())
+    check j4["title"].getStr() == "Feature Delta"
+
+  test "Intuitive Flag Synonyms on garden germinate (--seed, --id, -s)":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+    let tmpDir = getTempDir() / ("garden_germ_aliases_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: (try: removeDir(tmpDir) except CatchableError: discard)
+
+    # Sow a seed to germinate
+    let (pOut, pCode) = execCmdEx(exePath & " plant \"Germinate Seed Target\" --id seed-target-01 --project-dir " & tmpDir)
+    check pCode == 0
+
+    # germinate status via --seed
+    let (gOut1, gCode1) = execCmdEx(exePath & " germinate status --seed seed-target-01 --project-dir " & tmpDir & " --json")
+    check gCode1 == 0
+    let j1 = parseJson(gOut1.strip())
+    check j1["seed_id"].getStr() == "seed-target-01"
+
+    # germinate status via --id
+    let (gOut2, gCode2) = execCmdEx(exePath & " germinate status --id seed-target-01 --project-dir " & tmpDir & " --json")
+    check gCode2 == 0
+    let j2 = parseJson(gOut2.strip())
+    check j2["seed_id"].getStr() == "seed-target-01"
+
+    # germinate status via -s
+    let (gOut3, gCode3) = execCmdEx(exePath & " germinate status -s seed-target-01 --project-dir " & tmpDir & " --json")
+    check gCode3 == 0
+    let j3 = parseJson(gOut3.strip())
+    check j3["seed_id"].getStr() == "seed-target-01"
+
+  test "Intuitive Flag Synonyms on garden repurpose (--worker, --workers, --agent, --to)":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+
+    # --workers and --project and --role
+    let (rOut1, rCode1) = execCmdEx(exePath & " repurpose --workers test-worker-a,test-worker-b --project test-synonym-proj --role \"Staff Systems Architect\" --json")
+    check rCode1 == 0
+    let j1 = parseJson(rOut1.strip())
+    check j1["repurposed_count"].getInt() == 2
+    check j1["repurposed_workers"][0]["agent"].getStr() == "test-worker-a"
+    check j1["repurposed_workers"][1]["agent"].getStr() == "test-worker-b"
+
+    # --agent and --to
+    let (rOut2, rCode2) = execCmdEx(exePath & " repurpose --agent test-worker-c --to test-worker-d --project test-synonym-proj --self-tag --json")
+    check rCode2 == 0
+    let j2 = parseJson(rOut2.strip())
+    check j2["repurposed_count"].getInt() == 2
+    check j2["repurposed_workers"][0]["agent"].getStr() == "test-worker-c"
+    check j2["repurposed_workers"][1]["agent"].getStr() == "test-worker-d"
+
+  test "Intuitive Flag Synonyms on garden prompts and launch (--workers, --count, --harness, --project, --force)":
+    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
+
+    # --count 2 and --harness and --project
+    let (pOut1, pCode1) = execCmdEx(exePath & " prompts --count 2 --project test-p-proj --harness \"Custom Harness\" --force --json")
+    check pCode1 == 0
+    let j1 = parseJson(pOut1.strip())
+    check j1["project"].getStr() == "test-p-proj"
+    check j1["workers"].len == 2
+    check j1["workers"][0]["harness"].getStr() == "Custom Harness"
+
+    # garden launch with --workers 1 and --force
+    let (lOut, lCode) = execCmdEx(exePath & " launch --workers 1 --project test-l-proj --force --json")
+    check lCode == 0
+    let j2 = parseJson(lOut.strip())
+    check j2["project"].getStr() == "test-l-proj"
+    check j2["workers"].len == 1
 
 
 

@@ -984,9 +984,22 @@ proc doPrompts*(
   jsonOutput: bool,
   optOrchAgent: string = "",
   inlineOutput: bool = false,
-  forcePrompts: bool = false
+  forcePrompts: bool = false,
+  optProject: string = "",
+  workerCount: int = 0,
+  optHarness: string = ""
 ): int =
-  let cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent)
+  var cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent, optProject)
+
+  if optHarness.len > 0:
+    for i in 0 ..< cfg.workers.len:
+      cfg.workers[i].harness = optHarness
+      let isTier1 = normalizeHarness(optHarness) in [htAntigravity, htOpenCode, htPi]
+      cfg.workers[i].startupCommand = if isTier1: "rhizo open " & cfg.workers[i].name & " '" & cfg.project & "'"
+                                      else: "rhizo open " & cfg.workers[i].name & " '" & cfg.project & "' && rhizo listen " & cfg.workers[i].name
+
+  if workerCount > 0 and cfg.workers.len > workerCount:
+    cfg.workers = cfg.workers[0 ..< workerCount]
   
   var selectedWorkers: seq[WorkerSpec] = @[]
   if targetWorker.len > 0:
@@ -1274,9 +1287,12 @@ proc doLaunch*(
   jsonOutput: bool,
   optOrchAgent: string = "",
   inlineOutput: bool = false,
-  forcePrompts: bool = false
+  forcePrompts: bool = false,
+  optProject: string = "",
+  workerCount: int = 0,
+  optHarness: string = ""
 ): int =
-  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts)
+  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness)
 
 proc doRepurpose*(
   workers: seq[string],
@@ -1291,11 +1307,30 @@ proc doRepurpose*(
   allowCrossProject: bool = false
 ): int =
   let root = findProjectRoot()
+  let hasGardenToml = fileExists(root / DefaultConfigFileName) or fileExists(root / "garden.toml")
   let targetProj = if projectParam.len > 0: projectParam.strip()
-                   else: root.lastPathPart.toLowerAscii.replace(" ", "-")
+                   elif hasGardenToml and root.lastPathPart.toLowerAscii.replace(" ", "-") != "default":
+                     root.lastPathPart.toLowerAscii.replace(" ", "-")
+                   else: ""
 
-  if targetProj.len == 0:
-    let errMsg = "Target project cannot be empty. Specify --project <proj>."
+  if workers.len == 0:
+    let errMsg = "Missing required worker(s). Specify worker names positionally or via --worker <name>."
+    if jsonOutput:
+      echo $(%*{"status": "error", "error": errMsg})
+    else:
+      stderr.writeLine("[garden repurpose] Error: " & errMsg)
+    return 1
+
+  if targetProj.len == 0 or targetProj == "default":
+    let errMsg = "Missing required --project <project> for garden repurpose (no garden.toml found in project root)."
+    if jsonOutput:
+      echo $(%*{"status": "error", "error": errMsg})
+    else:
+      stderr.writeLine("[garden repurpose] Error: " & errMsg)
+    return 1
+
+  if roleParam.strip().len == 0 and not selfTag:
+    let errMsg = "Missing required role assignment. Specify --role <role> or --self-tag for garden repurpose."
     if jsonOutput:
       echo $(%*{"status": "error", "error": errMsg})
     else:
@@ -1306,25 +1341,6 @@ proc doRepurpose*(
   let categorization = queryClusterAgents(targetProj, cfg.workers)
 
   var targetWorkers = workers
-  if targetWorkers.len == 0:
-    if categorization.availableIdlePeers.len == 0:
-      var errMsg = "No unassigned idle cluster workers found to repurpose."
-      if categorization.foreignProjectPeers.len > 0:
-        var foreignNames: seq[string] = @[]
-        for fp in categorization.foreignProjectPeers:
-          foreignNames.add("@" & fp.agent & " (" & fp.project & ")")
-        errMsg &= " Detected " & $categorization.foreignProjectPeers.len & " worker(s) dedicated to other projects (" & foreignNames.join(", ") & "), but cross-project worker hijacking is prohibited. Generate dedicated workers via 'garden prompts' or pass worker names with --allow-cross-project to override."
-      else:
-        errMsg &= " Start new sessions or pass specific worker names."
-      if jsonOutput:
-        echo $(%*{"status": "error", "error": errMsg})
-      else:
-        stderr.writeLine("[garden repurpose] Error: " & errMsg)
-      return 1
-    
-    let needed = if cfg.workers.len > categorization.projectActive.len: cfg.workers.len - categorization.projectActive.len else: 1
-    for i in 0 ..< min(needed, categorization.availableIdlePeers.len):
-      targetWorkers.add(categorization.availableIdlePeers[i].agent)
 
   # Check for cross-project worker hijacking unless --allow-cross-project is passed
   if not allowCrossProject:
@@ -1952,6 +1968,14 @@ proc doRoadmap*(season: string = "", projectDir: string = "", jsonOutput: bool =
     echo rm.toMarkdown()
   return 0
 
+proc unknownOptionError*(subcmd, opt, validOpts, usage: string) =
+  stderr.writeLine("Error: Unknown option " & opt & " for garden " & subcmd)
+  if validOpts.len > 0:
+    stderr.writeLine("Valid options: " & validOpts)
+  if usage.len > 0:
+    stderr.writeLine("Usage: " & usage)
+  quit(2)
+
 proc hasHelpFlag*(args: seq[string]): bool =
   for a in args:
     if a == "--":
@@ -1975,13 +1999,14 @@ proc printSubcommandHelp*(subcmd: string, args: seq[string] = @[]): bool =
     echo "Usage: garden plant <title> [--season <name>] [--sunlight <level>] [--tags <csv>] [--id <id>] [--project-dir <dir>] [--list] [--json]"
     echo ""
     echo "Options:"
-    echo "  --season <name>          Seasonal allocation (e.g. spring, summer, autumn, winter)"
-    echo "  --sunlight <level>       Priority sunlight requirement (low, medium, high, blazing)"
+    echo "  --title, --description, --prompt, -m <text> Explicit feature title (can also be positional)"
+    echo "  --season, --milestone, --release, -s <name>  Seasonal allocation (e.g. spring, summer, autumn, winter)"
+    echo "  --sunlight, --priority, -S <level>           Priority sunlight requirement (low, medium, high, blazing)"
     echo "  --tags, -t <csv>         Comma-separated taxonomy tags"
     echo "  --id <id>                Explicit custom seed identifier"
     echo "  --project-dir, -p <dir>  Target project directory"
     echo "  --list, -l               List all sown seeds"
-    echo "  --json                   Output result as structured JSON"
+    echo "  --json, -j               Output result as structured JSON"
     return true
   of "roadmap":
     echo "Usage: garden roadmap [--season <name>] [--markdown] [--write [path]] [--sync] [--project-dir <dir>] [--json]"
@@ -1998,34 +2023,39 @@ proc printSubcommandHelp*(subcmd: string, args: seq[string] = @[]): bool =
     echo "Usage: garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]"
     echo ""
     echo "Options:"
+    echo "  --seed, --id, -s <id>    Explicit seed identifier (can also be positional)"
     echo "  --worker, -w <name>      Filter prompt generation to target worker (for 'prompt')"
     echo "  --queue, -q <name>       Target queue for 'dispatch' (default: queue:<project>:tasks)"
     echo "  --inline, -i             Print raw 10-backtick prompt cards directly to stdout"
     echo "  --project-dir, -p <dir>  Target project directory"
-    echo "  --json                   Output result as structured JSON"
+    echo "  --json, -j               Output result as structured JSON"
     return true
   of "repurpose":
     echo "Usage: garden repurpose [workers...] [--project <proj>] [--role <role>] [--tags <csv>] [--self-tag] [--expected-tags <csv>] [--allow-cross-project] [--force] [--json]"
     echo ""
     echo "Options:"
-    echo "  --project, -p <proj>     Target project codename (default: current project)"
-    echo "  --role, -r <role>        Target role assignment"
+    echo "  --worker, --workers, --agent, --to <csv> Target worker name(s) (can also be positional)"
+    echo "  --project, -p <proj>     Target project codename (required if no garden.toml exists)"
+    echo "  --role, -r <role>        Target role assignment (required unless --self-tag is passed)"
     echo "  --tags, -t <csv>         Target taxonomy tags"
     echo "  --self-tag, -s           Offer candidate roles and allow worker to self-select matching tags"
     echo "  --expected-tags <csv>    Expected capabilities or tools required"
     echo "  --allow-cross-project    Allow repurposing a worker currently assigned to another project"
     echo "  --force, -f              Force repurposing even if worker is currently BUSY"
-    echo "  --json                   Output result as structured JSON"
+    echo "  --json, -j               Output result as structured JSON"
     return true
   of "prompts", "launch":
-    echo "Usage: garden " & cmd & " [--worker <name>] [--write [file]] [--inline] [--force-prompts] [--project-dir <dir>] [--json]"
+    echo "Usage: garden " & cmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--force] [--write [file]] [--inline] [--json]"
     echo ""
     echo "Options:"
+    echo "  --workers, --count <n>   Target worker count (defaults to full triad)"
+    echo "  --harness <h>            Harness override for all workers (e.g. 'Claude Code CLI')"
+    echo "  --project, -p <proj>     Target project codename or project directory"
     echo "  --worker, -w <name>      Filter prompt output to a specific worker"
+    echo "  --force, --force-prompts Force prompt card generation (skips fast-path)"
     echo "  --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)"
     echo "  --inline, -i             Print raw 10-backtick prompt cards directly to stdout"
-    echo "  --force-prompts, --cards Force prompt card generation (skips fast-path)"
-    echo "  --project-dir, -p <dir>  Target project directory (default: current root)"
+    echo "  --project-dir <dir>      Target project directory (default: current root)"
     echo "  --json                   Output prompts as JSON"
     return true
   of "status":
@@ -2081,6 +2111,8 @@ proc main() =
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var listMode = false
     var jsonOutput = false
+    const plantValidOpts = "--title, --description, --prompt, -m, --season, --milestone, --release, -s, --sunlight, --priority, -S, --tags, -t, --id, --project-dir, -p, --list, -l, --json, -j"
+    const plantUsage = "garden plant <title> [--season <name>] [--sunlight <level>] [--tags <csv>] [--id <id>] [--project-dir <dir>] [--list] [--json]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2091,13 +2123,35 @@ proc main() =
         jsonOutput = true
       elif a in ["--list", "-l"]:
         listMode = true
-      elif (a in ["--season", "-s"]) and i + 1 < params.len:
+      elif (a in ["--title", "--description", "--prompt", "-m"]) and i + 1 < params.len:
+        inc i
+        if title.len == 0: title = params[i]
+        else: title &= " " & params[i]
+      elif a.startsWith("--title="):
+        let val = a[8..^1]
+        if title.len == 0: title = val else: title &= " " & val
+      elif a.startsWith("--description="):
+        let val = a[14..^1]
+        if title.len == 0: title = val else: title &= " " & val
+      elif a.startsWith("--prompt="):
+        let val = a[9..^1]
+        if title.len == 0: title = val else: title &= " " & val
+      elif a.startsWith("-m="):
+        let val = a[3..^1]
+        if title.len == 0: title = val else: title &= " " & val
+      elif (a in ["--season", "--milestone", "--release", "-s"]) and i + 1 < params.len:
         inc i; season = params[i]
       elif a.startsWith("--season="):
         season = a[9..^1]
-      elif (a in ["--sunlight", "-S"]) and i + 1 < params.len:
+      elif a.startsWith("--milestone="):
+        season = a[12..^1]
+      elif a.startsWith("--release="):
+        season = a[10..^1]
+      elif (a in ["--sunlight", "--priority", "-S"]) and i + 1 < params.len:
         inc i; sunlight = params[i]
       elif a.startsWith("--sunlight="):
+        sunlight = a[11..^1]
+      elif a.startsWith("--priority="):
         sunlight = a[11..^1]
       elif (a in ["--tags", "-t"]) and i + 1 < params.len:
         inc i; tagsCsv = params[i]
@@ -2111,12 +2165,18 @@ proc main() =
         inc i; projectDir = params[i]
       elif a.startsWith("--project-dir="):
         projectDir = a[14..^1]
-      elif not a.startsWith("-"):
+      elif a.startsWith("-"):
+        unknownOptionError("plant", a, plantValidOpts, plantUsage)
+      else:
         if title.len == 0:
           title = a
         else:
           title &= " " & a
       inc i
+    if title.strip().len == 0 and not listMode:
+      stderr.writeLine("Error: Missing required description for garden plant.")
+      stderr.writeLine("Usage: " & plantUsage)
+      quit(1)
     quit(doPlant(title, season, sunlight, tagsCsv, customId, projectDir, listMode, jsonOutput))
   of "roadmap":
     var season = ""
@@ -2124,6 +2184,8 @@ proc main() =
     var jsonOutput = false
     var writeMarkdown = false
     var markdownPath = ""
+    const rmValidOpts = "--season, -S, --markdown, -m, --write, -w, --sync, -s, --project-dir, -p, --json, -j"
+    const rmUsage = "garden roadmap [--season <name>] [--markdown] [--write [path]] [--sync] [--project-dir <dir>] [--json]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2151,13 +2213,24 @@ proc main() =
         projectDir = a[14..^1]
       elif a in ["--markdown", "-m"]:
         writeMarkdown = false
+      elif a.startsWith("-"):
+        unknownOptionError("roadmap", a, rmValidOpts, rmUsage)
       inc i
     quit(doRoadmap(season, projectDir, jsonOutput, writeMarkdown, markdownPath))
   of "germinate":
+    const germValidOpts = "--seed, --id, -s, --worker, -w, --queue, -q, --project-dir, -p, --inline, -i, --json, -j"
+    const germUsage = "garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]"
     if params.len < 2:
-      stderr.writeLine("Usage: garden germinate <dispatch|prompt|inline|status> <seed_id> [options...]")
+      stderr.writeLine("Error: Missing germinate action.")
+      stderr.writeLine("Usage: " & germUsage)
       quit(1)
+    if params[1].startsWith("-"):
+      unknownOptionError("germinate", params[1], germValidOpts, germUsage)
     let action = params[1].toLowerAscii()
+    if action notin ["dispatch", "prompt", "inline", "status"]:
+      stderr.writeLine("Error: Unknown germinate action '" & action & "'. Valid actions: dispatch, prompt, inline, status.")
+      stderr.writeLine("Usage: " & germUsage)
+      quit(1)
     var seedId = ""
     var targetWorker = ""
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
@@ -2174,6 +2247,14 @@ proc main() =
         jsonOutput = true
       elif a in ["--inline", "-i"]:
         inlineOutput = true
+      elif (a in ["--seed", "--id", "-s"]) and i + 1 < params.len:
+        inc i; seedId = params[i]
+      elif a.startsWith("--seed="):
+        seedId = a[7..^1]
+      elif a.startsWith("--id="):
+        seedId = a[5..^1]
+      elif a.startsWith("-s="):
+        seedId = a[3..^1]
       elif (a in ["--worker", "-w"]) and i + 1 < params.len:
         inc i; targetWorker = params[i]
       elif a.startsWith("--worker="):
@@ -2186,12 +2267,26 @@ proc main() =
         inc i; projectDir = params[i]
       elif a.startsWith("--project-dir="):
         projectDir = a[14..^1]
+      elif a.startsWith("-"):
+        unknownOptionError("germinate", a, germValidOpts, germUsage)
       elif not a.startsWith("-") and seedId.len == 0:
         seedId = a
       inc i
 
-    if seedId.len == 0 and action in ["dispatch", "prompt", "inline", "status"]:
+    if seedId.len == 0:
+      stderr.writeLine("Error: Missing required <seed_id> for garden germinate " & action & ".")
       stderr.writeLine("Usage: garden germinate " & action & " <seed_id> [options...]")
+      let root = if projectDir.len > 0: projectDir else: findProjectRoot()
+      try:
+        let seeds = listSeeds(root)
+        if seeds.len > 0:
+          stderr.writeLine("\nAvailable seeds:")
+          for s in seeds:
+            stderr.writeLine("  - " & s.id & " (" & s.title & ") [" & s.status & "]")
+        else:
+          stderr.writeLine("\nNo seeds found. Sow one first with 'garden plant <title>'.")
+      except CatchableError:
+        discard
       quit(1)
 
     quit(doGerminate(action, seedId, targetWorker, projectDir, jsonOutput, inlineOutput, customQueue))
@@ -2206,6 +2301,8 @@ proc main() =
     var allowCrossProject = false
     var swarmFileParam = getEnv("GARDEN_SWARM_FILE", "")
     var jsonOutput = false
+    const repValidOpts = "--worker, --workers, --agent, --agents, --to, --project, -p, --role, -r, --tags, -t, --self-tag, -s, --expected-tags, --allow-cross-project, --cross-project, --force, -f, --swarm-file, -S, --json, -j"
+    const repUsage = "garden repurpose [workers...] [--project <proj>] [--role <role>] [--tags <csv>] [--self-tag] [--expected-tags <csv>] [--allow-cross-project] [--force] [--json]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2220,6 +2317,31 @@ proc main() =
         force = true
       elif a in ["--allow-cross-project", "--cross-project"]:
         allowCrossProject = true
+      elif (a in ["--worker", "--workers", "--agent", "--agents", "--to"]) and i + 1 < params.len:
+        inc i
+        for item in params[i].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
+      elif a.startsWith("--worker="):
+        for item in a[9..^1].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
+      elif a.startsWith("--workers="):
+        for item in a[10..^1].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
+      elif a.startsWith("--agent="):
+        for item in a[8..^1].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
+      elif a.startsWith("--agents="):
+        for item in a[9..^1].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
+      elif a.startsWith("--to="):
+        for item in a[5..^1].split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
       elif (a in ["--project", "-p"]) and i + 1 < params.len:
         inc i; projectParam = params[i]
       elif a.startsWith("--project="):
@@ -2240,26 +2362,77 @@ proc main() =
         inc i; swarmFileParam = params[i]
       elif a.startsWith("--swarm-file="):
         swarmFileParam = a[13..^1]
-      elif not a.startsWith("-"):
-        workers.add(a)
+      elif a.startsWith("-"):
+        unknownOptionError("repurpose", a, repValidOpts, repUsage)
+      else:
+        for item in a.split(','):
+          let trimmed = item.strip().strip(chars = {'@'})
+          if trimmed.len > 0: workers.add(trimmed)
       inc i
-    quit(doRepurpose(workers, projectParam, roleParam, tagsParam, selfTag, expectedTagsParam, force, swarmFileParam, jsonOutput, allowCrossProject))
+
+    if workers.len == 0:
+      let errMsg = "Missing required worker(s). Specify worker names positionally or via --worker <name>."
+      if jsonOutput:
+        echo $(%*{"status": "error", "error": errMsg})
+      else:
+        stderr.writeLine("Error: " & errMsg)
+        stderr.writeLine("Usage: " & repUsage)
+      quit(1)
+
+    let root = findProjectRoot()
+    let hasGardenToml = fileExists(root / DefaultConfigFileName) or fileExists(root / "garden.toml")
+    let targetProj = if projectParam.len > 0: projectParam.strip()
+                     elif hasGardenToml and root.lastPathPart.toLowerAscii.replace(" ", "-") != "default":
+                       root.lastPathPart.toLowerAscii.replace(" ", "-")
+                     else: ""
+
+    if targetProj.len == 0 or targetProj == "default":
+      let errMsg = "Missing required --project <project> for garden repurpose (no garden.toml found in project root)."
+      if jsonOutput:
+        echo $(%*{"status": "error", "error": errMsg})
+      else:
+        stderr.writeLine("Error: " & errMsg)
+        stderr.writeLine("Usage: " & repUsage)
+      quit(1)
+
+    if roleParam.strip().len == 0 and not selfTag:
+      let errMsg = "Missing required role assignment. Specify --role <role> or --self-tag for garden repurpose."
+      if jsonOutput:
+        echo $(%*{"status": "error", "error": errMsg})
+      else:
+        stderr.writeLine("Error: " & errMsg)
+        stderr.writeLine("Usage: " & repUsage)
+      quit(1)
+
+    quit(doRepurpose(workers, targetProj, roleParam, tagsParam, selfTag, expectedTagsParam, force, swarmFileParam, jsonOutput, allowCrossProject))
   of "init":
     var targetDir = ""
     var force = false
     var optOrchAgent = ""
+    const initValidOpts = "--force, -f, --orchestrator, -o, -a, --orchestrator-agent"
+    const initUsage = "garden init [dir] [--force] [--orchestrator <name>]"
     var i = 1
     while i < params.len:
-      case params[i]
-      of "--force", "-f": force = true
-      of "--orchestrator", "-o", "--orchestrator-agent", "-a":
-        inc i; if i < params.len: optOrchAgent = params[i]
+      let a = params[i]
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--force", "-f"]:
+        force = true
+      elif (a in ["--orchestrator", "-o", "--orchestrator-agent", "-a"]) and i + 1 < params.len:
+        inc i; optOrchAgent = params[i]
+      elif a.startsWith("--orchestrator="):
+        optOrchAgent = a[15..^1]
+      elif a.startsWith("--orchestrator-agent="):
+        optOrchAgent = a[21..^1]
+      elif a.startsWith("-"):
+        unknownOptionError("init", a, initValidOpts, initUsage)
       else:
-        if targetDir.len == 0 and not params[i].startsWith("-"):
-          targetDir = params[i]
+        if targetDir.len == 0:
+          targetDir = a
       inc i
     quit(doInit(targetDir, force, optOrchAgent))
-  of "prompts":
+  of "prompts", "launch":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var targetWorker = ""
     var writeFileParam = ""
@@ -2268,72 +2441,86 @@ proc main() =
     var forcePrompts = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var optOrchAgent = ""
+    var optProject = ""
+    var workerCount = 0
+    var optHarness = ""
+    const pValidOpts = "--workers, --count, --harness, --project, --force, --force-prompts, --cards, --worker, -w, --write, -o, --inline, -i, --project-dir, -p, --swarm-file, -f, --orchestrator, -a, --orchestrator-agent, --json"
+    let pUsage = "garden " & subcmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--force] [--write [file]] [--inline] [--json]"
     var i = 1
     while i < params.len:
-      case params[i]
-      of "--swarm-file", "-f":
-        inc i; if i < params.len: swarmFile = params[i]
-      of "--worker", "-w":
-        inc i; if i < params.len: targetWorker = params[i]
-      of "--orchestrator", "-a", "--orchestrator-agent":
-        inc i; if i < params.len: optOrchAgent = params[i]
-      of "--force-prompts", "--cards":
+      let a = params[i]
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif (a in ["--swarm-file", "-f"]) and i + 1 < params.len:
+        inc i; swarmFile = params[i]
+      elif a.startsWith("--swarm-file="):
+        swarmFile = a[13..^1]
+      elif (a in ["--worker", "-w"]) and i + 1 < params.len:
+        inc i; targetWorker = params[i]
+      elif a.startsWith("--worker="):
+        targetWorker = a[9..^1]
+      elif (a in ["--orchestrator", "-a", "--orchestrator-agent"]) and i + 1 < params.len:
+        inc i; optOrchAgent = params[i]
+      elif a.startsWith("--orchestrator="):
+        optOrchAgent = a[15..^1]
+      elif a.startsWith("--orchestrator-agent="):
+        optOrchAgent = a[21..^1]
+      elif a in ["--force", "--force-prompts", "--cards"]:
         forcePrompts = true
-      of "--write", "-o":
+      elif a in ["--write", "-o"]:
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
         else:
           writeFileParam = "garden-prompts.md"
-      of "--json":
+      elif a.startsWith("--write="):
+        writeFileParam = a[8..^1]
+      elif a == "--json":
         jsonOutput = true
-      of "--inline", "-i":
+      elif a in ["--inline", "-i"]:
         inlineOutput = true
-      of "--project-dir", "-p":
-        inc i; if i < params.len: projectDir = params[i]
-      else: discard
+      elif (a in ["--workers", "--count"]) and i + 1 < params.len:
+        inc i
+        try: workerCount = parseInt(params[i]) except CatchableError: discard
+      elif a.startsWith("--workers="):
+        try: workerCount = parseInt(a[10..^1]) except CatchableError: discard
+      elif a.startsWith("--count="):
+        try: workerCount = parseInt(a[8..^1]) except CatchableError: discard
+      elif a == "--harness" and i + 1 < params.len:
+        inc i; optHarness = params[i]
+      elif a.startsWith("--harness="):
+        optHarness = a[10..^1]
+      elif a == "--project" and i + 1 < params.len:
+        inc i; optProject = params[i]
+      elif a.startsWith("--project="):
+        optProject = a[10..^1]
+      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+        inc i
+        let val = params[i]
+        if dirExists(val): projectDir = val else: optProject = val
+      elif a.startsWith("--project-dir="):
+        projectDir = a[14..^1]
+      elif a.startsWith("-"):
+        unknownOptionError(subcmd, a, pValidOpts, pUsage)
       inc i
-    quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts))
-  of "launch":
-    var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
-    var targetWorker = ""
-    var writeFileParam = ""
-    var jsonOutput = false
-    var inlineOutput = false
-    var forcePrompts = false
-    var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
-    var optOrchAgent = ""
-    var i = 1
-    while i < params.len:
-      case params[i]
-      of "--swarm-file", "-f":
-        inc i; if i < params.len: swarmFile = params[i]
-      of "--worker", "-w":
-        inc i; if i < params.len: targetWorker = params[i]
-      of "--orchestrator", "-a", "--orchestrator-agent":
-        inc i; if i < params.len: optOrchAgent = params[i]
-      of "--force-prompts", "--cards":
-        forcePrompts = true
-      of "--write", "-o":
-        if i + 1 < params.len and not params[i+1].startsWith("-"):
-          inc i; writeFileParam = params[i]
-        else:
-          writeFileParam = "garden-prompts.md"
-      of "--json":
-        jsonOutput = true
-      of "--inline", "-i":
-        inlineOutput = true
-      of "--project-dir", "-p":
-        inc i; if i < params.len: projectDir = params[i]
-      else: discard
-      inc i
-    quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts))
+    if subcmd == "launch":
+      quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness))
+    else:
+      quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness))
   of "status":
     var jsonOutput = false
+    const statValidOpts = "--json, -j"
+    const statUsage = "garden status [--json]"
     var i = 1
     while i < params.len:
-      case params[i]
-      of "--json": jsonOutput = true
-      else: discard
+      let a = params[i]
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif a in ["--json", "-j"]:
+        jsonOutput = true
+      elif a.startsWith("-"):
+        unknownOptionError("status", a, statValidOpts, statUsage)
       inc i
     let code = doStatus(jsonOutput)
     if not jsonOutput:
@@ -2346,12 +2533,20 @@ proc main() =
     quit(code)
   of "teardown":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
+    const tdValidOpts = "--swarm-file, -f"
+    const tdUsage = "garden teardown [--swarm-file <file>]"
     var i = 1
     while i < params.len:
-      case params[i]
-      of "--swarm-file", "-f":
-        inc i; if i < params.len: swarmFile = params[i]
-      else: discard
+      let a = params[i]
+      if a in ["--help", "-h"]:
+        printHelp()
+        quit(0)
+      elif (a in ["--swarm-file", "-f"]) and i + 1 < params.len:
+        inc i; swarmFile = params[i]
+      elif a.startsWith("--swarm-file="):
+        swarmFile = a[13..^1]
+      elif a.startsWith("-"):
+        unknownOptionError("teardown", a, tdValidOpts, tdUsage)
       inc i
     quit(doTeardown(swarmFile))
   of "roster-guard", "validate-sender", "ingest-guard":
@@ -2361,6 +2556,8 @@ proc main() =
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var optProject = ""
+    const rgValidOpts = "--json, -j, --fix, -F, --audit, -a, --swarm-file, -f, --project-dir, -p, --project, -P"
+    const rgUsage = "garden roster-guard <sender> [--json] [--fix] [--project <proj>]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2379,18 +2576,24 @@ proc main() =
       elif (a in ["--project", "-P"]) and i + 1 < params.len:
         inc i; optProject = params[i]
       elif a.startsWith("--project="): optProject = a[10..^1]
+      elif a.startsWith("-"):
+        unknownOptionError("roster-guard", a, rgValidOpts, rgUsage)
       elif not a.startsWith("-") and sender.len == 0:
         sender = a
       inc i
     quit(doRosterGuard(sender, jsonOutput, swarmFile, projectDir, fix, optProject))
   of "session":
+    const sessValidOpts = "--agent, -a, --role, -r, --orchestrator, -o, --project-dir, -p, --json, -j"
+    const sessUsage = "garden session <save|load|clear> [options...]\n  save   [--agent <name>] [--role <role>] [--orchestrator <orch>]\n  load   [--json]\n  clear  [--json]"
     if params.len < 2:
-      stderr.writeLine("Usage: garden session <save|load|clear> [options...]")
-      stderr.writeLine("  save   [--agent <name>] [--role <role>] [--orchestrator <orch>]")
-      stderr.writeLine("  load   [--json]")
-      stderr.writeLine("  clear  [--json]")
+      stderr.writeLine("Usage: " & sessUsage)
       quit(1)
+    if params[1].startsWith("-"):
+      unknownOptionError("session", params[1], sessValidOpts, sessUsage)
     let action = params[1].toLowerAscii()
+    if action notin ["save", "set", "load", "get", "show", "clear", "rm", "delete"]:
+      stderr.writeLine("[garden session] Unknown action: " & action & " (valid: save, load, clear)")
+      quit(1)
     var agentName = ""
     var role = ""
     var orch = ""
@@ -2415,13 +2618,21 @@ proc main() =
       elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
         inc i; projectDir = params[i]
       elif a.startsWith("--project-dir="): projectDir = a[14..^1]
+      elif a.startsWith("-"):
+        unknownOptionError("session", a, sessValidOpts, sessUsage)
       inc i
     quit(doSession(action, agentName, role, orch, projectDir, jsonOutput))
   of "guide":
+    const guideValidOpts = ""
+    const guideUsage = "garden guide <install|check|uninstall> [path]"
     if params.len < 2:
-      stderr.writeLine("Usage: garden guide <install|check|uninstall> [path]")
+      stderr.writeLine("Usage: " & guideUsage)
       quit(1)
+    if params[1].startsWith("-"):
+      unknownOptionError("guide", params[1], guideValidOpts, guideUsage)
     let action = params[1].toLowerAscii()
+    if params.len > 2 and params[2].startsWith("-"):
+      unknownOptionError("guide", params[2], guideValidOpts, guideUsage)
     let target = if params.len > 2: params[2] else: "AGENTS.md"
     case action
     of "install", "i", "add":

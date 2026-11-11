@@ -318,11 +318,17 @@ proc doUpdateCommand*(
     elif a in ["--apply", "-a"]: applyUpdate = true
     elif a in ["--disable", "-d", "--never"]: disablePrompt = true
     elif a in ["--enable", "-e"]: enablePrompt = true
-    elif a == "--json": jsonOut = true
+    elif a in ["--json", "-j"]: jsonOut = true
+    elif a in ["--help", "-h"]: discard
     elif a == "--skip" and i + 1 < args.len:
       skipVersion = args[i+1]; inc i
     elif a.startsWith("--skip="):
       skipVersion = a[7..^1]
+    elif a.startsWith("-"):
+      stderr.writeLine("Error: Unknown option " & a & " for garden update")
+      stderr.writeLine("Valid options: --check, -c, --apply, -a, --skip <pkg@ver>, --disable, --enable, --json")
+      stderr.writeLine("Usage: garden update [--check] [--apply] [--skip <pkg@ver>] [--disable] [--enable] [--json]")
+      quit(2)
     inc i
 
   var config = loadUpdatesConfig()

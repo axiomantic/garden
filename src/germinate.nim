@@ -280,6 +280,18 @@ proc doGerminate*(
       echo $(%*{"status": "error", "error": msg})
     else:
       stderr.writeLine("[garden] Error: " & msg)
+      if msg.contains("Seed not found"):
+        let root = if projectDir.len > 0: projectDir else: findProjectRoot()
+        try:
+          let seeds = listSeeds(root)
+          if seeds.len > 0:
+            stderr.writeLine("\nAvailable seeds:")
+            for s in seeds:
+              stderr.writeLine("  - " & s.id & " (" & s.title & ") [" & s.status & "]")
+          else:
+            stderr.writeLine("\nNo seeds found. Sow one first with 'garden plant <title>'.")
+        except CatchableError:
+          discard
     return 1
 
   if jsonOutput:
