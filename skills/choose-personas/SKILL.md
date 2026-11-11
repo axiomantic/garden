@@ -137,7 +137,7 @@ Invoke `ask_question` with a SINGLE concise question combining execution mode an
 - Option 4: Custom configuration (allows user write-in).
 
 ### Step 4: Synthesize Swarm Specification
-Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON). If inspectable output is needed, Garden emits to stdout or prompt cards in `/tmp/garden-<project>/`:
+Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON). In Tier 1 harnesses (Google Antigravity, OpenCode, Pi), workers register with the host Multiplexed Router Service (`rhizo open <name>` / `rhizo session register <name>`), eliminating per-turn shell listeners. In CLI harnesses (Claude Code, Codex), workers arm single-shot listeners (`rhizo listen <name>`). If inspectable output is needed, Garden emits to stdout or prompt cards in `/tmp/garden-<project>/`:
 
 ```json
 {

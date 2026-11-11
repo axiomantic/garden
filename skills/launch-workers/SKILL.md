@@ -22,17 +22,18 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    Instead, orchestrators MUST output concise session assignments with clickable file links (e.g. `/tmp/garden-<project>/<worker>.md`).
    Inside the generated files and when `--inline` is passed, blocks are wrapped in 10 backticks (``````````markdown) to protect nested markdown and shell code blocks.
    </CRITICAL>
-3. **Single-Shot Listener Discipline**:
+3. **Listener Discipline & Multiplexed Router**:
    <CRITICAL>
-   Inside worker prompts, `rhizo listen <name>` must always be presented as a single-shot, blocking foreground command with zero timeout (infinite wait).
-   NEVER wrap `rhizo listen` in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap message payloads inside unmonitored subshell logs and hang coordination.
+   Coordination operates in two harness-specific listener models:
+   - **Multiplexed Router Harnesses (Google Antigravity, OpenCode, Pi)**: Sessions register via `rhizo open <name> "<tags>"` or `rhizo session register <name> --tags "<tags>"`. One singleton `rhizo router` service listens for all agents on the machine and routes messages directly to the right session/conversation ID, while hooks and CLI commands automatically update `rhizo:agent:<name>` and `rhizo:agy_host:<machine_id>` whenever the language server address or CSRF token changes. Agents in these harnesses DO NOT need to run blocking `rhizo listen <name>` subprocesses every turn!
+   - **CLI Subprocess Harnesses (Claude Code, Codex, Generic Shells)**: Inside worker prompts, `rhizo listen <name>` must always be presented as a single-shot, blocking foreground command with zero timeout (infinite wait). NEVER wrap `rhizo listen` in a shell loop (`while true; do rhizo listen; done` or `until rhizo listen; do ...`). Loops trap message payloads inside unmonitored subshell logs and hang coordination.
    </CRITICAL>
 4. **Worker Autonomous Execution Invariant (GVR-017)**:
    <CRITICAL>
    Swarm workers operate as sovereign, autonomous implementers, not passive chatbots.
-   When 'rhizo listen' unblocks and exits, a directive has been delivered!
+   When a directive arrives (unblocking 'rhizo listen' in CLI harnesses, or streamed directly via the Multiplexed Router in Antigravity, OpenCode, and Pi), a directive has been delivered!
    Workers MUST NOT wait for operator intervention or ask "Shall I start?".
-   They MUST immediately inspect the delivered directive, claim the task, switch to their isolated Vine strand, execute the requested work, submit the strand for independent audit ('vine submit'), report results, and re-arm their single-shot listener. Remember: THE WORKER IS NOT THE AUDITOR; an independent adversarial auditor must review and ratify Key 3 ('vine audit approve').
+   They MUST immediately inspect the delivered directive, claim the task, switch to their isolated Vine strand, execute the requested work, submit the strand for independent audit ('vine submit'), report results, and re-arm their single-shot listener (CLI harnesses) or resume listening via the Multiplexed Router. Remember: THE WORKER IS NOT THE AUDITOR; an independent adversarial auditor must review and ratify Key 3 ('vine audit approve').
    </CRITICAL>
 5. **Zero Dirty Commits**:
    - Never stage coordination state (`.rhizo.*`, `*.lock`, `workspaces/`) into Git. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero state files in the working tree).
@@ -47,11 +48,11 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
 
 8. **Mutual Arrival Handshake Invariant**:
    <CRITICAL>
-   Swarm workers MUST NEVER boot into silent, passive blocking listeners.
+   Swarm workers MUST NEVER boot into silent, passive states.
    Turn 1 of every worker prompt card mandates executing the Mutual Arrival Handshake:
    `rhizo send --to "@<orchestrator>" --subject "WORKER_READY" --body "..."`
-   This broadcast guarantees that the Orchestrator's background listener is immediately woken upon session initialization.
-   Conversely, the Lead Orchestrator MUST arm its background listener (`rhizo listen <orchestrator>`) in the exact turn that prompt cards are emitted to prevent bootstrap deadlocks.
+   This broadcast guarantees that the Orchestrator is immediately notified upon session initialization.
+   Conversely, in CLI subprocess harnesses, the Lead Orchestrator MUST arm its background listener (`rhizo listen <orchestrator>`) in the exact turn that prompt cards are emitted to prevent bootstrap deadlocks. In Multiplexed Router harnesses (Antigravity, OpenCode, Pi), the orchestrator session is automatically registered via `rhizo open` / `rhizo session register` with the host `rhizo router` service.
    </CRITICAL>
 
 ---
@@ -125,9 +126,10 @@ The Orchestrator presents the generated prompt blocks to the operator with clear
    Each prompt instructs the pasted session to immediately:
    - `cd "<project_dir>"`
    - `export RHIZO_AGENT_NAME="<name>"`
-   - `rhizo open "<name>" "<tags>"`
+   - `rhizo open "<name>" "<tags>"` (registers session in Redis registry with host Multiplexed Router)
+   - `rhizo hook install --antigravity --agent "<name>"` (if running in Antigravity IDE)
    - `rhizo hook install --codex --agent "<name>"` (if running in Codex CLI/Desktop)
-   - `rhizo listen "<name>"` (blocking foreground command with infinite wait)
+   - `rhizo listen "<name>"` (ONLY in CLI harnesses: Claude Code, Codex, Generic Shells)
 5. **Scheduled Health Check Template (ONLY for OpenAI Codex / ChatGPT CLI)**:
    In Google Antigravity (using the continuous ambient ear and hooks) and OpenCode (using background ear), DO NOT configure scheduled tasks; reactive event/hook streams handle wakeups natively.
    In Codex Desktop / CLI where sessions cannot wake from background process exits without external stimulation, prompts include the bulletproof 4-step template:

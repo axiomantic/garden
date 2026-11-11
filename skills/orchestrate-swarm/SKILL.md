@@ -114,17 +114,22 @@ Context compaction purges detailed operational invariants, ceremony rules, and p
 <!-- END_SWARM_RUNTIME_STATE -->
 
 3. **Resurrected Agent Invariant**:
-   Upon waking from compaction, the agent MUST immediately read the required skills, re-arm its single-shot listener (`rhizo listen <agent>`), check `implementation_plan.md`, and resume work under full ceremony discipline.
+   Upon waking from compaction, the agent MUST immediately read the required skills, verify its listener or session registration (`rhizo listen <agent>` in CLI harnesses or `rhizo open <agent>` in Multiplexed Router harnesses), check `implementation_plan.md`, and resume work under full ceremony discipline.
 </CRITICAL>
 
 <CRITICAL>
 Orchestrator Turn-End Listener Invariant (GVR-014):
-Coding harnesses (Antigravity, Claude Code, OpenCode) are event-driven: when the model yields a turn with text output, execution is completely suspended. Redis inbox state changes CANNOT wake an idle harness without an active child process registered in the task manager.
-
-Whenever the Lead Orchestrator dispatches a task, broadcasts instructions, awaits worker responses, or emits worker prompt cards ('garden prompts' / 'garden launch'), THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
-`run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`
-
-FORBIDDEN: Never yield the conversation turn to the operator after dispatching work or emitting prompt cards without an active background listener running. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies and mutual arrival handshakes ('WORKER_READY') in Redis and causing silent swarm deadlocks.
+Coding harnesses operate in two distinct coordination modes:
+1. **Multiplexed Router Harnesses (Google Antigravity, OpenCode, Pi)**:
+   The orchestrator session registers its identity via `rhizo open <orchestrator>` or `rhizo session register <orchestrator>`.
+   A single singleton host Multiplexed Router Service (`rhizo router`) manages all message listening and routing on the host, directing worker arrival handshakes (`WORKER_READY`), gate reports, and task replies directly to the orchestrator's session/conversation ID.
+   Hooks (`rhizo hook install --antigravity`) and CLI calls automatically refresh the token and address registry (`rhizo:agent:<name>`, `rhizo:agy_host:<machine_id>`) whenever the language server address or CSRF token changes.
+   Orchestrators in these harnesses DO NOT need to spawn blocking `rhizo listen` subprocesses at the end of every turn!
+2. **CLI Subprocess Harnesses (Claude Code, Codex, Generic Shells)**:
+   Coding harnesses are event-driven: when the model yields a turn with text output, execution is completely suspended. Redis inbox state changes CANNOT wake an idle harness without an active child process registered in the task manager.
+   Whenever the Lead Orchestrator in a CLI subprocess harness dispatches a task, broadcasts instructions, awaits worker responses, or emits worker prompt cards ('garden prompts' / 'garden launch'), THE FINAL ACTION OF THAT TURN MUST BE ARMING A BACKGROUND LISTENER:
+   `run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`
+   FORBIDDEN: Never yield the conversation turn to the operator after dispatching work or emitting prompt cards without an active background listener running in CLI subprocess harnesses. Yielding a turn without a listener severs the swarm's physical lifeline, trapping worker replies and mutual arrival handshakes ('WORKER_READY') in Redis and causing silent swarm deadlocks.
 
 Safety Net (In-Flight Task Liveness Probe & Watchdog Protocol):
 - **Antigravity & OpenCode Idle Exemption**: When idle or waiting for routine replies in Google Antigravity (using background `run_command(CommandLine="rhizo listen <orchestrator>", IsDaemon=false, WaitMsBeforeAsync=500)`) and OpenCode (using background ear), DO NOT schedule recurring cron timers. Antigravity's task manager natively and reactively resumes execution on process exit when `rhizo listen` delivers a message.
@@ -279,12 +284,13 @@ Depending on the task distribution model in `implementation_plan.md`:
     --body '{"task_id": "task-test-harness", "strand": "strand/task-test-harness"}'
   ```
 
-- **Mandatory Turn-End Listener Arming**:
-  Immediately after executing `rhizo send` or `rhizo enqueue`, arm your single-shot background listener before completing your turn:
-  ```bash
-  run_command(CommandLine="rhizo listen <project>-orchestrator", IsDaemon=false, WaitMsBeforeAsync=500)
-  ```
-  *(Never end your turn without this active background task; without it, worker gate reports cannot wake you up).*
+- **Mandatory Turn-End Listener Arming / Router Verification**:
+  - In **Multiplexed Router Harnesses** (Google Antigravity, OpenCode, Pi): Your session is already registered with the singleton `rhizo router` via `rhizo open <orchestrator>` or `rhizo session register`. Incoming worker responses, arrival handshakes, and gate reports stream directly into your context. Spawning per-turn blocking `rhizo listen` subprocesses is NOT required.
+  - In **CLI Subprocess Harnesses** (Claude Code, Codex, Generic Shells): Immediately after executing `rhizo send` or `rhizo enqueue`, arm your single-shot background listener before completing your turn:
+    ```bash
+    run_command(CommandLine="rhizo listen <project>-orchestrator", IsDaemon=false, WaitMsBeforeAsync=500)
+    ```
+    *(Never end your turn in CLI harnesses without this active background task; without it, worker gate reports cannot wake you up).*
 
 ### SOP 2: Monitoring Swarm Health, Watchdog & Escalation (GVR-011)
 Check active workers and cluster status:

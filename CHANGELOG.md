@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Multiplexed Router Service & Session Registry Support (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `AGENTS.md`, `tests/test_garden.nim`)**:
+  - Updated worker bootstrap prompt card generation and orchestrator guidance in `src/garden.nim` for Tier 1 harnesses (Google Antigravity, OpenCode, Pi) to register identity, conversation ID, and token/address mappings via `rhizo open <name>` / `rhizo session register <name>`.
+  - Documented that a single host Multiplexed Router Service (`rhizo router`) manages all message listening and routing on the host, while hooks and CLI commands automatically refresh token and address registry entries (`rhizo:agent:<name>`, `rhizo:agy_host:<machine_id>`), eliminating redundant per-turn blocking `rhizo listen` subprocesses for Tier 1 sessions.
+  - Preserved single-shot blocking listener discipline (`rhizo listen <name>` with zero-timeout infinite wait) specifically for Tier 2/3 CLI subprocess harnesses (Claude Code CLI, OpenAI Codex CLI).
+  - Updated `src/guide.nim` and all Garden skills (`garden`, `orchestrate-swarm`, `launch-workers`, `dialectical-pump`, `plan-implementation`, `choose-personas`) to codify the two listener modes across Listener Discipline, Orchestrator Turn-End Listener Invariant (GVR-014), First-Turn Quiescence, and Worker Autonomous Execution.
+  - Reconciled root `SKILL.md` and updated unit/integration tests in `tests/test_garden.nim` with assertions for Multiplexed Router guidance, `session register`, and `rhizo open`.
+
 ## [0.2.29] - 2026-11-11
 
 ### Added

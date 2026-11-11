@@ -382,8 +382,8 @@ Zero Theatrical Dialogue: Every dialectical assertion must be substantiated with
 <CRITICAL>
 Worker Autonomous Execution Invariant (GVR-017):
 Swarm workers are sovereign, autonomous implementers, not passive chatbots.
-When 'rhizo listen' delivers an incoming task and exits, workers MUST NOT wait for an operator prompt or ask "Shall I begin?".
-They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, submit the strand for independent audit ('vine submit'), report results, and re-arm the single-shot listener before concluding their turn. Remember: THE WORKER IS NOT THE AUDITOR; an independent adversarial auditor must review and ratify Key 3 ('vine audit approve').
+When a directive is delivered (unblocking 'rhizo listen' in CLI harnesses, or streamed directly via the Multiplexed Router in Antigravity, OpenCode, and Pi), workers MUST NOT wait for an operator prompt or ask "Shall I begin?".
+They MUST immediately transition to active execution: claim the task, enter the isolated Vine strand, perform the work, submit the strand for independent audit ('vine submit'), report results, and re-arm their single-shot listener (CLI harnesses) or resume listening via the Multiplexed Router before concluding their turn. Remember: THE WORKER IS NOT THE AUDITOR; an independent adversarial auditor must review and ratify Key 3 ('vine audit approve').
 </CRITICAL>
 
 <CRITICAL>
@@ -442,7 +442,7 @@ Context compaction purges detailed operational invariants, ceremony rules, and p
 <!-- END_SWARM_RUNTIME_STATE -->
 
 3. **Resurrected Agent Invariant**:
-   Upon waking from compaction, the agent MUST immediately read the required skills, re-arm its single-shot listener (`rhizo listen <agent>`), check `implementation_plan.md`, and resume work under full ceremony discipline.
+   Upon waking from compaction, the agent MUST immediately read the required skills, verify its listener or session registration (`rhizo listen <agent>` in CLI harnesses or `rhizo open <agent>` in Multiplexed Router harnesses), check `implementation_plan.md`, and resume work under full ceremony discipline.
 </CRITICAL>
 
 ---
@@ -455,7 +455,7 @@ To prevent silent deadlocks when workers stall, crash, or fail to re-arm listene
    - **Escalate Immediately**: Prompt the operator via `ask_question` with the diagnostic status.
    - **Actionable Remediation**: Offer options to (1) re-arm the listener in the worker's terminal session (`rhizo listen <worker>`), (2) reboot the agent harness, or (3) reassign the task via `rhizo reroute <worker> <new_worker>`.
 3. **Orchestrator Self-Audit Watchdog (ONLY for OpenAI Codex / ChatGPT)**:
-   - **Antigravity & OpenCode Exemption**: In Google Antigravity and OpenCode, DO NOT schedule timers or cron tasks (`schedule(...)`). Antigravity natively and reactively receives incoming messages via the continuous background ear (`--agy-ear`) and `agentapi send-message`.
+   - **Antigravity & OpenCode Exemption**: In Google Antigravity and OpenCode, DO NOT schedule timers or cron tasks (`schedule(...)`). Antigravity natively and reactively receives incoming messages via the host Multiplexed Router Service (`rhizo router`) and session registry (`agentapi send-message`).
    - **Codex / ChatGPT Watchdog Only**: In OpenAI Codex Desktop / CLI where background processes cannot reactively wake the harness, arm a scheduled watchdog timer or cron job with stepped backoff (15m $\rightarrow$ 30m $\rightarrow$ 60m $\rightarrow$ 120m $\rightarrow$ Stand Down at check 4).
    - **Reset Invariant**: Resets immediately to base 15m (streak 0) on any listener failure, unread inbox backlog, outbound task dispatch (`rhizo send`/`enqueue`), worker reply, or user chat prompt.
    - When the timer fires in Codex, execute the short check: `rhizo watchdog check --agent <orchestrator> --json` and follow `next_action` (`SCHEDULE_TIMER` or `STAND_DOWN`).

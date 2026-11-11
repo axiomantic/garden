@@ -733,8 +733,9 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
       systemPrompt: "Implement cleanly."
     )
     let prompt = generateWorkerPrompt(cfg, w)
-    check prompt.contains("In-Process Ear Active")
+    check prompt.contains("Multiplexed Router & In-Process Ear Active")
     check prompt.contains("DO NOT launch a redundant blocking shell listener")
+    check prompt.contains("rhizo session register")
     check not prompt.contains("Arm single-shot listener for incoming directives:\nrhizo listen")
 
   test "generateWorkerPrompt for Antigravity uses continuous ambient ear and lifecycle hooks":
@@ -756,19 +757,22 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     let prompt = generateWorkerPrompt(cfg, w)
     # Section 2 checks
     check prompt.contains("rhizo hook install --antigravity --agent \"agy-coder\"")
-    check prompt.contains("Continuous Ambient Ear & Hooks Active")
+    check prompt.contains("Multiplexed Router & Session Registry Active")
+    check prompt.contains("Continuous Ambient Ear & Hooks")
     check prompt.contains("agentapi send-message")
+    check prompt.contains("rhizo session register")
     check not prompt.contains("Arm single-shot listener for incoming directives:\nrhizo listen")
     # Section 3 checks: no obsolete manual run_command WaitMsBeforeAsync=500 non-yield invariant
     check not prompt.contains("MANDATORY ANTIGRAVITY NON-YIELD INVARIANT")
     check not prompt.contains("run_command(WaitMsBeforeAsync=500)")
-    check prompt.contains("CONTINUOUS EAR EXECUTION")
+    check prompt.contains("MULTIPLEXED ROUTER EXECUTION")
     # Section 4 checks
-    check prompt.contains("Continuous Ambient Ear Active")
+    check prompt.contains("Multiplexed Router & Session Registry Active")
     check not prompt.contains("Single-Shot Blocking")
     # Section 7 checks
-    check prompt.contains("Continuous Ambient Ear & Lifecycle Hooks (Google Antigravity)")
-    check prompt.contains("--agy-ear")
+    check prompt.contains("Multiplexed Router")
+    check prompt.contains("Continuous Ambient Ear")
+    check prompt.contains("rhizo router")
 
   test "generateWorkerPrompt for Claude Code and Codex retain single-shot blocking listener discipline":
     let cfg = SwarmConfig(

@@ -77,6 +77,7 @@ For all parallel development tracks:
      # Or to reject if defects are found:
      vine audit reject <task_id> --auditor <auditor> --ticket <hex> --reason "<findings>" --listen
      ```
+     *(Note: In Multiplexed Router harnesses such as Google Antigravity, OpenCode, and Pi, per-turn `--listen` re-arming is handled automatically by the host `rhizo router` service).*
      Remember: THE WORKER IS NOT THE AUDITOR. Auditors NEVER use `--force` and NEVER act as release/merge clerks (no editing `ROADMAP.md`, no resolving `CHANGELOG.md` merge conflicts, and no weaving on behalf of workers).
 4. **Trunk Weaving & DAG Cascading (Lead Orchestrator Role)**:
    *Fast-forwards ratified branch into epic/<slug> or main, automatically calls `rhizo task complete <task_id>`, and unblocks downstream DAG child tasks (`BLOCKED` $\rightarrow$ `QUEUED`):*

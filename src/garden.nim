@@ -551,7 +551,10 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
             spec.tags = @[result.project, spec.name]
           spec.systemPrompt = if w.hasKey("system_prompt"): w["system_prompt"].getStr() else: ""
           spec.opposingPriority = if w.hasKey("opposing_priority"): w["opposing_priority"].getStr() else: ""
-          spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr() else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
+          let isTier1 = normalizeHarness(spec.harness) in [htAntigravity, htOpenCode, htPi]
+          spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr()
+                                elif isTier1: "rhizo open " & spec.name & " '" & result.project & "'"
+                                else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
           spec.profile = if w.hasKey("profile"): w["profile"].getStr() elif w.hasKey("capability"): w["capability"].getStr() else: ""
           result.workers.add(spec)
     except CatchableError as e:
@@ -584,6 +587,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     let auditName = projName & "-auditor"
     let implName = projName & "-implementer"
     let curHarness = detectCurrentHarness()
+    let curHarnessType = normalizeHarness(curHarness)
 
     let archPersona = pickWhimsicalPersona("architect", projName)
     let auditPersona = pickWhimsicalPersona("auditor", projName)
@@ -595,6 +599,14 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     for st in seedTags:
       if st notin implTags: implTags.add(st)
 
+    let isTier1 = curHarnessType in [htAntigravity, htOpenCode, htPi]
+    let archCmd = if isTier1: "rhizo open " & archName & " '" & projName & ",systems,architecture'"
+                  else: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
+    let auditCmd = if isTier1: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier'"
+                   else: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
+    let implCmd = if isTier1: "rhizo open " & implName & " '" & projName & ",dev,devex,build'"
+                  else: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
+
     result.workers.add(WorkerSpec(
       name: archName,
       persona: archPersona,
@@ -605,7 +617,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       profile: "investigation",
       systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Operate as an investigator and architectural reviewer.",
       opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
-      startupCommand: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
+      startupCommand: archCmd
     ))
 
     result.workers.add(WorkerSpec(
@@ -618,7 +630,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       profile: "audit",
       systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (vine audit inspect + vine audit approve/reject). The Lead Orchestrator is solely responsible for running vine weave after Key 3 ratification; turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --evidence <evidence> --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
-      startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
+      startupCommand: auditCmd
     ))
 
     result.workers.add(WorkerSpec(
@@ -631,7 +643,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       profile: "implementation",
       systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands." & seedContext & " You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
       opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
-      startupCommand: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
+      startupCommand: implCmd
     ))
 
   # Override / sanitize orchestrator if explicit or fake
@@ -701,10 +713,10 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "```\n"
     result &= "> [!NOTE]\n"
     if harnessKind == htAntigravity:
-      result &= "> **Continuous Ambient Ear & Hooks Active**: In Google Antigravity, 'rhizo open' automatically launches a continuous background ear ('--agy-ear') that streams incoming Rhizo directives directly into your session context via 'agentapi send-message' (and hooks automatically maintain task leases).\n"
-      result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context without manual per-turn re-arming.\n"
+      result &= "> **Multiplexed Router & Session Registry Active (Continuous Ambient Ear & Hooks)**: In Google Antigravity, running 'rhizo open \"" & w.name & "\" \"" & tagsStr & "\"' (or 'rhizo session register \"" & w.name & "\" --tags \"" & tagsStr & "\"') registers your identity, conversation ID, and language server token/address mapping in Redis. A single host Multiplexed Router Service ('rhizo router') handles all message listening and routing for the host, while hooks and CLI commands automatically refresh the token and address registry.\n"
+      result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context via 'agentapi send-message' without manual per-turn re-arming.\n"
     else:
-      result &= "> **In-Process Ear Active**: In OpenCode and Pi, your session maintains an internal event ear for Rhizo notifications.\n"
+      result &= "> **Multiplexed Router & In-Process Ear Active**: In OpenCode and Pi, running 'rhizo open \"" & w.name & "\" \"" & tagsStr & "\"' (or 'rhizo session register \"" & w.name & "\" --tags \"" & tagsStr & "\"') registers your session with the host Multiplexed Router Service ('rhizo router'), and your session receives incoming directives reactively via its internal event ear.\n"
       result &= "> DO NOT launch a redundant blocking shell listener ('rhizo listen'); incoming directives are delivered directly into your session context.\n"
   else:
     result &= "\n# Arm single-shot listener for incoming directives:\n"
@@ -724,19 +736,21 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "     you MUST invoke 'rhizo listen " & w.name & "' IMMEDIATELY in that turn.\n"
     result &= "     Never defer arming behind a multi-step plan ('I will listen when I finish X').\n"
   else:
-    result &= "   - If the operator asks to check or revive the listener, run 'rhizo open \"" & w.name & "\"' or 'rhizo listen \"" & w.name & "\"'\n"
-    result &= "     to verify or restart the continuous ambient ear.\n"
+    result &= "   - If the operator asks to check or revive the listener, run 'rhizo open \"" & w.name & "\"' or 'rhizo session register \"" & w.name & "\"'\n"
+    result &= "     to refresh the session registration and ensure the host Multiplexed Router is directing messages to this window.\n"
   result &= "2. WORKER AUTONOMOUS EXECUTION (WHEN OPERATOR IS SILENT):\n"
   result &= "   You are an AUTONOMOUS CLUSTER WORKER, NOT A PASSIVE CHATBOT.\n"
   if harnessKind == htAntigravity:
-    result &= "   When an incoming directive is delivered via 'agentapi send-message' from your continuous ambient ear, a task has been received!\n"
+    result &= "   When an incoming directive is delivered via 'agentapi send-message' from the host Multiplexed Router Service, a task has been received!\n"
   elif harnessKind in [htOpenCode, htPi]:
-    result &= "   When an incoming directive is delivered via your session's in-process event ear, a task has been received!\n"
+    result &= "   When an incoming directive is delivered via the Multiplexed Router / in-process event ear, a task has been received!\n"
   else:
     result &= "   When 'rhizo listen " & w.name & "' unblocks and exits, a task has been delivered into this session!\n"
   result &= "   - IMMEDIATE ACK UPON RECEIPT: Immediately claim the task ('rhizo task claim <id> --lease 900' or send a quick ACK reply to @" & cfg.orchestrator & " WITHOUT --listen).\n"
   if harnessKind == htAntigravity:
-    result &= "   - CONTINUOUS EAR EXECUTION: In Antigravity, the continuous background ear ('--agy-ear' launched by 'rhizo open') pushes incoming tasks directly into the conversation via 'agentapi send-message' (and PostToolUse hooks auto-extend task leases), so execute without manual 'rhizo listen' re-arming!\n"
+    result &= "   - MULTIPLEXED ROUTER EXECUTION: In Antigravity, the host Multiplexed Router Service ('rhizo router') pushes incoming tasks directly into the conversation via 'agentapi send-message' (and PostToolUse hooks auto-extend task leases), so execute without manual 'rhizo listen' re-arming!\n"
+  elif harnessKind in [htOpenCode, htPi]:
+    result &= "   - MULTIPLEXED ROUTER EXECUTION: In OpenCode and Pi, the host Multiplexed Router Service ('rhizo router') routes messages directly to your in-process event stream, so execute without manual 'rhizo listen' re-arming!\n"
   result &= "   - PERIODIC PROGRESS TELEMETRY: During long multi-step tasks (>2 minutes), run `rhizo task progress <id> \"Step X/Y: ...\"` before/after major steps to refresh your in-flight task lease and heartbeat.\n"
   if harnessKind notin [htOpenCode, htPi, htAntigravity]:
     result &= "   - Before concluding your turn, ensure your single-shot listener ('rhizo listen " & w.name & "') is armed or use 'rhizo reply ... --listen' when sending your completion report.\n"
@@ -746,9 +760,9 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "<CRITICAL>\n"
   if harnessKind in [htOpenCode, htPi, htAntigravity]:
     if harnessKind == htAntigravity:
-      result &= "- Continuous Ambient Ear Active: Incoming messages are delivered into your context reactively via the background ear ('--agy-ear') and 'agentapi send-message'. Do not wrap 'rhizo listen' in shell loops or manually re-arm every turn.\n"
+      result &= "- Multiplexed Router & Session Registry Active (Continuous Ambient Ear): One singleton 'rhizo router' service listens for all agents on the machine and routes messages directly to the right session/conversation ID via 'agentapi send-message'. Hooks and CLI commands automatically update 'rhizo:agent:<name>' and 'rhizo:agy_host:<machine_id>' whenever the language server address or CSRF token changes. Do NOT spawn blocking 'rhizo listen' subprocesses or wrap listeners in shell loops.\n"
     else:
-      result &= "- In-Process Ear: Incoming messages are delivered into your context reactively. Do not run blocking shell listeners.\n"
+      result &= "- Multiplexed Router Active: Incoming messages are delivered into your context reactively via the host Multiplexed Router and in-process ear. Do NOT run blocking shell listeners.\n"
   else:
     result &= "- Single-Shot Blocking: 'rhizo listen " & w.name & "' blocks until a message arrives, then exits immediately.\n"
     result &= "- Infinite Wait: Always run 'rhizo listen' with zero timeout (never use bounded timeouts, which cause token-thrashing empty wakeups).\n"
@@ -860,11 +874,11 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "  3. Execute assigned tasks according to your profile and re-arm listener: `rhizo listen " & w.name & "`.\n"
     result &= "</CRITICAL>\n\n"
   of htOpenCode, htPi:
-    result &= "### 7. In-Process Event Stream (OpenCode / Pi)\n"
-    result &= "Your session receives incoming Rhizo messages reactively through its native event ear. Scheduled polling and blocking shell listeners are not required.\n\n"
+    result &= "### 7. Multiplexed Router & In-Process Event Stream (OpenCode / Pi)\n"
+    result &= "Your session registers via `rhizo open " & w.name & "` / `rhizo session register " & w.name & "` with the Multiplexed Router Service (`rhizo router`). Incoming Rhizo messages are delivered reactively through the router and native event ear. Scheduled polling and blocking shell listeners are not required.\n\n"
   of htAntigravity:
-    result &= "### 7. Continuous Ambient Ear & Lifecycle Hooks (Google Antigravity)\n"
-    result &= "`rhizo open` automatically launches a continuous background ear (`--agy-ear`) that streams your Redis inbox and wakes/enqueues messages directly into your Antigravity session via `agentapi send-message`, while `rhizo hook install --antigravity` provides automatic `PostToolUse` lease renewal, `PreInvocation` context anchors, and `Stop` turn-end interlocks. Manual per-turn `rhizo listen` re-arming and scheduled polling are not required.\n\n"
+    result &= "### 7. Multiplexed Router, Continuous Ambient Ear & Lifecycle Hooks (Google Antigravity)\n"
+    result &= "`rhizo open " & w.name & "` / `rhizo session register " & w.name & "` registers your session in the Redis session registry (`rhizo:agent:" & w.name & "`, `rhizo:agy_host:<machine_id>`). A single host Multiplexed Router Service (`rhizo router`) handles all message listening and routing on this machine, streaming messages directly to your conversation ID via `agentapi send-message`. Antigravity lifecycle hooks (`rhizo hook install --antigravity`) automatically provide `PostToolUse` lease renewal, `PreInvocation` context injection, and `Stop` turn-end interlocks. Manual per-turn `rhizo listen` subprocesses and scheduled polling are not required.\n\n"
   of htClaudeCode, htGeneric:
     result &= "### 7. Supervised Single-Shot Listener Discipline\n"
     result &= "Run `rhizo listen " & w.name & "` as a single-shot blocking foreground command. When a message arrives, the process exits cleanly with the delivered payload. Scheduled polling and infinite loops are strictly prohibited.\n\n"
@@ -1179,7 +1193,8 @@ proc doPrompts*(
     echo "  rhizo who"
     echo ""
     echo "CRITICAL ORCHESTRATOR MANDATE:"
-    echo "  You MUST arm your background listener NOW in this very turn before yielding:"
+    echo "  - In Multiplexed Router Harnesses (Google Antigravity, OpenCode, Pi): Your session registers via `rhizo open " & cfg.orchestrator & "` / `rhizo session register`. The host Multiplexed Router Service (`rhizo router`) handles listening and routing automatically; blocking per-turn `rhizo listen` subprocesses are not required."
+    echo "  - In CLI Subprocess Harnesses (Claude Code, Codex): You MUST arm your background listener NOW in this very turn before yielding:"
     echo "    rhizo listen " & cfg.orchestrator
     echo "  As soon as workers are pasted (or re-tagged), their WORKER_READY handshake will wake you!"
     echo "================================================================================\n"
@@ -1243,7 +1258,8 @@ proc doPrompts*(
     echo "  3. Verify cluster registration: rhizo who"
     echo ""
     echo "CRITICAL ORCHESTRATOR MANDATE:"
-    echo "  You MUST arm your background listener NOW in this very turn before yielding:"
+    echo "  - In Multiplexed Router Harnesses (Google Antigravity, OpenCode, Pi): Your session registers via `rhizo open " & cfg.orchestrator & "` / `rhizo session register`. The host Multiplexed Router Service (`rhizo router`) handles listening and routing automatically; blocking per-turn `rhizo listen` subprocesses are not required."
+    echo "  - In CLI Subprocess Harnesses (Claude Code, Codex): You MUST arm your background listener NOW in this very turn before yielding:"
     echo "    rhizo listen " & cfg.orchestrator
     echo "  As soon as workers are pasted (or re-tagged), their WORKER_READY handshake will wake you!"
     echo "================================================================================"

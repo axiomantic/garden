@@ -327,6 +327,9 @@ Rejection is the low-friction fast path whenever ANY doubt, defect, green mirage
 Approval is intentionally high-friction and evidence-bound. Running `vine audit approve` strictly requires `--evidence "..."` citing specific changed file basenames, provider->consumer call-sites, and negative control assertions from the diff:
 `vine audit approve <task_id> --auditor <name> --ticket <hex> --evidence "<changed files, provider->consumer call-sites, negative controls>" --listen`
 Passing vague praise or empty justifications without empirical diff citations is mechanically and procedurally rejected.
+
+> [!NOTE]
+> **Multiplexed Router vs CLI Subprocesses**: In CLI subprocess harnesses (Claude Code, Codex), `--listen` re-arms the single-shot listener upon delivering the audit decision. In Multiplexed Router harnesses (Google Antigravity, OpenCode, Pi), the session is continuously connected to the host router, so per-turn listener re-arming is not required.
 </CRITICAL>
 
 1. **Mandatory Inspection (`vine audit inspect <task_id>`)**: Before issuing any audit decision (`approve` or `reject`), the Auditor MUST execute `vine audit inspect <task_id>` to inspect the deliverable claim bundle, delivery ticket, strand git diff, and test evidence. Approving an audit blindly without inspection is strictly prohibited.
