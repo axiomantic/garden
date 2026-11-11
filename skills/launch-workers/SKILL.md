@@ -97,39 +97,41 @@ Run `garden prompts` (or `garden launch`) from the project root:
 # Output all worker prompts to terminal (and optionally write to file):
 garden prompts --write garden-prompts.md
 
-# Or generate for a specific worker:
-garden prompts --worker <project>-architect  # (or suffix shorthand: --worker architect)
+# Or generate for a specific worker or role:
+garden prompts --role architect       # Filter by triad role
+garden prompts --worker <unique_id>   # Or filter by unique codename
 ```
 
-Garden automatically synthesizes the standard balanced triad with procedurally generated whimsical entities (e.g. botanical spirits, clockwork automatons, mythical cryptids):
-- `@<project>-architect` (e.g. Bramblestitch / Cogswell Pendulum - Staff Systems Architect)
-- `@<project>-auditor` (e.g. Prickle-Thistle / Grumblewick Snark - Verification & Adversarial Auditor)
-- `@<project>-implementer` (e.g. Moss-Weaver / Sprocket-Hop - DevEx & Implementation Lead)
+Garden automatically synthesizes the standard balanced triad with procedurally generated whimsical entities and unique listener codenames (e.g. botanical spirits, clockwork automatons, mythical cryptids):
+- `@architect` tag (e.g. Bramblestitch - Staff Systems Architect; unique listener ID: `<project>-sequoia`)
+- `@auditor` tag (e.g. Prickle-Thistle - Verification & Adversarial Auditor; unique listener ID: `<project>-kestrel`)
+- `@implementer` tag (e.g. Moss-Weaver - DevEx & Implementation Lead; unique listener ID: `<project>-falcon`)
 
 ### Step 2: Present & Paste Prompts into Sessions
 The Orchestrator presents the generated prompt blocks to the operator with clear, structured guidance:
 
 1. **Numbered Terminal Tab / Session Instructions**:
    Provide a concise setup list instructing the operator on how many sessions to open and which harness/model to configure for each:
-   - **Session 1 (@<project>-architect)**: e.g. Antigravity IDE (Window 1) or Claude Code CLI (Tab 1) $\to$ Paste Card 1
-   - **Session 2 (@<project>-auditor)**: e.g. Claude Code CLI (Tab 2) or Antigravity IDE (Window 2) $\to$ Paste Card 2
-   - **Session 3 (@<project>-implementer)**: e.g. Antigravity IDE (Window 3) or OpenCode $\to$ Paste Card 3
+   - **Session 1 (@architect / <unique_id>)**: e.g. Antigravity IDE (Window 1) or Claude Code CLI (Tab 1) $\to$ Paste Card 1
+   - **Session 2 (@auditor / <unique_id>)**: e.g. Claude Code CLI (Tab 2) or Antigravity IDE (Window 2) $\to$ Paste Card 2
+   - **Session 3 (@implementer / <unique_id>)**: e.g. Antigravity IDE (Window 3) or OpenCode $\to$ Paste Card 3
 2. **Harness & Model Agnostic Flexibility**:
    Explicitly reassure the operator: *"Workers can run in ANY coding harness (Antigravity, Claude Code, OpenCode, Pi, Cursor) and inherit the active model configured in that window/session. Coordination occurs strictly over Rhizo (local Redis) and Vine (Rift strands)."*
 3. **Temp File Links (Zero Inline Chat Flooding)**:
-   NEVER paste the multi-page prompt card bodies inline into chat. Output the concise list of workers with clickable file links:
-   - **@<project>-architect**: `/tmp/garden-<project>/<project>-architect.md`
-   - **@<project>-auditor**: `/tmp/garden-<project>/<project>-auditor.md`
-   - **@<project>-implementer**: `/tmp/garden-<project>/<project>-implementer.md`
+   NEVER paste the multi-page prompt card bodies inline into chat. Output the concise list of workers with clickable file links (written with both role slug and unique ID):
+   - **Architect**: `/tmp/garden-<project>/architect-<unique_id>.md` and `/tmp/garden-<project>/<unique_id>.md`
+   - **Auditor**: `/tmp/garden-<project>/auditor-<unique_id>.md` and `/tmp/garden-<project>/<unique_id>.md`
+   - **Implementer**: `/tmp/garden-<project>/implementer-<unique_id>.md` and `/tmp/garden-<project>/<unique_id>.md`
    - **All Combined**: `/tmp/garden-<project>/all-workers.md`
 4. **Immediate Autonomous Onboarding**:
    Each prompt instructs the pasted session to immediately:
    - `cd "<project_dir>"`
-   - `export RHIZO_AGENT_NAME="<name>"`
-   - `rhizo open "<name>" "<tags>"` (registers session in Redis registry with host Multiplexed Router)
-   - `rhizo hook install --antigravity --agent "<name>"` (if running in Antigravity IDE)
-   - `rhizo hook install --codex --agent "<name>"` (if running in Codex CLI/Desktop)
-   - `rhizo listen "<name>"` (ONLY in CLI harnesses: Claude Code, Codex, Generic Shells)
+   - `export RHIZO_AGENT_ID="<unique_id>"`
+   - `export RHIZO_AGENT_NAME="<unique_id>"`
+   - `rhizo open "<unique_id>" "<tags>"` (registers session in Redis registry with host Multiplexed Router)
+   - `rhizo hook install --antigravity --agent "<unique_id>"` (if running in Antigravity IDE)
+   - `rhizo hook install --codex --agent "<unique_id>"` (if running in Codex CLI/Desktop)
+   - `rhizo listen "<unique_id>"` (ONLY in CLI harnesses: Claude Code, Codex, Generic Shells)
 5. **Scheduled Health Check Template (ONLY for OpenAI Codex / ChatGPT CLI)**:
    In Google Antigravity (using the continuous ambient ear and hooks) and OpenCode (using background ear), DO NOT configure scheduled tasks; reactive event/hook streams handle wakeups natively.
    In Codex Desktop / CLI where sessions cannot wake from background process exits without external stimulation, prompts include the bulletproof 4-step template:

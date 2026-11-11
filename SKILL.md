@@ -194,8 +194,8 @@ When an operator initiates a fresh project or requests multi-agent coordination 
 Because the coding harness is auto-detected from the session environment (`ANTIGRAVITY_APP_DIR` $\to$ Antigravity IDE, `CLAUDE_CODE` $\to$ Claude Code CLI, `OPENCODE_SESSION_ID` $\to$ OpenCode, `CODEX_SESSION_ID` $\to$ ChatGPT Desktop / Codex, `PI_SESSION_ID` $\to$ Pi), the orchestrator invokes `ask_question` to conduct a streamlined **Single-Question Intake Interview**:
 
 1. **Single Question: Execution Mode & Swarm Shape in <Detected Harness>**:
-   - *Option 1 (Recommended)*: Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Systems Architect `@<project>-architect`, Adversarial Auditor `@<project>-auditor`, DevEx Lead `@<project>-implementer`).
-   - *Option 2*: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
+   - *Option 1 (Recommended)*: Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Systems Architect `@architect`, Adversarial Auditor `@auditor`, DevEx Lead `@implementer`; unique listener codenames allocated via `rhizo name <project>`).
+   - *Option 2*: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead `@implementer`, Adversarial Auditor `@auditor`; unique listener codenames allocated via `rhizo name <project>`).
    - *Option 3 (Deprioritized)*: Single-Agent Inline (Execute sequentially within current chat session; strongly discouraged for code edits to preserve orchestrator context for governance).
    - *Option 4*: Custom Swarm (Operator specifies custom roles or cross-harness distribution).
 

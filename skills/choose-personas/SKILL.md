@@ -37,7 +37,7 @@ graph TD
 
 <CRITICAL>
 Mandatory Independent Auditor Role (Key 3 Invariant):
-Swarm rosters MUST ALWAYS include a dedicated, independent Adversarial Auditor (@<project>-auditor).
+Swarm rosters MUST ALWAYS include a dedicated, independent Adversarial Auditor (routable via `@auditor` capability tag, with unique listener codename allocated via `rhizo name <project>`).
 Workers who write code are strictly prohibited from auditing or ratifying their own deliverables. Vine's Key 3 gate mechanically rejects self-auditing (ExitGateAuditViolation = 6). The Adversarial Auditor must run in a dedicated, independent session to inspect submitted strands, enforce the Five Pillars, and execute 'vine audit approve --auditor <name>'.
 </CRITICAL>
 
@@ -137,42 +137,50 @@ Invoke `ask_question` with a SINGLE concise question combining execution mode an
 - Option 4: Custom configuration (allows user write-in).
 
 ### Step 4: Synthesize Swarm Specification
-Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON). In Tier 1 harnesses (Google Antigravity, OpenCode, Pi), workers register with the host Multiplexed Router Service (`rhizo open <name>` / `rhizo session register <name>`), eliminating per-turn shell listeners. In CLI harnesses (Claude Code, Codex), workers arm single-shot listeners (`rhizo listen <name>`). If inspectable output is needed, Garden emits to stdout or prompt cards in `/tmp/garden-<project>/`:
+Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON).
+
+> [!NOTE]
+> **Decoupling Triad Roles from Unique Listener IDs**: The Triad defines *roles* (`architect`, `auditor`, `implementer`) which are registered as capability tags in Rhizo (`--tags "<project>,<role>,..."`) for semantic multicast and routing (`@architect`, `@auditor`, `@implementer`). The unique listener IDs (`name` / `agent_id`) are collision-free codenames allocated dynamically via `rhizo name <project>` (e.g. `my-project-sequoia`, `my-project-kestrel`, `my-project-falcon`). Never assume static role names as unique listener IDs.
+
+In Tier 1 harnesses (Google Antigravity, OpenCode, Pi), workers register with the host Multiplexed Router Service (`rhizo open <name>` / `rhizo session register <name>`), eliminating per-turn shell listeners. In CLI harnesses (Claude Code, Codex), workers arm single-shot listeners (`rhizo listen <name>`). If inspectable output is needed, Garden emits to stdout or prompt cards in `/tmp/garden-<project>/`:
 
 ```json
 {
   "project": "my-project",
   "created_at": "2026-09-28T12:00:00Z",
   "target_repo": "/Users/eek/Development/my-project",
-  "orchestrator": "my-project-orchestrator",
+  "orchestrator": "@orchestrator",
   "workers": [
     {
-      "name": "my-project-architect",
+      "name": "my-project-sequoia",
+      "role_slug": "architect",
       "persona": "Bramblestitch",
       "role": "Staff Systems Architect",
       "harness": "Antigravity IDE",
       "model": "Session Default (active in window/tab)",
-      "tags": ["my-project", "systems", "architecture", "invariants"],
+      "tags": ["my-project", "architect", "systems", "architecture", "invariants"],
       "system_prompt": "You are Bramblestitch, Staff Systems Architect for project my-project...",
       "opposing_priority": "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes."
     },
     {
-      "name": "my-project-auditor",
+      "name": "my-project-kestrel",
+      "role_slug": "auditor",
       "persona": "Prickle-Thistle",
       "role": "Verification & Adversarial Auditor",
       "harness": "Claude Code CLI / Antigravity",
       "model": "Session Default (active in window/tab)",
-      "tags": ["my-project", "qa", "audit", "verifier", "purist"],
+      "tags": ["my-project", "auditor", "qa", "audit", "verifier", "purist"],
       "system_prompt": "You are Prickle-Thistle, Verification & Adversarial Auditor for project my-project...",
       "opposing_priority": "Adversarial skepticism, rigorous negative controls, and proof over convenience."
     },
     {
-      "name": "my-project-implementer",
+      "name": "my-project-falcon",
+      "role_slug": "implementer",
       "persona": "Moss-Weaver",
       "role": "DevEx & Implementation Lead",
       "harness": "Antigravity / OpenCode",
       "model": "Session Default (active in window/tab)",
-      "tags": ["my-project", "dev", "devex", "build", "implementation"],
+      "tags": ["my-project", "implementer", "dev", "devex", "build", "implementation"],
       "system_prompt": "You are Moss-Weaver, DevEx & Implementation Lead for project my-project...",
       "opposing_priority": "High-velocity implementation, pragmatic delivery, and developer ergonomics."
     }

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Decouple Triad Roles from Unique Listener IDs (`src/garden.nim`, `src/seed.nim`, `src/germinate.nim`, `skills/`, `SKILL.md`, `docs/`, `tests/test_garden.nim`)**:
+  - Decoupled Triad roles (`architect`, `auditor`, `implementer`) from unique session listener IDs (`agent_id` / `name`).
+  - Added atomic allocation of unique collision-free listener codenames via `rhizo name <project>` (with deterministic lexicon fallback), keeping Triad titles strictly as `role`, `role_slug`, and capability tags (`--tags "<project>,<role>,..."`) for semantic routing (`@architect`, `@auditor`, `@implementer`).
+  - Updated `garden prompts` and `garden launch` to accept `--role <role>` / `-r <role>` in addition to `--worker <name>`, matching either unique agent ID, role slug, role title, or tags.
+  - Generated prompt card files with both naming formats (`/tmp/garden-<project>/<role>-<agent_id>.md` and `/tmp/garden-<project>/<agent_id>.md`) for flexible retrieval.
+  - Enhanced 10-backtick worker prompt cards to clearly separate `- **Unique Listener ID (agent_id)**: <unique_id>` from `- **Triad Role**: <role> (routable via @<roleSlug> tag)`, and emit both `export RHIZO_AGENT_ID="<unique_id>"` and `export RHIZO_AGENT_NAME="<unique_id>"`.
+  - Updated all Garden skills (`choose-personas`, `garden`, `launch-workers`, `orchestrate-swarm`, `plan-implementation`), root `SKILL.md`, and documentation to eliminate legacy static role names as unique listener IDs.
+  - Added full test coverage in `tests/test_garden.nim` asserting unique codename allocation, dual-file generation, `--role` filtering, and telemetry validation.
 - **Strict Unknown Flag Rejection & Intuitive CLI Synonyms Across All Subcommands (`src/garden.nim`, `src/germinate.nim`, `src/update.nim`, `tests/test_garden.nim`, `tests/test_germinate.nim`)**:
   - Implemented strict unknown option rejection (exit code 2) with valid options list and usage examples across all Garden subcommands (`plant`, `roadmap`, `germinate`, `repurpose`, `prompts`, `launch`, `init`, `status`, `teardown`, `roster-guard`, `session`, `guide`, `update`), eliminating silent option discarding.
   - Added fail-fast validation (exit code 1) for required arguments:

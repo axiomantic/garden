@@ -131,42 +131,45 @@ Garden swarms are defined by two complementary configuration files in the reposi
   },
   "workers": [
     {
-      "name": "arborus-architect",
+      "name": "arborus-sequoia",
+      "role_slug": "architect",
       "role": "Systems Architect",
-      "tags": ["architect", "design", "api"],
+      "tags": ["arborus", "architect", "design", "api"],
       "model": "Session Default (active in window/tab)",
       "opposing_priorities": [
         "Defend architectural purity and clean abstractions",
         "Enforce backwards compatibility and zero breaking changes",
         "Resist ad-hoc hacks and quick duct-tape fixes"
       ],
-      "inbox": "arborus-architect",
+      "inbox": "arborus-sequoia",
       "strand_prefix": "arch"
     },
     {
-      "name": "arborus-auditor",
+      "name": "arborus-kestrel",
+      "role_slug": "auditor",
       "role": "Adversarial Auditor",
-      "tags": ["auditor", "security", "invariants"],
+      "tags": ["arborus", "auditor", "security", "invariants"],
       "model": "Session Default (active in window/tab)",
       "opposing_priorities": [
         "Expose race conditions, deadlocks, and memory leaks",
         "Challenge untested assumptions with empirical falsification",
         "Refuse to approve designs with ambiguous failure modes"
       ],
-      "inbox": "arborus-auditor",
+      "inbox": "arborus-kestrel",
       "strand_prefix": "audit"
     },
     {
-      "name": "arborus-implementer",
+      "name": "arborus-falcon",
+      "role_slug": "implementer",
       "role": "DevEx & Implementation Lead",
-      "tags": ["implementer", "backend", "tests"],
+      "tags": ["arborus", "implementer", "backend", "tests"],
       "model": "Session Default (active in window/tab)",
       "opposing_priorities": [
         "Maximize implementation velocity and code simplicity",
         "Ensure build times and test execution remain fast",
         "Ensure ergonomics and developer clarity trump over-engineering"
       ],
-      "inbox": "arborus-implementer",
+      "inbox": "arborus-falcon",
       "strand_prefix": "impl"
     }
   ],

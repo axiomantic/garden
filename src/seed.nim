@@ -1,7 +1,7 @@
 # /Users/eek/Development/garden/src/seed.nim
 # Botanical Task & Roadmap Seed Sowing Module.
 
-import std/[os, strutils, json, times, algorithm]
+import std/[os, osproc, strutils, json, times, algorithm]
 
 type
   SunlightLevel* = enum
@@ -323,3 +323,36 @@ proc listSeeds*(projectRoot: string = ""): seq[Seed] =
   result.sort(proc(a, b: Seed): int =
     cmp(a.createdAt, b.createdAt)
   )
+
+const FallbackCodenameLexicon* = [
+  "sequoia", "kestrel", "falcon", "redwood", "cedar", "alder", "hawk", "osprey",
+  "breeze", "sedge", "chiron", "heron", "fox", "badger", "lynx", "otter"
+]
+
+proc allocateUniqueCodename*(project: string, roleSlug: string = "", usedNames: var seq[string]): string =
+  let cleanProj = if project.len > 0: project.toLowerAscii().replace(" ", "-") else: "garden"
+  # 1. Try rhizo name <project> first if rhizo is available
+  try:
+    let (outp, code) = execCmdEx("rhizo name " & quoteShell(cleanProj))
+    if code == 0:
+      let cand = outp.strip()
+      if cand.len > 0 and cand notin usedNames:
+        usedNames.add(cand)
+        return cand
+  except CatchableError:
+    discard
+  # 2. Fallback to lexicon
+  for lex in FallbackCodenameLexicon:
+    let cand = cleanProj & "-" & lex
+    if cand notin usedNames:
+      usedNames.add(cand)
+      return cand
+  # 3. If all exhausted, use counter
+  var idx = usedNames.len + 1
+  while true:
+    let cand = cleanProj & "-worker-" & $idx
+    if cand notin usedNames:
+      usedNames.add(cand)
+      return cand
+    inc idx
+

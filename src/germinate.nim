@@ -6,32 +6,51 @@ import seed
 
 const PromptFence10 = "``````````"
 
-proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, project: string): string =
+proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, roleSlug: string, project: string): string =
   result = PromptFence10 & "markdown\n"
   result &= "# Swarm Germination Card: " & seed.title & " (@" & workerName & ")\n\n"
-  result &= "You are **@" & workerName & "** (" & role & ") assigned to germinate seed **" & seed.id & "** for project **" & project & "**.\n\n"
-  result &= "### Seed Specifications\n"
+  result &= "You are **@" & workerName & "**, serving as **" & role & "** for project **" & project & "**.\n\n"
+  result &= "### 1. Identity & Mandate\n"
+  result &= "- **Unique Listener ID (agent_id)**: `" & workerName & "`\n"
+  let roleTagInfo = if roleSlug.len > 0: " (routable via @" & roleSlug & " tag)" else: ""
+  result &= "- **Triad Role**: " & role & roleTagInfo & "\n"
+  result &= "- **Target Seed**: `" & seed.id & "` (" & seed.title & ")\n\n"
+  result &= "### 2. Seed Specifications\n"
   result &= "- **ID**: `" & seed.id & "`\n"
   result &= "- **Title**: " & seed.title & "\n"
   result &= "- **Season**: " & seed.season & "\n"
   result &= "- **Sunlight**: " & seed.sunlight & "\n"
   result &= "- **Tags**: " & seed.tags.join(", ") & "\n"
   result &= "- **Status**: " & seed.status & "\n\n"
-  if role.toLowerAscii.contains("audit") or workerName.toLowerAscii.contains("audit"):
-    result &= "### Adversarial Auditor Mandate (Key 3 Gatekeeper)\n"
+  result &= "### 3. Immediate Onboarding Actions (FIRST TURN EXECUTION)\n"
+  result &= "```bash\n"
+  result &= "export RHIZO_AGENT_ID=\"" & workerName & "\"\n"
+  result &= "export RHIZO_AGENT_NAME=\"" & workerName & "\"\n"
+  let tagsStr = project & (if roleSlug.len > 0: "," & roleSlug else: "")
+  result &= "rhizo open \"" & workerName & "\" \"" & tagsStr & "\"\n"
+  result &= "```\n\n"
+  if role.toLowerAscii.contains("audit") or roleSlug == "auditor" or workerName.toLowerAscii.contains("audit"):
+    result &= "### 4. Adversarial Auditor Mandate (Key 3 Gatekeeper)\n"
     result &= "1. Receive submitted strands from workers (`vine submit`).\n"
     result &= "2. Perform adversarial audit across the Five Pillars (Two-Point Diff, Holistic Integration, Literal Fidelity, Replacement Purge, Structural Rigor).\n"
     result &= "3. If defects: `vine audit reject <strand> --auditor " & workerName & " --reason <findings>`.\n"
     result &= "4. If sound: `vine audit approve <strand> --auditor " & workerName & " --notes <notes>`.\n"
     result &= "5. Report completion to Orchestrator and return to listening: `rhizo listen " & workerName & "`\n"
   else:
-    result &= "### Germination Mandate\n"
+    result &= "### 4. Germination Mandate\n"
     result &= "1. Provision an isolated Vine strand: `vine new seed-" & seed.id & "`\n"
     result &= "2. Implement capabilities fulfilling '" & seed.title & "'.\n"
     result &= "3. Verify Three-Key Gate (Keys 1 & 2): `vine gate`\n"
     result &= "4. Submit for independent audit: `vine submit` (THE WORKER IS NOT THE AUDITOR; independent auditor will audit).\n"
     result &= "5. Report completion and return to listening: `rhizo listen " & workerName & "`\n"
   result &= PromptFence10 & "\n"
+
+proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, project: string): string =
+  let slug = if role.toLowerAscii.contains("architect"): "architect"
+             elif role.toLowerAscii.contains("audit"): "auditor"
+             elif role.toLowerAscii.contains("implement"): "implementer"
+             else: ""
+  generateGerminatePrompt(seed, workerName, role, slug, project)
 
 proc germinateDispatch*(seedId: string, projectRoot: string = "", customQueue: string = ""): (bool, string, JsonNode) =
   let root = if projectRoot.len > 0: projectRoot else: findProjectRoot()
@@ -100,23 +119,30 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
   let tempBaseDir = (if dirExists("/tmp"): "/tmp" else: getTempDir()) / ("garden-" & proj)
   createDir(tempBaseDir)
   
-  type WorkerInfo = tuple[name: string, role: string]
-  var workers: seq[WorkerInfo] = @[
-    (proj & "-architect", "Staff Systems Architect"),
-    (proj & "-auditor", "Verification & Adversarial Auditor"),
-    (proj & "-implementer", "DevEx & Implementation Lead")
+  type WorkerInfo = tuple[name: string, roleSlug: string, role: string]
+  var usedNames: seq[string] = @[]
+  let archName = allocateUniqueCodename(proj, "architect", usedNames)
+  let auditName = allocateUniqueCodename(proj, "auditor", usedNames)
+  let implName = allocateUniqueCodename(proj, "implementer", usedNames)
+
+  var defaultWorkers: seq[WorkerInfo] = @[
+    (archName, "architect", "Staff Systems Architect"),
+    (auditName, "auditor", "Verification & Adversarial Auditor"),
+    (implName, "implementer", "DevEx & Implementation Lead")
   ]
+
+  var workers: seq[WorkerInfo] = defaultWorkers
 
   if targetWorker.len > 0:
     let tw = targetWorker.toLowerAscii()
     workers = @[]
-    for w in [(proj & "-architect", "Staff Systems Architect"),
-              (proj & "-auditor", "Verification & Adversarial Auditor"),
-              (proj & "-implementer", "DevEx & Implementation Lead")]:
-      if w[0].toLowerAscii().contains(tw) or w[1].toLowerAscii().contains(tw):
+    for w in defaultWorkers:
+      if w.name.toLowerAscii() == tw or w.name.toLowerAscii().contains(tw) or
+         w.roleSlug.toLowerAscii() == tw or w.role.toLowerAscii().contains(tw):
         workers.add(w)
     if workers.len == 0:
-      workers.add((targetWorker, "Swarm Worker"))
+      let customUid = allocateUniqueCodename(proj, targetWorker, usedNames)
+      workers.add((customUid, targetWorker.toLowerAscii(), targetWorker & " (Swarm Worker)"))
 
   var promptBlocks: seq[string] = @[]
   var jPrompts = newJArray()
@@ -129,11 +155,14 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
   var allPromptsBuf = "# Germination Prompts: " & s.title & " (" & s.id & ")\n\n"
 
   for idx, w in workers:
-    let p = generateGerminatePrompt(s, w.name, w.role, proj)
+    let p = generateGerminatePrompt(s, w.name, w.role, w.roleSlug, proj)
     promptBlocks.add(p)
 
     let workerFilePath = tempBaseDir / ("germinate-" & s.id & "-" & w.name & ".md")
     writeFile(workerFilePath, p)
+    if w.roleSlug.len > 0 and w.roleSlug != w.name:
+      let roleFilePath = tempBaseDir / ("germinate-" & s.id & "-" & w.roleSlug & "-" & w.name & ".md")
+      writeFile(roleFilePath, p)
 
     allPromptsBuf &= "## @" & w.name & " (" & w.role & ")\n\n"
     allPromptsBuf &= p & "\n\n"
@@ -143,6 +172,7 @@ proc germinatePrompt*(seedId: string, targetWorker: string = "", projectRoot: st
 
     var jw = newJObject()
     jw["worker"] = %w.name
+    jw["role_slug"] = %w.roleSlug
     jw["role"] = %w.role
     jw["file_path"] = %workerFilePath
     jw["prompt"] = %p

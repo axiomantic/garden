@@ -143,24 +143,32 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (pOut, pCode) = execCmdEx(exePath & " prompts")
     check pCode == 0
     check pOut.contains("GARDEN SWARM BOOTSTRAP")
-    check pOut.contains("architect")
-    check pOut.contains("auditor")
-    check pOut.contains("implementer")
+    check pOut.toLowerAscii.contains("architect")
+    check pOut.toLowerAscii.contains("auditor")
+    check pOut.toLowerAscii.contains("implement")
     check pOut.contains(".md")
 
-    # Verify temp directory and worker files were created
+    # Verify temp directory and worker files were created with both unique ID and role-prefixed names
     let tmpGarden = (if dirExists("/tmp"): "/tmp" else: getTempDir()) / "garden-garden"
     check dirExists(tmpGarden)
-    check fileExists(tmpGarden / "garden-architect.md")
-    check fileExists(tmpGarden / "garden-auditor.md")
-    check fileExists(tmpGarden / "garden-implementer.md")
     check fileExists(tmpGarden / "all-workers.md")
 
-    let archContent = readFile(tmpGarden / "garden-architect.md")
-    check archContent.contains("export RHIZO_AGENT_NAME=")
-    check archContent.contains("rhizo open")
-    check archContent.contains("Continuous Ambient Ear")
-    check archContent.contains("agentapi send-message")
+    let (jOut, _) = execCmdEx(exePath & " prompts --json")
+    let j = parseJson(jOut.strip())
+    check j["workers"].len == 3
+    for w in j["workers"]:
+      let name = w["name"].getStr()
+      let slug = w["role_slug"].getStr()
+      check fileExists(tmpGarden / (name & ".md"))
+      check fileExists(tmpGarden / (slug & "-" & name & ".md"))
+      let content = readFile(tmpGarden / (name & ".md"))
+      check content.contains("Unique Listener ID (agent_id)")
+      check content.contains("Triad Role")
+      check content.contains("export RHIZO_AGENT_ID=")
+      check content.contains("export RHIZO_AGENT_NAME=")
+      check content.contains("rhizo open")
+      check content.contains("Continuous Ambient Ear")
+      check content.contains("agentapi send-message")
 
     # Verify --inline flag produces raw 10-backtick fence blocks in stdout
     let (iOut, iCode) = execCmdEx(exePath & " prompts --inline")
@@ -168,29 +176,40 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check iOut.contains("``````````markdown")
     check iOut.contains("SWARM_RUNTIME_STATE")
 
-  test "Garden prompts --worker filters output to target worker":
+  test "Garden prompts --worker and --role filter output to target worker":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
     check pCode == 0
     check pOut.contains("auditor")
-    check pOut.contains("garden-auditor")
-    check not pOut.contains("garden-architect")
-    check not pOut.contains("garden-implementer")
+    check pOut.contains("Verification & Adversarial Auditor")
+    check not pOut.contains("Staff Systems Architect")
+    check not pOut.contains("DevEx & Implementation Lead")
 
-  test "Garden prompts --json outputs structured json telemetry":
+    let (rOut, rCode) = execCmdEx(exePath & " prompts --role architect")
+    check rCode == 0
+    check rOut.contains("architect")
+    check rOut.contains("Staff Systems Architect")
+    check not rOut.contains("DevEx & Implementation Lead")
+
+  test "Garden prompts --json outputs structured json telemetry with decoupled roles and unique UIDs":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (jOut, jCode) = execCmdEx(exePath & " prompts --json")
     check jCode == 0
     let j = parseJson(jOut.strip())
     check j["count"].getInt() == 3
     check j["workers"].len == 3
-    check j["workers"][0]["name"].getStr() == "garden-architect"
+    check j["workers"][0]["role_slug"].getStr() == "architect"
+    check j["workers"][0]["name"].getStr().startsWith("garden-")
+    check j["workers"][0]["name"].getStr() != "garden-architect"
     check j.hasKey("temp_dir")
     check j["workers"][0].hasKey("file_path")
     check not j["workers"][0].hasKey("copy_command")
     check fileExists(j["workers"][0]["file_path"].getStr())
+    check j["workers"][0].hasKey("role_file_path")
+    check fileExists(j["workers"][0]["role_file_path"].getStr())
     check j["workers"][0]["persona"].getStr().len > 0
-    check j["workers"][0]["prompt"].getStr().contains("garden-architect")
+    check j["workers"][0]["prompt"].getStr().contains(j["workers"][0]["name"].getStr())
+    check j["workers"][0]["prompt"].getStr().contains("Unique Listener ID (agent_id)")
 
   test "Garden prompts --write outputs prompts to file":
     let tmpDir = getTempDir() / ("garden_test_prompts_write_" & $getCurrentProcessId())
@@ -214,14 +233,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
     check lCode == 0
-    check lOut.contains("garden-implementer")
+    check lOut.contains("DevEx & Implementation Lead")
     check lOut.contains(".md")
     check lOut.contains("CRITICAL ORCHESTRATOR MANDATE")
     check lOut.contains("rhizo listen")
 
-    let (iOut, iCode) = execCmdEx(exePath & " launch --worker implementer --inline")
+    let (iOut, iCode) = execCmdEx(exePath & " launch --role implementer --inline")
     check iCode == 0
-    check iOut.contains("garden-implementer")
+    check iOut.contains("DevEx & Implementation Lead")
     check iOut.contains("``````````markdown")
     check iOut.contains("WORKER_READY")
     check iOut.contains("CRITICAL ORCHESTRATOR MANDATE")
@@ -914,7 +933,7 @@ profile = "audit"
     check cfg.workers.len == 2
     check cfg.workers[0].name.endsWith("investigator")
     check cfg.workers[0].profile == "investigation"
-    check cfg.workers[1].name.endsWith("auditor")
+    check cfg.workers[1].roleSlug == "auditor"
     check cfg.workers[1].profile == "audit"
 
     # Verify generated prompt for investigator does NOT contain strand creation or commit

@@ -58,9 +58,9 @@ If and only if no active cluster workers exist, the session conducts a streamlin
 
 Analyzes the repository context, tech stack, and task requirements to configure a balanced triad of complementary personas with opposing priorities:
 
-1. **Systems Architect (`@<project>-architect`)**: Focuses on correctness, clean abstractions, backwards compatibility, and API stability.
-2. **Adversarial Auditor (`@<project>-auditor`)**: Focuses on failure modes, race conditions, edge cases, regression risks, and security vulnerabilities.
-3. **DevEx & Implementation Lead (`@<project>-implementer`)**: Focuses on implementation velocity, ergonomically simple code, test suite execution, and clean documentation.
+1. **Systems Architect (`@architect`)**: Focuses on correctness, clean abstractions, backwards compatibility, and API stability.
+2. **Adversarial Auditor (`@auditor`)**: Focuses on failure modes, race conditions, edge cases, regression risks, and security vulnerabilities.
+3. **DevEx & Implementation Lead (`@implementer`)**: Focuses on implementation velocity, ergonomically simple code, test suite execution, and clean documentation.
 
 Outputs the ratified configuration to `garden-swarm.json`.
 

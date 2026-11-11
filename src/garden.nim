@@ -21,9 +21,10 @@ type
     htAntigravity, htClaudeCode, htCodex, htOpenCode, htPi, htGeneric
 
   WorkerSpec* = object
-    name*: string
+    name*: string             # Unique listener codename ID (agent_id)
+    roleSlug*: string         # Triad role slug (architect, auditor, implementer, etc.)
     persona*: string
-    role*: string
+    role*: string             # Human-readable role title
     harness*: string
     model*: string
     tags*: seq[string]
@@ -117,7 +118,8 @@ Options for 'germinate':
   --json                   Output result as structured JSON
 
 Options for 'prompts' and 'launch':
-  --worker, -w <name>      Filter prompt output to a specific worker
+  --worker, -w <name>      Filter prompt output to a specific worker (agent_id or role slug)
+  --role, -r <role>        Filter prompt output to a specific role (architect, auditor, implementer)
   --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)
   --inline, -i             Print raw 10-backtick prompt cards directly to stdout
   --force-prompts, --cards Force prompt card generation (skips fast-path)
@@ -531,13 +533,31 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       if sJson.hasKey("orchestrator_agent"):
         result.orchestratorAgent = sJson["orchestrator_agent"].getStr()
 
+      var customUsedNames: seq[string] = @[]
+      if result.orchestrator.len > 0 and result.orchestrator != "orchestrator":
+        customUsedNames.add(result.orchestrator)
+      if result.orchestratorAgent.len > 0:
+        customUsedNames.add(result.orchestratorAgent)
+
       if sJson.hasKey("workers") and sJson["workers"].kind == JArray:
         for w in sJson["workers"]:
           var spec: WorkerSpec
           let rawName = if w.hasKey("name"): w["name"].getStr() else: "worker"
-          spec.name = if rawName in ["architect", "auditor", "implementer", "worker"]: projName & "-" & rawName else: rawName
+          let roleVal = if w.hasKey("role"): w["role"].getStr("Swarm Worker") else: "Swarm Worker"
+          let rawSlug = if w.hasKey("role_slug"): w["role_slug"].getStr()
+                        elif rawName in ["architect", "auditor", "implementer"]: rawName
+                        elif roleVal.toLowerAscii.contains("architect"): "architect"
+                        elif roleVal.toLowerAscii.contains("audit"): "auditor"
+                        elif roleVal.toLowerAscii.contains("implement"): "implementer"
+                        else: ""
+          spec.roleSlug = rawSlug
+          if rawName in ["architect", "auditor", "implementer", "worker"] or rawName.endsWith("-architect") or rawName.endsWith("-auditor") or rawName.endsWith("-implementer"):
+            spec.name = allocateUniqueCodename(result.project, rawSlug, customUsedNames)
+          else:
+            spec.name = rawName
+            customUsedNames.add(spec.name)
           spec.persona = if w.hasKey("persona"): w["persona"].getStr(spec.name) else: spec.name
-          spec.role = if w.hasKey("role"): w["role"].getStr("Swarm Worker") else: "Swarm Worker"
+          spec.role = roleVal
           spec.harness = if w.hasKey("harness") and w["harness"].getStr().len > 0: w["harness"].getStr() else: detectCurrentHarness()
           spec.model = if w.hasKey("model"): w["model"].getStr("Session Default (active in window/tab)") else: "Session Default (active in window/tab)"
           if w.hasKey("tags"):
@@ -547,14 +567,17 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
               for t in w["tags"].getStr().split(","):
                 let trimmed = t.strip()
                 if trimmed.len > 0: spec.tags.add(trimmed)
+          if spec.roleSlug.len > 0 and spec.roleSlug notin spec.tags:
+            spec.tags.add(spec.roleSlug)
           if spec.tags.len == 0:
             spec.tags = @[result.project, spec.name]
           spec.systemPrompt = if w.hasKey("system_prompt"): w["system_prompt"].getStr() else: ""
           spec.opposingPriority = if w.hasKey("opposing_priority"): w["opposing_priority"].getStr() else: ""
           let isTier1 = normalizeHarness(spec.harness) in [htAntigravity, htOpenCode, htPi]
+          let tagsStr = spec.tags.join(",")
           spec.startupCommand = if w.hasKey("startup_command"): w["startup_command"].getStr()
-                                elif isTier1: "rhizo open " & spec.name & " '" & result.project & "'"
-                                else: "rhizo open " & spec.name & " '" & result.project & "' && rhizo listen " & spec.name
+                                elif isTier1: "rhizo open " & spec.name & " '" & tagsStr & "'"
+                                else: "rhizo open " & spec.name & " '" & tagsStr & "' && rhizo listen " & spec.name
           spec.profile = if w.hasKey("profile"): w["profile"].getStr() elif w.hasKey("capability"): w["capability"].getStr() else: ""
           result.workers.add(spec)
     except CatchableError as e:
@@ -583,9 +606,15 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     except CatchableError:
       discard
 
-    let archName = projName & "-architect"
-    let auditName = projName & "-auditor"
-    let implName = projName & "-implementer"
+    var triadUsedNames: seq[string] = @[]
+    if result.orchestrator.len > 0 and result.orchestrator != "orchestrator":
+      triadUsedNames.add(result.orchestrator)
+    if result.orchestratorAgent.len > 0:
+      triadUsedNames.add(result.orchestratorAgent)
+
+    let archName = allocateUniqueCodename(projName, "architect", triadUsedNames)
+    let auditName = allocateUniqueCodename(projName, "auditor", triadUsedNames)
+    let implName = allocateUniqueCodename(projName, "implementer", triadUsedNames)
     let curHarness = detectCurrentHarness()
     let curHarnessType = normalizeHarness(curHarness)
 
@@ -593,22 +622,27 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     let auditPersona = pickWhimsicalPersona("auditor", projName)
     let implPersona = pickWhimsicalPersona("implementer", projName)
 
-    var archTags = @[projName, "systems", "architecture", "invariants"]
-    var auditTags = @[projName, "qa", "audit", "verifier", "purist"]
-    var implTags = @[projName, "dev", "devex", "build", "implementation"]
+    var archTags = @[projName, "architect", "systems", "architecture", "invariants"]
+    var auditTags = @[projName, "auditor", "qa", "audit", "verifier", "purist"]
+    var implTags = @[projName, "implementer", "dev", "devex", "build", "implementation"]
     for st in seedTags:
       if st notin implTags: implTags.add(st)
 
+    let archTagsStr = archTags.join(",")
+    let auditTagsStr = auditTags.join(",")
+    let implTagsStr = implTags.join(",")
+
     let isTier1 = curHarnessType in [htAntigravity, htOpenCode, htPi]
-    let archCmd = if isTier1: "rhizo open " & archName & " '" & projName & ",systems,architecture'"
-                  else: "rhizo open " & archName & " '" & projName & ",systems,architecture' && rhizo listen " & archName
-    let auditCmd = if isTier1: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier'"
-                   else: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
-    let implCmd = if isTier1: "rhizo open " & implName & " '" & projName & ",dev,devex,build'"
-                  else: "rhizo open " & implName & " '" & projName & ",dev,devex,build' && rhizo listen " & implName
+    let archCmd = if isTier1: "rhizo open " & archName & " '" & archTagsStr & "'"
+                  else: "rhizo open " & archName & " '" & archTagsStr & "' && rhizo listen " & archName
+    let auditCmd = if isTier1: "rhizo open " & auditName & " '" & auditTagsStr & "'"
+                   else: "rhizo open " & auditName & " '" & auditTagsStr & "' && rhizo listen " & auditName
+    let implCmd = if isTier1: "rhizo open " & implName & " '" & implTagsStr & "'"
+                  else: "rhizo open " & implName & " '" & implTagsStr & "' && rhizo listen " & implName
 
     result.workers.add(WorkerSpec(
       name: archName,
+      roleSlug: "architect",
       persona: archPersona,
       role: "Staff Systems Architect",
       harness: curHarness,
@@ -622,6 +656,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
 
     result.workers.add(WorkerSpec(
       name: auditName,
+      roleSlug: "auditor",
       persona: auditPersona,
       role: "Verification & Adversarial Auditor",
       harness: curHarness,
@@ -635,6 +670,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
 
     result.workers.add(WorkerSpec(
       name: implName,
+      roleSlug: "implementer",
       persona: implPersona,
       role: "DevEx & Implementation Lead",
       harness: curHarness,
@@ -671,8 +707,9 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "> You are operating in a DEDICATED, SOVEREIGN CODING SESSION. You are an autonomous peer worker, NOT an ephemeral subagent.\n\n"
   
   result &= "### 1. Identity & Mandate\n"
-  result &= "- **Agent Codename**: `" & w.name & "`\n"
-  result &= "- **Role**: " & w.role & "\n"
+  result &= "- **Unique Listener ID (agent_id)**: `" & w.name & "`\n"
+  let roleTagInfo = if w.roleSlug.len > 0: " (routable via @" & w.roleSlug & " tag)" else: ""
+  result &= "- **Triad Role**: " & w.role & roleTagInfo & "\n"
   let profileTitle = case profile
     of wpImplementation: "Implementation & Feature Engineering"
     of wpInvestigation: "Investigation & Review (Non-Modifying / Read-Only)"
@@ -692,6 +729,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "Execute these shell commands right now in your VERY FIRST tool turn to register and announce arrival:\n\n"
   result &= "```bash\n"
   result &= "cd \"" & cfg.targetRepo & "\"\n"
+  result &= "export RHIZO_AGENT_ID=\"" & w.name & "\"\n"
   result &= "export RHIZO_AGENT_NAME=\"" & w.name & "\"\n"
   result &= "rhizo open \"" & w.name & "\" \"" & tagsStr & "\"\n"
   if harnessKind == htCodex:
@@ -1006,7 +1044,12 @@ proc doPrompts*(
     let tw = targetWorker.toLowerAscii()
     for w in cfg.workers:
       let wn = w.name.toLowerAscii()
-      if wn == tw or wn.endsWith("-" & tw) or wn.startsWith(tw & "-"):
+      let wr = w.roleSlug.toLowerAscii()
+      let wrole = w.role.toLowerAscii()
+      if wn == tw or wn.endsWith("-" & tw) or wn.startsWith(tw & "-") or
+         (wr.len > 0 and (wr == tw or wr.contains(tw))) or
+         wrole.contains(tw) or
+         tw in w.tags:
         selectedWorkers.add(w)
     if selectedWorkers.len == 0:
       stderr.writeLine("[garden] Error: Worker '" & targetWorker & "' not found in swarm configuration.")
@@ -1082,12 +1125,16 @@ proc doPrompts*(
 
   for idx, w in selectedWorkers:
     let promptText = generateWorkerPrompt(cfg, w)
-    let header = "--- WORKER " & $(idx + 1) & " of " & $selectedWorkers.len & ": @" & w.name & " (" & w.persona & " - " & w.role & ") ---"
+    let roleSlugPart = if w.roleSlug.len > 0: " (@" & w.roleSlug & ")" else: ""
+    let header = "--- WORKER " & $(idx + 1) & " of " & $selectedWorkers.len & ": @" & w.name & roleSlugPart & " (" & w.persona & " - " & w.role & ") ---"
     let subheader = "Recommended Harness: " & w.harness & " | Model: " & w.model
     let promptBlock = PromptFence10 & "markdown\n" & promptText & "\n" & PromptFence10 & "\n"
     
     let workerFilePath = tempBaseDir / (w.name & ".md")
     writeFile(workerFilePath, promptText)
+    if w.roleSlug.len > 0 and w.roleSlug != w.name:
+      let roleWorkerFilePath = tempBaseDir / (w.roleSlug & "-" & w.name & ".md")
+      writeFile(roleWorkerFilePath, promptText)
 
     allWorkersBuf &= "## " & header & "\n\n"
     allWorkersBuf &= "**" & subheader & "**\n\n"
@@ -1163,12 +1210,15 @@ proc doPrompts*(
     for card in generatedCards:
       var jw = newJObject()
       jw["name"] = %card.worker.name
+      jw["role_slug"] = %card.worker.roleSlug
       jw["persona"] = %card.worker.persona
       jw["role"] = %card.worker.role
       jw["harness"] = %card.worker.harness
       jw["model"] = %card.worker.model
       jw["tags"] = %card.worker.tags
       jw["file_path"] = %card.filePath
+      if card.worker.roleSlug.len > 0 and card.worker.roleSlug != card.worker.name:
+        jw["role_file_path"] = %(tempBaseDir / (card.worker.roleSlug & "-" & card.worker.name & ".md"))
       jw["prompt"] = %card.promptText
       jPrompts.add(jw)
     jObj["workers"] = jPrompts
@@ -1654,6 +1704,9 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
   if cfg.orchestratorAgent.len > 0 and normSender == cfg.orchestratorAgent.toLowerAscii.strip(): return true
   for w in cfg.workers:
     if normSender == w.name.toLowerAscii.strip(): return true
+    if w.roleSlug.len > 0:
+      if normSender == (cfg.project.toLowerAscii & "-" & w.roleSlug.toLowerAscii) or normSender == w.roleSlug.toLowerAscii:
+        return true
 
   # Dynamic Redis discovery fallback (when sender is not in static config)
   try:
@@ -2444,8 +2497,8 @@ proc main() =
     var optProject = ""
     var workerCount = 0
     var optHarness = ""
-    const pValidOpts = "--workers, --count, --harness, --project, --force, --force-prompts, --cards, --worker, -w, --write, -o, --inline, -i, --project-dir, -p, --swarm-file, -f, --orchestrator, -a, --orchestrator-agent, --json"
-    let pUsage = "garden " & subcmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--force] [--write [file]] [--inline] [--json]"
+    const pValidOpts = "--workers, --count, --harness, --project, --force, --force-prompts, --cards, --worker, -w, --role, -r, --write, -o, --inline, -i, --project-dir, -p, --swarm-file, -f, --orchestrator, -a, --orchestrator-agent, --json"
+    let pUsage = "garden " & subcmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--role <role>] [--force] [--write [file]] [--inline] [--json]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2456,10 +2509,12 @@ proc main() =
         inc i; swarmFile = params[i]
       elif a.startsWith("--swarm-file="):
         swarmFile = a[13..^1]
-      elif (a in ["--worker", "-w"]) and i + 1 < params.len:
+      elif (a in ["--worker", "-w", "--role", "-r"]) and i + 1 < params.len:
         inc i; targetWorker = params[i]
       elif a.startsWith("--worker="):
         targetWorker = a[9..^1]
+      elif a.startsWith("--role="):
+        targetWorker = a[7..^1]
       elif (a in ["--orchestrator", "-a", "--orchestrator-agent"]) and i + 1 < params.len:
         inc i; optOrchAgent = params[i]
       elif a.startsWith("--orchestrator="):

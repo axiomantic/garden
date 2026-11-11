@@ -272,9 +272,10 @@ Depending on the task distribution model in `implementation_plan.md`:
 
 - **Direct Assignment (O2O)**:
   ```bash
-  rhizo send --to <project>-architect \
+  rhizo send --to @architect \
     --subject "Task 1.1: Core Data Structures" \
     --body '{"task_id": "task-core-ds", "instructions": "Implement AST node kinds and message serializers. Use vine strand.", "strand": "strand/task-core-ds"}'
+  # (Can also address worker by unique listener codename: rhizo send --to <unique_id> ...)
   ```
 
 - **Competing-Consumers Work Queue**:

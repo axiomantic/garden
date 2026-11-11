@@ -34,22 +34,22 @@ The generated implementation plan must follow this exact template:
 # Implementation Plan: [Feature / Project Name]
 
 ## 1. Swarm Roster & Role Mapping
-| Worker Name | Persona | Role | Assigned Subsystems |
-| :--- | :--- | :--- | :--- |
-| `<project>-architect` | Bramblestitch (or topical spirit) | Staff Systems Architect | Core data structures, API contracts |
-| `<project>-auditor` | Prickle-Thistle (or topical spirit) | Refactoring Purist | Unit tests, negative controls, linter |
-| `<project>-implementer` | Moss-Weaver (or topical spirit) | DevEx & Implementation Lead | CLI commands, adapters, docs |
+| Swarm Role (@tag) | Unique Listener Codename | Persona | Role Title | Assigned Subsystems |
+| :--- | :--- | :--- | :--- | :--- |
+| `@architect` | `<project>-sequoia` | Bramblestitch (or topical spirit) | Staff Systems Architect | Core data structures, API contracts |
+| `@auditor` | `<project>-kestrel` | Prickle-Thistle (or topical spirit) | Verification & Adversarial Auditor | Unit tests, negative controls, Key 3 audit |
+| `@implementer` | `<project>-falcon` | Moss-Weaver (or topical spirit) | DevEx & Implementation Lead | CLI commands, adapters, docs |
 
 ---
 
 ## 2. Distributed Locking & Concurrency Schedule
 Before modifying any shared or non-mergeable file, the designated worker must obtain an atomic lease:
 - **Lock Target**: `file:src/config.nim`
-  - *Owner*: `<project>-architect`
+  - *Owner*: `@architect` (`<project>-sequoia`)
   - *Command*: `rhizo lock file:src/config.nim 600 --fencing`
   - *Monotonic Fencing Counter*: Record token in task execution log.
 - **Lock Target**: `file:migrations/001_schema.sql`
-  - *Owner*: `<project>-implementer`
+  - *Owner*: `@implementer` (`<project>-falcon`)
   - *Command*: `rhizo lock file:migrations/001_schema.sql 300 --fencing`
 
 ---
@@ -90,14 +90,14 @@ For all parallel development tracks:
 ## 4. Phase-by-Phase Task Checklist
 
 ### Phase 0: Contract Skeleton (Pre-Plan Stage 3.5 on `epic/<slug>`)
-- [x] **Task 0.1: Contract Skeleton Strand & Red Tests** (`<project>-architect`)
+- [x] **Task 0.1: Contract Skeleton Strand & Red Tests** (`@architect`)
   - *Strand*: `strand/task-<slug>-skeleton` (`--parent epic/<slug>`)
   - *Committed Deliverables*: Idiomatic types, interfaces, and callable stubs with `UNIMPLEMENTED_CONTRACT` in `src/types.nim`, `src/api.nim`
   - *Committed Contract Tests*: `tests/test_contract.nim` asserting contract compliance (failing red against stubs)
   - *Weave*: `vine submit --skeleton && vine audit inspect task-<slug>-skeleton && vine audit approve task-<slug>-skeleton && vine weave`
 
 ### Phase 1: Core Engine Primitives (Branching off `epic/<slug>`)
-- [ ] **Task 1.1: Core Data Structures** (`<project>-architect`)
+- [ ] **Task 1.1: Core Data Structures** (`@architect`)
   - *Strand*: `strand/task-core-ds` (`--parent epic/<slug>`)
   - *Anchored Skeleton Symbols*: `src/types.nim:15-80` (`ASTNode`, `NodeKind`, `serializeNode`)
   - *Contract Test Suite*: `tests/test_contract.nim` (must turn from red to green)
@@ -108,7 +108,7 @@ For all parallel development tracks:
   - *Holistic Verification*: Real AST nodes evaluate in full parser pipeline (no dummy mocks)
   - *Weave*: `vine submit && vine audit inspect task-core-ds && vine audit approve && vine weave && rhizo unlock file:src/types.nim`
 
-- [ ] **Task 1.2: Test Harness & Negative Controls** (`<project>-auditor`)
+- [ ] **Task 1.2: Test Harness & Negative Controls** (`@auditor`)
   - *Strand*: `strand/task-test-harness` (`--parent epic/<slug>`)
   - *Provider*: `tests/test_harness.py`
   - *Consumer / Call-Site*: Wire test runner into CI workflow and `tests/all.py`
