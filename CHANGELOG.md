@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Pre-Plan Contract Skeleton Ceremony & Contract Immutability (`src/guide.nim`, `skills/`, `SKILL.md`, `AGENTS.md`)**:
+  - Implemented the Option B flow (`RFD -> RFC -> Contract Skeleton Strand on epic/<slug> -> Implementation Plan -> Parallel Strands`).
+  - **Stage 1 (RFD / `understanding.md`)**: Mandated the `Existing Codebase Idioms, Type Conventions & Test Patterns` section to extract the target codebase's exact naming conventions, error-handling styles, header/type layout, and test harness patterns.
+  - **Stage 2 (RFC / `design.md`)**: Specified exact public types, headers/interfaces, exported function signatures, and contract test cases matching the discovered idioms.
+  - **Stage 3.5 (Pre-Plan Contract Skeleton Strand)**: Established the contract skeleton strand ceremony (`vine new task-<slug>-skeleton --parent epic/<slug>`) committing idiomatic types, callable stubs (`UNIMPLEMENTED_CONTRACT`), and red contract test suites onto the feature integration branch `epic/<slug>` via `vine submit --skeleton` and Key 3 audit prior to implementation planning.
+  - **Stage 4 (`plan-implementation`)**: Anchored master implementation plans directly to committed skeleton files, symbol line ranges, and test commands on `epic/<slug>`, with parallel implementation strands branching off `--parent epic/<slug>`.
+  - **Contract Immutability**: Mandated that workers branching off `--parent epic/<slug>` MUST NOT alter exported contract signatures or weaken contract tests without an approved `[DESIGN ADDENDUM]` (`docs/addenda/addendum_<topic>.md`).
+  - **Anti-Mock-Fallback Mandate**: Strictly banned inventing silent mock fallbacks (e.g. `lesMockFallback`, synthetic mock questionnaires, or hardcoded dummy success paths); workers encountering unavailable dependencies must halt immediately with `BLOCKER: MISSING_DEPENDENCY`.
+  - **Key 3 Auditor Discipline**: Mandated `vine audit inspect <task_id>` before approval, strictly prohibited `--force` on audit approvals, and strictly forbade auditors from acting as release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` merge conflicts on behalf of workers).
+
+### Changed
+- **Deprioritize / Discourage Orchestrator Inline Execution (`src/guide.nim`, `skills/`, `SKILL.md`, `AGENTS.md`, `docs/ceremony_lifecycle.md`)**:
+  - Clarified across Phase 0 Intake and Orchestrator Invariants that the Lead Orchestrator context window must remain dedicated to high-level planning, architectural analysis, and governance.
+  - Established that even for small or single-file changes, **Single-Worker Direct Dispatch** (`rhizo send` to 1 worker in a dedicated Vine strand) is strongly preferred over Orchestrator Inline Execution.
+  - Deprioritized Option 3 (Inline Execution) in intake triage modals and guidelines, restricting inline execution to high-level planning, analysis, design discussions, and non-code scratch inspection.
+
 ## [0.2.28] - 2026-11-09
 
 ### Added

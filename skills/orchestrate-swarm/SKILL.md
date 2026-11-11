@@ -32,7 +32,7 @@ Furthermore, when the operator explicitly requests or names a worker or peer ses
 
 <CRITICAL>
 Orchestrator Intake Gate & Autonomous Dispatch Invariant (GVR-016):
-The Lead Orchestrator is a CONDUCTOR, NOT A CODER.
+The Lead Orchestrator is a CONDUCTOR, NOT A CODER. The orchestrator context window must remain dedicated to high-level planning, architectural analysis, and governance.
 Whenever the operator presents a task, feature request, bugfix, or asks to work on something (including "garden: <prompt>"):
 THE ORCHESTRATOR MUST NEVER DIRECTLY JUMP INTO CODE EDITING OR IMPLEMENTATION TOOLS (e.g. `write_to_file`, `replace_file_content`).
 
@@ -41,18 +41,30 @@ The orchestrator inspects the cluster state via `rhizo who --all --json`:
    If the operator has already directed "work on this with your workers", "delegate", or "dispatch", OR if active cluster workers/queues already exist:
    DO NOT STOP TO ASK ROUTING QUESTIONS. The routing is already decided.
    The orchestrator MUST immediately provision strands (`vine new`), break down the work, and dispatch directly to available cluster workers (`rhizo send <worker>`) or enqueue to `queue:<project>:tasks`.
+   *Single-Worker Direct Dispatch Preference*: Even for small or single-file code changes, Single-Worker Direct Dispatch (`rhizo send` to 1 worker in a dedicated Vine strand) is strongly preferred over Orchestrator Inline Execution to preserve the conductor's context window.
 2. **Mandatory `ask_question` Tool Discipline (Zero Conversational Multiple-Choice)**:
    If and ONLY if the cluster is completely cold (0 active workers online across the machine) AND the operator has not specified an execution mode:
    The orchestrator MUST invoke the interactive `ask_question` tool to solicit the operator's preference (Swarm vs Inline).
    Dumping multiple-choice numbered lists (`1, 2, 3`) or routing questionnaires in raw chat text is STRICTLY PROHIBITED.
+   Inline execution in the orchestrator is strictly discouraged for code implementation and reserved for non-code planning, analysis, or design discussions.
 3. **Project-Scoped Fleet Mandate & Anti-Hijacking Invariant**:
    When active or idle workers exist FOR THIS PROJECT (or in the unassigned pool: project 'unassigned'/'default' or tagged 'pool'/'float'/'shared'), the orchestrator must automatically dispatch or repurpose them over Rhizo without prompt cards. However, workers assigned to other named projects are protected; cross-project worker hijacking is strictly prohibited. If only foreign project workers exist, the orchestrator MUST NOT hijack them, but must instead bootstrap dedicated workers via prompt cards (`garden prompts` / `garden launch`).
 </CRITICAL>
 
 <CRITICAL>
-Pre-Weave Adversarial Audit, Anti-Defeat-Device & Literal Fidelity Invariant:
+Pre-Weave Adversarial Audit, Contract Immutability & Auditor Discipline:
 The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, superficial heuristics, benchmark defeat devices, and green mirages.
 Intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP). They are pre-authorized, mandatory, and autonomous across the Triad; the Orchestrator executes them automatically without prompting for human operator input.
+
+1. Pre-Plan Contract Skeleton Ceremony (Option B):
+   Before authoring `implementation_plan.md` and dispatching parallel workers, the Triad commits idiomatic public types, callable stubs (`UNIMPLEMENTED_CONTRACT`), and red contract test suites onto the feature integration branch `epic/<slug>` via `vine new task-<slug>-skeleton --parent epic/<slug>`, `vine submit --skeleton`, and Key 3 audit. Parallel implementation strands branch off `--parent epic/<slug>`.
+2. Contract Immutability:
+   Parallel implementation strands branching off `--parent epic/<slug>` MUST NOT alter exported contract signatures or weaken contract tests without an approved `[DESIGN ADDENDUM]`.
+3. Anti-Mock-Fallback:
+   Workers are strictly prohibited from implementing silent mock fallbacks (e.g. `lesMockFallback`); missing dependencies require halting immediately with `BLOCKER: MISSING_DEPENDENCY`.
+4. Key 3 Auditor Discipline:
+   The independent Adversarial Auditor MUST run `vine audit inspect <task_id>` before approving (`vine audit approve --ticket <hex>`). Using `--force` on audit approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` merge conflicts on behalf of workers).
+
 Before executing `vine weave` on any worker strand, the Orchestrator MUST enforce the Five-Pillar Pre-Weave Adversarial Audit (Key 3 of the Three-Key Gate):
 1. Two-Point Diff: The branch modifies both a Provider and an active Consumer call-site (live router, CLI command dispatcher, UI, or event loop). Unwired modules tested solely by their own test suites are strictly rejected back to the worker as incomplete shelfware.
 2. Holistic Integration & Anti-Defeat-Device: Real system behavior, state, and errors must be handled; no placeholder toys, stubs, mocks, naive string splits, or prompt keyword interceptors (e.g. 'if flight game in q'). Any prompt-matching defeat device that bypasses genuine pipelines to fake benchmark compliance is mechanically rejected at Key 2 (`ExitGateDefeatDeviceViolation` = 7) and Key 3.
@@ -346,6 +358,7 @@ The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit 
    - **Pillar 4 (Aggressive Replacement Purge)**: Ensure all superseded legacy code, fallbacks, and commented-out blocks are deleted in the strand.
    - **Pillar 5 (Structural Assertion Rigor)**: Reject partial/loose assertions (`assert "foo" in bar`). Mandate complete structural equality (`assert actual == expected`) and negative controls.
 3. **Audit Ratification or Delta Re-Pump Loop**:
+   - **Step 3.0: Mandatory Inspection**: The Auditor MUST run `vine audit inspect <task_id>` to review the Deliverable Claim Bundle, test results, and git diff. Blind approvals are forbidden, and `--force` is strictly prohibited. Auditors must NEVER act as release or merge clerks (no editing `ROADMAP.md` or resolving `CHANGELOG.md` merge conflicts on behalf of workers; any conflict must be rejected back to the worker).
    - **If findings exist**: Auditor executes rejection against the delivery ticket:
      ```bash
      vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen

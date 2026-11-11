@@ -41,7 +41,7 @@ If and only if no active cluster workers exist, the session conducts a streamlin
 - The orchestrator presents options combining swarm shape and the detected harness:
   - *Option 1 (Recommended)*: Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Architect, Auditor, DevEx Lead).
   - *Option 2*: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementer, Auditor).
-  - *Option 3*: Single-Agent Inline (Execute sequentially within current chat).
+  - *Option 3 (Deprioritized)*: Single-Agent Inline (Execute sequentially within current chat; strongly discouraged for code edits to preserve orchestrator context for governance).
   - *Option 4*: Custom Swarm (Operator specifies roles).
 
 > [!CRITICAL]

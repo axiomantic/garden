@@ -89,8 +89,8 @@ Execute phases sequentially. Never skip phases or invert the order.
 | **Phase 0** | **Intake Gate** | Fast-path check (`rhizo who --json`) or single-question intake via `ask_question` calibrated to detected harness. | Active cluster workers confirmed or operator submits choice. |
 | **Phase 1** | [`choose-personas`](../choose-personas/SKILL.md) | Synthesize swarm configuration reflecting detected harness and chosen shape (zero on-disk JSON). | Swarm roles ratified. |
 | **Phase 2** | [`launch-workers`](../launch-workers/SKILL.md) | Output 10-backtick raw markdown prompt cards and numbered session instructions. | `rhizo who --json` confirms 100% of workers active & listening. |
-| **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research, design, adversarial audit. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md`. |
-| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan with locking schedules, strands, and Two-Point Diff contracts (Provider, Consumer, Replacement deletion). | Complete `implementation_plan.md` with task-locking matrix. |
+| **Phase 3** | [`dialectical-pump`](../dialectical-pump/SKILL.md) | Grounded triadic deliberation: research (extracting codebase idioms), design (specifying exact types & interfaces), adversarial audit, and Stage 3.5 Pre-Plan Contract Skeleton Strand on `epic/<slug>`. | Zero open `CRIT` or `BLOCKER` defects in `audit_report.md` and contract skeleton committed. |
+| **Phase 4** | [`plan-implementation`](../plan-implementation/SKILL.md) | Author master implementation plan anchored to committed skeleton symbols on `epic/<slug>`, locking schedules, parallel strands (`--parent epic/<slug>`), and Two-Point Diff contracts. | Complete `implementation_plan.md` with task-locking matrix and Contract Immutability. |
 | **Phase 5** | [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) | Main-chat governor: task dispatch, heartbeat monitoring, Closed-Circuit & Three-Key gate verification, trunk weaving. | All plan tasks woven via `vine weave` after passing Three-Key Gate (Mechanical, Semantic, Adversarial Audit). |
 
 ---
@@ -110,24 +110,24 @@ Instead, it acts as an **Intelligent Intake Concierge**:
 1. **Evaluate Request Scope & Blast Radius (Cold Start Only)**:
    - **High Complexity / Architectural Shifts / New Subsystems / Multi-File Migrations**: The request impacts foundational contracts, multiple modules, or shared abstractions. Requires empirical research, RFC design, adversarial review, and parallel strand isolation. Recommend **Option 1**.
    - **Medium Complexity / Well-Defined Features / Self-Contained Deliverables**: The scope is clear, boundaries are known, and it can be implemented without a 3-stage dialectical design cycle. Recommend **Option 2**.
-   - **Low Complexity / Single-File Fixes / Documentation / Scratch Tweaks**: Trivial 1-file patch or config change. Recommend **Option 3**.
+   - **Low Complexity / Single-File Fixes / Documentation / Scratch Tweaks**: Even for single-file fixes or small tweaks, Single-Worker Direct Dispatch (`rhizo send` to 1 worker in a dedicated Vine strand) is strongly preferred to keep the orchestrator context window dedicated to planning and governance. Recommend **Option 2 (Single-Worker Dispatch)** or **Option 3 (Inline Execution - Non-Code / Scratch Only)**.
 
 2. **Present Interactive Triage Modal (`ask_question`)**:
    The orchestrator invokes `ask_question` with 3 mutually exclusive options clearly explaining the tradeoffs:
-   - **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Swarm)**:
+   - **Option 1 (Full Ceremony - RFE ➔ RFD ➔ RFC ➔ Contract Skeleton Strand ➔ Swarm)**:
      *Scope*: Architectural shifts, new subsystems, major refactors, or cross-cutting migrations.
-     *Process*: Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD, System Architecture/RFC, and Adversarial Audit documents, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
+     *Process*: Sows the idea as a persistent roadmap seed (`garden plant`), authors the Research/RFD (extracting codebase idioms), System Architecture/RFC (defining exact types & interfaces), and Adversarial Audit documents, commits the Pre-Plan Contract Skeleton Strand on `epic/<slug>` with red contract tests, schedules monotonic locks and isolated Vine strands, and writes worker prompts to `/tmp/garden-<project>/`.
    - **Option 2 (Direct Swarm Dispatch)**:
-     *Scope*: Well-defined, self-contained features, bugfixes, or bounded deliverables.
+     *Scope*: Well-defined, self-contained features, bugfixes, or bounded deliverables (including small or single-file changes via Single-Worker Direct Dispatch).
      *Process*: Bypasses heavy research/design documentation; enqueues tasks straight to cluster work queues (`rhizo enqueue queue:<project>:tasks`) or dispatches directly to active workers (`rhizo send <worker>`).
-   - **Option 3 (Inline Execution)**:
-     *Scope*: Trivial 1-file fixes, documentation, typo corrections, or quick scratch scripts.
-     *Process*: Executes directly within the main session without provisioning worker sessions or cluster overhead.
+   - **Option 3 (Inline Execution - Strongly Deprioritized / Non-Code Only)**:
+     *Scope*: High-level planning, architectural analysis, design discussions, or non-code scratch inspection.
+     *Process*: Strongly discouraged for code implementation. The orchestrator context window must remain dedicated to high-level planning, analysis, and governance. Even for small or single-file code changes, Single-Worker Direct Dispatch is strongly preferred. Direct inline coding in the orchestrator is strictly deprioritized.
 
 3. **Execution Branching**:
    - **If Option 1 selected**: Run `garden plant "<prompt>"`, then proceed to Cold-Start Swarm Calibration / Phase 1 `choose-personas` (or attach to active swarm via Fast-Path) and Phase 3 `dialectical-pump`.
    - **If Option 2 selected**: Check `rhizo who --all --json`. If workers are online, dispatch via `rhizo send` or `rhizo enqueue`. If cold, run Cold-Start Swarm Calibration to spin up workers.
-   - **If Option 3 selected**: Execute inline in the current session.
+   - **If Option 3 selected**: Execute inline in the current session (reserved strictly for planning, analysis, and non-code tasks).
 
 #### Adaptive Swarm On-Ramp & Dynamic Worker Repurposing (First-Look Invariant)
 
@@ -196,7 +196,7 @@ Because the coding harness is auto-detected from the session environment (`ANTIG
 1. **Single Question: Execution Mode & Swarm Shape in <Detected Harness>**:
    - *Option 1 (Recommended)*: Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Systems Architect `@<project>-architect`, Adversarial Auditor `@<project>-auditor`, DevEx Lead `@<project>-implementer`).
    - *Option 2*: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead `@<project>-implementer`, Adversarial Auditor `@<project>-auditor`).
-   - *Option 3*: Single-Agent Inline (Execute sequentially within current chat session).
+   - *Option 3 (Deprioritized)*: Single-Agent Inline (Execute sequentially within current chat session; strongly discouraged for code edits to preserve orchestrator context for governance).
    - *Option 4*: Custom Swarm (Operator specifies custom roles or cross-harness distribution).
 
 <CRITICAL>
@@ -338,15 +338,30 @@ The primary conversation session acts as the Lead Orchestrator. The orchestrator
 
 <CRITICAL>
 Orchestrator Intake Gate & Non-Implementation Invariant (GVR-016):
-The Lead Orchestrator is a CONDUCTOR, NOT A CODER.
+The Lead Orchestrator is a CONDUCTOR, NOT A CODER. The orchestrator context window must remain dedicated to high-level planning, architectural analysis, and governance.
 Whenever the operator presents a task, feature request, bugfix, or asks to work on something:
 THE ORCHESTRATOR MUST NEVER DIRECTLY JUMP INTO CODE EDITING OR IMPLEMENTATION TOOLS (e.g. `write_to_file`, `replace_file_content`).
 Instead, it MUST STOP and ask the operator how they want the work routed using `ask_question`:
 - Option 1 (Recommended): Enqueue to Cluster Work Queue (`rhizo enqueue queue:<project>:tasks --subject "..." --body "..."`) for background cluster workers.
-- Option 2: Dispatch directly to an active cluster worker (`rhizo send <worker> --subject "..." --body "..."`).
-- Option 3: Execute inline in main chat (only if the operator explicitly selects/confirms this option).
+- Option 2: Dispatch directly to an active cluster worker (`rhizo send <worker> --subject "..." --body "..."`). Single-Worker Direct Dispatch in a dedicated Vine strand is strongly preferred even for small or single-file changes.
+- Option 3 (Strongly Deprioritized): Execute inline in main chat (strictly reserved for non-code planning/analysis, or only if the operator explicitly commands direct inline coding).
 
-This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "implement feature W". Direct inline implementation is prohibited unless the operator explicitly directs the orchestrator to code it inline in the main session.
+This intake gate applies to ANY request to "work on X", "build Y", "fix Z", or "implement feature W". Direct inline code editing is prohibited unless the operator explicitly directs the orchestrator to code it inline in the main session.
+</CRITICAL>
+
+<INVARIANT>
+Pre-Plan Contract Skeleton Ceremony (Option B):
+Before authoring 'implementation_plan.md' and dispatching parallel workers, the Triad commits idiomatic public types, callable stubs ('UNIMPLEMENTED_CONTRACT'), and red contract test suites onto the feature integration branch 'epic/<slug>' via 'vine new task-<slug>-skeleton --parent epic/<slug>', 'vine submit --skeleton', and Key 3 audit. Parallel implementation strands branch off '--parent epic/<slug>'.
+</INVARIANT>
+
+<CRITICAL>
+Contract Immutability & Anti-Mock-Fallback:
+Workers branching off '--parent epic/<slug>' MUST NOT alter exported contract signatures or weaken contract tests without an approved '[DESIGN ADDENDUM]'. Workers are strictly prohibited from implementing silent mock fallbacks (e.g. 'lesMockFallback'); missing dependencies require halting immediately with 'BLOCKER: MISSING_DEPENDENCY'.
+</CRITICAL>
+
+<CRITICAL>
+Auditor Discipline (Key 3):
+The independent Adversarial Auditor MUST run 'vine audit inspect <task_id>' before approving ('vine audit approve --ticket <hex>'). Using '--force' on audit approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit 'ROADMAP.md' or resolve 'CHANGELOG.md' merge conflicts on behalf of workers).
 </CRITICAL>
 
 <INVARIANT>

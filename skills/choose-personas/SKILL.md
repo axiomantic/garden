@@ -133,7 +133,7 @@ Synthesize the primary triad targeting the detected harness with session-default
 Invoke `ask_question` with a SINGLE concise question combining execution mode and swarm shape in the detected harness:
 - Option 1 (Recommended): Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Architect, Auditor, Implementer with session-native models)
 - Option 2: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead + Adversarial Auditor)
-- Option 3: Single-Agent Inline (Execute sequentially within current chat session)
+- Option 3 (Deprioritized): Single-Agent Inline (Execute sequentially within current chat session; strongly discouraged for code edits to preserve orchestrator context for governance)
 - Option 4: Custom configuration (allows user write-in).
 
 ### Step 4: Synthesize Swarm Specification

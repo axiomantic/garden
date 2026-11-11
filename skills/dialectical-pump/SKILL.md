@@ -1,6 +1,6 @@
 ---
 name: dialectical-pump
-description: "Drives empirical multi-perspective deliberation and synthesis across agent personas. Enforces the strict invariant that dialectical exchanges are NOT theatrical dialogue: every turn must be grounded in tool calls (reading file lines, executing tests, running benchmarks, checking git history). Operates across four sequential stages: (1) Research & Understanding Doc with automated Fact-Check Gate, (2) Product & System Architecture Design Doc, (3) Adversarial Design Review and Audit Report remediation, and (4) Pre-Weave Adversarial Code Audit Pump (The Third Key Gate: Shelfware, Heuristic Hand-Waves, Literal Fidelity & Parity, Carcass Purge, Green Mirage elimination, and Delta Re-Pump). Triggers: 'dialectical pump', 'run dialectical pump', 'pump perspectives', 'triadic deliberation', 'adversarial code audit', 'code audit pump', 'pre-weave audit', 'literal fidelity audit'."
+description: "Drives empirical multi-perspective deliberation and synthesis across agent personas. Enforces the strict invariant that dialectical exchanges are NOT theatrical dialogue: every turn must be grounded in tool calls (reading file lines, executing tests, running benchmarks, checking git history). Operates across four sequential stages: (1) Research & Understanding Doc with Codebase Idioms and Fact-Check Gate, (2) Product & System Architecture Design Doc, (3) Adversarial Design Review, (3.5) Pre-Plan Contract Skeleton Strand on epic/<slug>, and (4) Pre-Weave Adversarial Code Audit Pump with Contract Immutability (The Third Key Gate: Shelfware, Heuristic Hand-Waves, Literal Fidelity & Parity, Carcass Purge, Green Mirage elimination, and Delta Re-Pump). Triggers: 'dialectical pump', 'run dialectical pump', 'pump perspectives', 'triadic deliberation', 'adversarial code audit', 'code audit pump', 'pre-weave audit', 'literal fidelity audit', 'contract skeleton'."
 ---
 
 # `dialectical-pump`: Grounded Multi-Persona Deliberation Engine
@@ -29,17 +29,18 @@ Every turn taken by a persona in the Dialectical Pump must follow the **Empirica
 
 ---
 
-## 2. The Four Dialectical Stages
+## 2. The Dialectical Stages & Contract Skeleton Ceremony
 
-The Dialectical Pump executes across four distinct project gates:
+The Dialectical Pump executes across five distinct project gates adhering to Option B (`RFD -> RFC -> Contract Skeleton Strand on epic/<slug> -> Implementation Plan -> Parallel Strands`):
 
 ```mermaid
 flowchart TD
     subgraph DesignPhase["Design Dialectics (Pre-Implementation)"]
-        Stage1["Stage 1: Grounded Research (understanding.md + Fact-Check Gate)"]
+        Stage1["Stage 1: Grounded Research (understanding.md + Idioms + Fact-Check Gate)"]
         Stage2["Stage 2: Architecture & Design (design.md)"]
         Stage3["Stage 3: Adversarial Design Audit (audit_report.md)"]
-        Stage1 --> Stage2 --> Stage3
+        Stage35["Stage 3.5: Pre-Plan Contract Skeleton Strand on epic/slug"]
+        Stage1 --> Stage2 --> Stage3 --> Stage35
     end
 
     subgraph ImplementationPhase["Implementation Dialectics (Pre-Weave)"]
@@ -52,7 +53,7 @@ flowchart TD
         Stage4D -.->|"Findings > 0"| Stage4B
     end
 
-    Stage3 --> ImplementationPhase
+    Stage35 --> ImplementationPhase
     Stage4D -->|"0 Findings"| Weave["vine weave (Trunk Fast-Forward)"]
 ```
 
@@ -72,6 +73,11 @@ Workers read actual files, verify test suites, and map domain structures.
 ### Step 1.3: Generate Understanding Document (`understanding.md`)
 The triad synthesizes their findings into `understanding.md` containing:
 - Domain Glossary & Invariants.
+- **Existing Codebase Idioms, Type Conventions & Test Patterns**:
+  - *Naming Conventions*: Module, type, procedure/function, and variable casing conventions (e.g. `camelCase` procs vs `PascalCase` types in Nim; `snake_case` in Python/Rust; private symbol prefixes).
+  - *Error-Handling Styles*: Result types (`Result[T, E]`), optional types (`Option[T]`), error return codes, or language-specific exception hierarchies.
+  - *Header, Type & Module Layout*: How public types, constants, interfaces, and exported symbols are structured across files.
+  - *Test Harness & Assertion Patterns*: Test runner conventions (`unittest`, `tripwire`, `pytest-tripwire`), golden file strategies, and negative control idioms.
 - Data Flow Diagrams.
 - Identified Constraints & Technical Debt.
 
@@ -89,7 +95,7 @@ Once research is fact-checked, the pump shifts to product and technical design:
 
 ### Step 2.1: The Thesis (Systems Architect)
 The Systems Architect proposes the macro architecture:
-- Module decomposition.
+- Module decomposition adhering to discovered codebase idioms.
 - Data structures and wire formats.
 - Concurrency model and lifecycle states.
 
@@ -102,7 +108,7 @@ The Purist Auditor stress-tests the proposal against concrete failure modes:
 ### Step 2.3: The Synthesis (DevEx & Implementation Lead)
 The DevEx Lead resolves the dialectic:
 - Eliminates unnecessary abstractions that create ergonomics drag.
-- Hardens the API contracts.
+- Hardens the API contracts: specifies exact public types, headers/interfaces, exported procedure/function signatures, and contract test cases adhering to discovered idioms.
 - Produces the ratified **`design.md`**.
 
 ---
@@ -119,6 +125,53 @@ An Auditor persona performs a line-by-line inspection of `design.md` against sin
 The triad meets to address every finding in `audit_report.md`:
 - For each defect code: select an option, update `design.md`, and record the resolution in the audit report.
 - The gate only clears when **0 critical or blocker defects remain open**.
+
+---
+
+## 5.5. Stage 3.5: Pre-Plan Contract Skeleton Strand on `epic/<slug>`
+
+Before authoring `implementation_plan.md` and dispatching parallel workers, the Triad commits the idiomatic public contracts, callable stubs, and red contract tests onto the feature integration branch `epic/<slug>`:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Architect (Lead)
+    participant S as Skeleton Strand (epic/slug)
+    participant V as Auditor (Key 3)
+    participant P as Implementation Plan (Stage 4)
+
+    A->>S: vine new task-<slug>-skeleton --parent epic/<slug>
+    Note over S: Commit idiomatic types, headers & callable stubs (UNIMPLEMENTED_CONTRACT)
+    Note over S: Commit red contract test suites (asserting contract compliance)
+    S->>V: vine submit --skeleton (evaluates Keys 1 & 2)
+    Note over V: vine audit inspect task-<slug>-skeleton
+    V->>S: vine audit approve --ticket <hex> --weave
+    Note over S: Weaves skeleton into epic/<slug>
+    S->>P: Stage 4 anchors implementation_plan.md to committed skeleton files & lines
+```
+
+### Step 3.5.1: Provision the Skeleton Strand
+```bash
+vine new task-<slug>-skeleton --parent epic/<slug>
+```
+*Creates the feature integration branch `epic/<slug>` if not already present, isolating foundational contracts from canonical `main`.*
+
+### Step 3.5.2: Commit Idiomatic Contracts & Red Stubs
+Inside the strand, the Architect implements:
+1. **Public Types & Interfaces**: Concrete types, enums, structs/objects matching the discovered idioms from Stage 1 and Stage 2.
+2. **Exported Callable Stubs**: Exported procedures/functions that compile cleanly but return an explicit `UNIMPLEMENTED_CONTRACT` defect or error code (or throw a structured `NotImplementedDefect` / exception).
+3. **Red Contract Test Suites**: Rigorous contract tests that call the exported stubs. Under test execution, these tests must run and fail deterministically with `UNIMPLEMENTED_CONTRACT` (proving that tests genuinely invoke the contract and do not pass vacuously).
+
+### Step 3.5.3: Submit and Audit the Skeleton Strand
+- The worker executes `vine submit --skeleton` (evaluating Key 1 merge-tree and Key 2 compilation/contract tests).
+- The Adversarial Auditor runs `vine audit inspect task-<slug>-skeleton` to forensic-check type signatures and error semantics against `design.md`.
+- Upon verification, the auditor ratifies:
+  ```bash
+  vine audit approve task-<slug>-skeleton --auditor <auditor_name> --ticket <hex> --weave --listen
+  ```
+- The skeleton is fast-forward woven directly into `epic/<slug>`.
+
+Proceed to [`plan-implementation`](../plan-implementation/SKILL.md) to author `implementation_plan.md` anchored to the committed skeleton symbols, and spawn parallel worker strands branching off `--parent epic/<slug>`.
 
 ---
 
@@ -177,6 +230,7 @@ The Auditor executes the following checks against the Claim Bundle and the stran
 #### Pillar 2: Holistic Integration vs. Heuristic Hand-Waves & Hollow Stubs
 - [ ] **Anti-Stub & Anti-Toy Check**: Does the implementation handle real application state, real network/file I/O, and real concurrent events?
 - [ ] **No Hollow Mocks in Production**: Reject artificial `sleep()` calls, hardcoded success responses, or fake test doubles in production paths.
+- [ ] **Absolute Ban on Silent Mock Fallbacks (`BLOCKER: MISSING_DEPENDENCY`)**: Strictly prohibit inventing silent mock fallbacks (e.g. `lesMockFallback`, synthetic mock questionnaires, or dummy stub responses) when an external dependency, hardware target, API key, or neural model is unavailable. If a dependency cannot be satisfied, the worker MUST immediately halt execution and emit a formal blocker (`BLOCKER: MISSING_DEPENDENCY`). Sweeping missing dependencies under the rug with silent fake mocks is grounds for immediate audit rejection (`CRIT-MOCK-FALLBACK`).
 - [ ] **Anti-Defeat-Device & Anti-Theatrical Interceptor Mandate**: Strictly reject prompt keyword interceptors (e.g. `if 'flight game' in q or 'webworker' in q`) and theatrical mock questionnaires in generic runtimes that bypass genuine neural/radar/algorithmic pipelines to fake benchmark compliance. This is a critical `CRIT-DEFEAT-DEVICE` defect requiring complete elimination.
 - [ ] **Autonomous Intensive Audit Mandate**: Intensive audits are Standard Operating Procedure (SOP) and pre-authorized. Auditors must execute without requesting operator confirmation or input.
 - [ ] **Brittle String-Split Hacks**: Reject naive string splits (`str.split(" ")[0]`) pretending to parse structured protocols or payloads; compliant lexers/parsers must be used.
@@ -209,6 +263,15 @@ Assertion Rigor & Anti-Green-Mirage Mandate:
 4. Zero Happy-Path-Only Testing: Boundary values (empty, 0, 1, max, unicode, timeout, disconnection) must be explicitly exercised.
 </CRITICAL>
 
+#### Contract Immutability & Anti-Drift Invariant
+<CRITICAL>
+Contract Immutability on Feature Integration Branches (`epic/<slug>`):
+When parallel implementation strands branch off `--parent epic/<slug>` following the Stage 3.5 Skeleton Ceremony:
+1. Exported Contract Immutability: Workers MUST NOT alter exported type declarations, procedure/function signatures, error types, or CLI options established in the committed contract skeleton. If an implementation constraint requires modifying an exported signature, the worker MUST NOT unilaterally drift code; it MUST draft a formal `docs/addenda/addendum_<topic>.md` and await Orchestrator ratification.
+2. Contract Test Protection: Workers MUST NOT weaken, disable, comment out, or delete contract tests committed during Stage 3.5. Contract tests define the acceptance criteria; all tests must turn from red to green under genuine production logic.
+3. Anti-Mock-Fallback: If an external dependency or hardware environment cannot be satisfied, workers MUST NOT invent fake fallbacks (e.g. `lesMockFallback`); they MUST halt and report `BLOCKER: MISSING_DEPENDENCY`.
+</CRITICAL>
+
 ### Step 4.3: The Delta Re-Pump Loop (Iterative until Zero Findings)
 
 A single review pass is never sufficient. The Adversarial Code Audit executes as an **iterative dialectical pump**:
@@ -222,17 +285,18 @@ sequenceDiagram
 
     Note over W: Worker finishes and runs 'vine submit'
     W->>A: Submit Deliverable Claim Bundle ('vine submit')
+    Note over A: Step 4.3.0: Mandatory Inspection ('vine audit inspect <task_id>')
     A->>A: Five-Pillar Presumption-of-Guilt Audit (Antithesis)
     
     alt Findings > 0 (CRIT / HIGH / MED)
-        A->>G: 'vine audit reject --reason <text>'
+        A->>G: 'vine audit reject --ticket <hex> --reason <text>'
         A-->>W: Emit audit_report.md with empirical citations
         Note over W: Worker remediates findings inside Strand
         W->>A: Re-pump: 'vine submit' (Delta Claim Bundle + git diff against last audit commit)
         A->>A: Delta Audit: Verify fix + full test regression sweep
         Note over A,W: Loop repeats until 0 open defects
     else Findings == 0
-        A->>G: 'vine audit approve --auditor <name>' (Stamps audit_token)
+        A->>G: 'vine audit approve --ticket <hex>' (Stamps audit_token)
         G->>G: Execute vine weave (Trunk Fast-Forward)
     end
 ```
@@ -240,15 +304,23 @@ sequenceDiagram
 > [!CRITICAL]
 > **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`). The audit MUST be performed by an independent Adversarial Auditor session.
 
-1. **Defect Issuance**: If defects are discovered, the Auditor runs `vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen` and records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
-2. **In-Strand Remediation**: The worker fixes findings strictly inside the isolated Vine strand.
-3. **The Delta Re-Pump**: When resubmitting with `vine submit` (which generates a refreshed delivery ticket), the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
-4. **Exit Condition**: The pump loops until **ZERO open defects of severity CRIT, HIGH, or MED remain**, and all low/nit items are resolved or empirically justified.
+#### Key 3 Auditor Discipline & Forensic Standards
+1. **Mandatory Inspection (`vine audit inspect <task_id>`)**: Before issuing any audit decision (`approve` or `reject`), the Auditor MUST execute `vine audit inspect <task_id>` to inspect the deliverable claim bundle, delivery ticket, strand git diff, and test evidence. Approving an audit blindly without inspection is strictly prohibited.
+2. **Strict Prohibition on `--force` on Approvals**: Auditors MUST NEVER pass `--force` to bypass failing tests, uncommitted dirty files, or mismatched delivery tickets. If verification fails, the auditor MUST reject (`vine audit reject`) back to the worker.
+3. **Auditors Are NOT Release or Merge Clerks**: Auditors are adversarial verifiers of code correctness, NOT administrative clerks.
+   - Auditors MUST NEVER edit `ROADMAP.md` or update roadmap statuses on behalf of workers.
+   - Auditors MUST NEVER resolve `CHANGELOG.md` or code merge conflicts on behalf of workers.
+   - If a strand has merge conflicts or a missing/conflicted changelog entry, the Auditor rejects the deliverable with a defect code (`REJECT: MERGE_CONFLICT` or `REJECT: CHANGELOG_VIOLATION`); the worker must resolve it cleanly inside the strand.
+4. **Defect Issuance**: If defects are discovered, the Auditor runs `vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen` and records findings in `audit_report.md` with defect codes (`CRIT-XX`, `HIGH-XX`, `FIDELITY-XX`, `MIRAGE-XX`), exact file lines, and failure proof.
+5. **In-Strand Remediation**: The worker fixes findings strictly inside the isolated Vine strand.
+6. **The Delta Re-Pump**: When resubmitting with `vine submit` (which generates a refreshed delivery ticket), the auditor audits the **exact delta** (`git diff <audit_commit>...HEAD`) to ensure fixes do not introduce secondary defects, while re-running the full project test suite (`vine gate`) to guarantee no regressions.
+7. **Exit Condition**: The pump loops until **ZERO open defects of severity CRIT, HIGH, or MED remain**, and all low/nit items are resolved or empirically justified.
 
 ### Step 4.4: Gate Clearance & Cryptographic Token
 
 When all findings reach 0, the independent auditor ratifies Key 3:
 ```bash
+vine audit inspect <task_id>
 vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --weave --listen
 ```
 This mechanically verifies Keys 1 & 2 against the delivery ticket, checks that the strand has zero uncommitted changes, ensures `auditor != author`, and stamps a cryptographic `audit_token`. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk state files).
@@ -260,9 +332,10 @@ Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token ar
 ## 7. Output Artifacts
 
 At the conclusion of the Dialectical Pump:
-1. `understanding.md` (Stage 1: Grounded and fact-checked).
-2. `design.md` (Stage 2: Debated, hardened, and synthesized).
+1. `understanding.md` (Stage 1: Grounded, idioms extracted, and fact-checked).
+2. `design.md` (Stage 2: Debated, hardened, and synthesized with idiomatic types & interfaces).
 3. `design_audit_report.md` (Stage 3: Design findings addressed and closed).
-4. `code_audit_report.md` (Stage 4: Pre-weave Five-Pillar audit cleared with 0 open defects).
+4. **Committed Contract Skeleton & Red Tests on `epic/<slug>`** (Stage 3.5: Public types, callable stubs with `UNIMPLEMENTED_CONTRACT`, and red contract test suites).
+5. `code_audit_report.md` (Stage 4: Pre-weave Five-Pillar audit cleared with 0 open defects under Contract Immutability).
 
 Proceed to [`orchestrate-swarm`](../orchestrate-swarm/SKILL.md) for trunk weaving.
