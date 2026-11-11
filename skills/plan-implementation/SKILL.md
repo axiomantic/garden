@@ -20,7 +20,7 @@ The Orchestrator authors `implementation_plan.md` adhering to four core invarian
 4. **Contract Skeleton Anchoring & Immutability**: Every implementation plan must anchor tasks directly to the committed types, interfaces, callable stubs (`UNIMPLEMENTED_CONTRACT`), and red contract test suites established during Stage 3.5 on `epic/<slug>`.
    - *Contract Immutability*: Workers branching off `--parent epic/<slug>` MUST NOT alter exported type declarations or signatures, nor weaken contract tests, without an approved `[DESIGN ADDENDUM]`.
    - *Anti-Mock-Fallback*: Workers must NEVER implement silent mock fallbacks (e.g. `lesMockFallback`); missing dependencies require immediately halting with `BLOCKER: MISSING_DEPENDENCY`.
-5. **Auditor Discipline**: The independent Adversarial Auditor MUST run `vine audit inspect <task_id>` before approving. Using `--force` on audit approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` conflicts on behalf of workers).
+5. **Auditor Merge-Clerk Decoupling & Inverted Effort Gradient**: The independent Adversarial Auditor ONLY inspects and ratifies Key 3 (`vine audit inspect` + `vine audit approve/reject`). Rejection is the fast path for any defect (`vine audit reject`); approval requires `--evidence "..."` citing changed files, call-sites, and negative controls. Using `--force` on audit approvals is strictly prohibited. The Auditor NEVER runs `vine weave`, NEVER edits `ROADMAP.md`, and NEVER resolves `CHANGELOG.md` merge conflicts on behalf of workers. Weaving is strictly the Lead Orchestrator's role.
 6. **Zero Silent Architectural Drift**: If an implementer encounters an unforeseen constraint during coding, it cannot unilaterally alter the architecture. It must submit a formal design addendum.
 7. **Closed-Circuit Two-Point Diff & Holistic Integration**: Every task specification must declare both the **Provider** (new capability) and the active **Consumer Call-Site** (runtime entrypoint, router, UI canvas, or CLI loop). Modules tested only by isolated unit tests are strictly prohibited as incomplete shelfware. The implementation must holistically integrate with real application state and live events (no toys, stubs, mocks, or hollow approximations). Any code intended to be replaced must be explicitly scheduled for **immediate deletion** in the same strand—never kept as a vestigial fallback or commented-out logic.
 
@@ -72,13 +72,13 @@ For all parallel development tracks:
      ```bash
      # Step 1: Mandatory forensic inspection
      vine audit inspect <task_id>
-     # Step 2: To ratify approval and weave:
-     vine audit approve <task_id> --auditor <auditor> --ticket <hex> --weave --listen
+     # Step 2: To ratify approval with evidence (Auditor NEVER weaves):
+     vine audit approve <task_id> --auditor <auditor> --ticket <hex> --evidence "<files, call-sites, negative controls>" --listen
      # Or to reject if defects are found:
      vine audit reject <task_id> --auditor <auditor> --ticket <hex> --reason "<findings>" --listen
      ```
-     Remember: THE WORKER IS NOT THE AUDITOR. Auditors NEVER use `--force` and NEVER act as release/merge clerks (no editing `ROADMAP.md` or resolving `CHANGELOG.md` merge conflicts on behalf of workers).
-4. **Trunk Weaving & DAG Cascading**:
+     Remember: THE WORKER IS NOT THE AUDITOR. Auditors NEVER use `--force` and NEVER act as release/merge clerks (no editing `ROADMAP.md`, no resolving `CHANGELOG.md` merge conflicts, and no weaving on behalf of workers).
+4. **Trunk Weaving & DAG Cascading (Lead Orchestrator Role)**:
    *Fast-forwards ratified branch into epic/<slug> or main, automatically calls `rhizo task complete <task_id>`, and unblocks downstream DAG child tasks (`BLOCKED` $\rightarrow$ `QUEUED`):*
    ```bash
    vine weave

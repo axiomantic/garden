@@ -52,7 +52,7 @@ The orchestrator inspects the cluster state via `rhizo who --all --json`:
 </CRITICAL>
 
 <CRITICAL>
-Pre-Weave Adversarial Audit, Contract Immutability & Auditor Discipline:
+Pre-Weave Adversarial Audit, Contract Immutability & Auditor Merge-Clerk Decoupling:
 The Lead Orchestrator is the final gatekeeper against hermetic shelfware, hollow mocks, superficial heuristics, benchmark defeat devices, and green mirages.
 Intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP). They are pre-authorized, mandatory, and autonomous across the Triad; the Orchestrator executes them automatically without prompting for human operator input.
 
@@ -62,8 +62,11 @@ Intensive Five-Pillar adversarial audits are Standard Operating Procedure (SOP).
    Parallel implementation strands branching off `--parent epic/<slug>` MUST NOT alter exported contract signatures or weaken contract tests without an approved `[DESIGN ADDENDUM]`.
 3. Anti-Mock-Fallback:
    Workers are strictly prohibited from implementing silent mock fallbacks (e.g. `lesMockFallback`); missing dependencies require halting immediately with `BLOCKER: MISSING_DEPENDENCY`.
-4. Key 3 Auditor Discipline:
-   The independent Adversarial Auditor MUST run `vine audit inspect <task_id>` before approving (`vine audit approve --ticket <hex>`). Using `--force` on audit approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` merge conflicts on behalf of workers).
+4. Key 3 Auditor Merge-Clerk Decoupling & Invariants:
+   - **Auditor Merge-Clerk Decoupling**: The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (`vine audit inspect` + `vine audit approve/reject`). The Lead Orchestrator is solely responsible for running `vine weave` after Key 3 ratification. The Orchestrator is strictly forbidden from delegating weaving (`--weave`), merge conflict resolution, `ROADMAP.md` updates, or release chores to the Adversarial Auditor. Turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist.
+   - **Single-Strand Audit Isolation (Anti-Batching Invariant)**: Orchestrators MUST dispatch at most ONE strand per Key 3 audit request. Batching multiple strands into a single audit message ("Audit tasks 3.1, 3.2, 3.3, 3.5") collapses LLM attention, blinds the auditor to edge cases, and causes rubber-stamping. Every strand must be audited independently in its own focused turn.
+   - **Inverted Effort Gradient & Evidence Mandate**: Rejection is the fast path whenever ANY doubt or defect exists (`vine audit reject <task_id> --ticket <hex> --reason "..."`). Approval is evidence-bound and strictly requires `--evidence "..."` citing specific changed file basenames, provider->consumer call-sites, and negative control assertions from the diff (`vine audit approve <task_id> --ticket <hex> --evidence "..."`).
+   - The independent Adversarial Auditor MUST run `vine audit inspect <task_id>` before approving. Using `--force` on audit approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` merge conflicts on behalf of workers).
 
 Before executing `vine weave` on any worker strand, the Orchestrator MUST enforce the Five-Pillar Pre-Weave Adversarial Audit (Key 3 of the Three-Key Gate):
 1. Two-Point Diff: The branch modifies both a Provider and an active Consumer call-site (live router, CLI command dispatcher, UI, or event loop). Unwired modules tested solely by their own test suites are strictly rejected back to the worker as incomplete shelfware.
@@ -229,7 +232,7 @@ stateDiagram-v2
   | RATIFIED   | +----------------+
   +------------+
           │
-          │ vine weave (or vine audit approve --weave)
+          │ vine weave (Executed by Lead Orchestrator)
           │ Auto-executes rhizo task complete & unblocks DAG children
           ▼
     +-----------+
@@ -248,8 +251,8 @@ stateDiagram-v2
 | **`GATE_EVALUATING`**| `vine submit` / `vine gate` | Key 1 (mechanical merge-tree) & Key 2 (live compiler/test suite + changelog) evaluated. | Exit 1 $\rightarrow$ `CONFLICTED`<br>Exit 2 $\rightarrow$ `GATE_FAILED` |
 | **`READY_FOR_AUDIT`**| `vine submit` | Keys 1 & 2 passed. Cryptographic delivery ticket (`gate_token`) stamped into strand state. Strand submitted for independent adversarial review. | N/A |
 | **`AUDIT_REJECTED`** | `vine audit reject <task_id> --auditor <name> --ticket <hex> --reason "..." --listen` | Auditor rejected deliverable with recorded defect reasons against delivery ticket. Worker returns to `IN_PROGRESS` for delta remediation. | N/A |
-| **`AUDIT_RATIFIED`** | `vine audit approve <task_id> --auditor <name> --ticket <hex> [--weave] [--listen]` | Key 3 passed! Cryptographic delivery ticket verified and `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). | N/A |
-| **`COMPLETED`** | `vine weave` (or `vine audit approve --weave`) | Fast-forward merged into canonical trunk. Strand pruned. Locks released. **`vine weave` automatically invokes `rhizo task complete`**, auto-promoting downstream DAG dependencies (`BLOCKED` $\rightarrow$ `QUEUED`)! | N/A |
+| **`AUDIT_RATIFIED`** | `vine audit approve <task_id> --auditor <name> --ticket <hex> --evidence "..." [--listen]` | Key 3 passed! Cryptographic delivery ticket verified and `audit_token` stamped. Auditor and author identities strictly decoupled (`auditor != author`). Auditor NEVER weaves. | N/A |
+| **`COMPLETED`** | `vine weave` | Fast-forward merged into canonical trunk by the Lead Orchestrator. Strand pruned. Locks released. **`vine weave` automatically invokes `rhizo task complete`**, auto-promoting downstream DAG dependencies (`BLOCKED` $\rightarrow$ `QUEUED`)! | N/A |
 | **`ORPHANED`** | Lease expired without progress | Stalled worker detected. Increments `delivery_attempts`. If $\ge 3 \rightarrow$ `DEAD_LETTER`. Otherwise returns to `QUEUED`. | Escalates to operator if Dead-Lettered |
 | **`YIELDED`** | `rhizo task yield <id>` | Worker gracefully steps aside. Task returned to `QUEUED`. | N/A |
 | **`DEAD_LETTER`** | Retries exhausted ($\ge 3$) | Moved to dead-letter queue. Alerts orchestrator and operator. | Requires manual operator triage |
@@ -344,7 +347,7 @@ When a worker finishes implementation in their strand, they run `vine submit --a
 
 > [!CRITICAL]
 > **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`).
-> The Lead Orchestrator dispatches an audit request to the dedicated **Adversarial Auditor** session:
+> **SINGLE-STRAND AUDIT ISOLATION**: The Lead Orchestrator dispatches an audit request for at most ONE strand at a time (batching multiple strands into a single audit message is strictly prohibited):
 > `rhizo send @auditor --subject "Audit Request: task-core-ds" --body '{"strand_path": "...", "author": "implementer", "ticket": "<64-char-hex-delivery-ticket>"}'`
 
 The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit Pump** under the **Presumption of Guilt**:
@@ -358,21 +361,21 @@ The independent Auditor initiates **Key 3: The Pre-Weave Adversarial Code Audit 
    - **Pillar 4 (Aggressive Replacement Purge)**: Ensure all superseded legacy code, fallbacks, and commented-out blocks are deleted in the strand.
    - **Pillar 5 (Structural Assertion Rigor)**: Reject partial/loose assertions (`assert "foo" in bar`). Mandate complete structural equality (`assert actual == expected`) and negative controls.
 3. **Audit Ratification or Delta Re-Pump Loop**:
-   - **Step 3.0: Mandatory Inspection**: The Auditor MUST run `vine audit inspect <task_id>` to review the Deliverable Claim Bundle, test results, and git diff. Blind approvals are forbidden, and `--force` is strictly prohibited. Auditors must NEVER act as release or merge clerks (no editing `ROADMAP.md` or resolving `CHANGELOG.md` merge conflicts on behalf of workers; any conflict must be rejected back to the worker).
+   - **Step 3.0: Mandatory Inspection & Merge-Clerk Decoupling**: The Auditor MUST run `vine audit inspect <task_id>` to review the Deliverable Claim Bundle, test results, and git diff. Blind approvals are forbidden, and `--force` is strictly prohibited. The Auditor is strictly decoupled from merge/release duties: auditors NEVER run `--weave`, NEVER edit `ROADMAP.md`, and NEVER resolve merge conflicts. Any conflict or missing changelog must be rejected back to the worker.
    - **If findings exist**: Auditor executes rejection against the delivery ticket:
      ```bash
      vine audit reject <task_id> --auditor <auditor_name> --ticket <hex> --reason "<defects>" --listen
      ```
      and reports findings to the worker. Worker remediates inside the strand and re-submits with `vine submit` (obtaining a fresh delivery ticket).
    - **The Delta Re-Pump Loop**: Auditor reviews the git delta against the previous audit commit (`git diff <audit_sha>...HEAD`) and verifies clean tests. The pump repeats until **ZERO open defects of severity CRIT, HIGH, or MED remain**.
-   - **When 0 defects remain**: Auditor runs:
+   - **When 0 defects remain**: Auditor ratifies Key 3 with mandatory `--evidence`:
      ```bash
-     vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --weave --listen
+     vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --evidence "Provider in src/provider.nim, Consumer in src/consumer.nim:42, negative control in tests/test_cases.nim:88" --listen
      ```
-     This verifies the delivery ticket, stamps a cryptographic `audit_token`, and marks the strand `AUDIT_RATIFIED` (and fast-forward weaves into main if `--weave` is specified). Auditor notifies orchestrator.
-4. **Weave & Auto-Complete (Only after Key 3 Clearance)**:
+     This verifies the delivery ticket, stamps a cryptographic `audit_token`, and marks the strand `AUDIT_RATIFIED`. Auditor notifies orchestrator.
+4. **Weave & Auto-Complete (Executed Exclusively by Lead Orchestrator)**:
 ```bash
-# 1. Weave the verified, ratified strand into main:
+# 1. Weave the verified, ratified strand into main (Lead Orchestrator role):
 # Mechanically verifies audit_token, fast-forward merges, prunes strand,
 # and automatically triggers 'rhizo task complete' to unblock downstream DAG children!
 vine weave

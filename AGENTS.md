@@ -380,7 +380,11 @@ Never weave a strand into the canonical trunk without passing all three keys:
   Workers branching off `--parent epic/<slug>` MUST NOT alter exported contract signatures or weaken contract tests without an approved `[DESIGN ADDENDUM]`. Workers are strictly prohibited from implementing silent mock fallbacks (e.g. `lesMockFallback`); missing dependencies require halting immediately with `BLOCKER: MISSING_DEPENDENCY`.
 * **Key 1 (Mechanical)**: In-memory conflict pre-check (`git merge-tree --write-tree`).
 * **Key 2 (Semantic & Changelog)**: Automated compiler, test suite, and changelog verification inside the strand (`vine gate`). If the repository contains a changelog, changes must be documented under `## [Unreleased]`.
-* **Key 3 (Adversarial Code Audit Pump & Auditor Discipline)**: Five-pillar adversarial audit under the presumption of guilt (Changelog gate, Two-point diff, holistic integration, literal fidelity, carcass purge, structural assertions) with iterative Delta Re-Pump loop until 0 open defects remain. The independent Auditor MUST execute `vine audit inspect <task_id>` before approval; using `--force` on approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks (auditors never edit `ROADMAP.md` or resolve `CHANGELOG.md` merge conflicts on behalf of workers).
+* **Key 3 (Adversarial Code Audit Pump & Auditor Merge-Clerk Decoupling)**:
+  Five-pillar adversarial audit under the presumption of guilt (Changelog gate, Two-point diff, holistic integration, literal fidelity, carcass purge, structural assertions) with iterative Delta Re-Pump loop until 0 open defects remain.
+  - *Auditor Merge-Clerk Decoupling Invariant*: The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (`vine audit inspect` + `vine audit approve/reject`). The Lead Orchestrator is solely responsible for running `vine weave` after Key 3 ratification. The Orchestrator is strictly forbidden from delegating weaving (`--weave`), merge conflict resolution, `ROADMAP.md` updates, or release chores to the Adversarial Auditor. Turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist.
+  - *Inverted Effort Gradient & Evidence Mandate*: Rejection is the fast path whenever ANY doubt or defect exists (`vine audit reject <task_id> --ticket <hex> --reason "..."`). Approval is evidence-bound and strictly requires `--evidence "..."` citing specific changed file basenames, provider->consumer call-sites, and negative control assertions from the diff (`vine audit approve <task_id> --ticket <hex> --evidence "..."`).
+  - *Inspection & Anti-Force*: The independent Auditor MUST execute `vine audit inspect <task_id>` before approval; using `--force` on approvals is strictly prohibited. Auditors are adversarial verifiers, NOT release or merge clerks.
 * **Weave**: `vine weave && rhizo ack queue:<project>:tasks <task_id>`
 * **Post-Push CI Verification**: After weaving and pushing to remote when CI is running, if your coding harness supports native timers/schedules, set a periodic check (default: every 5m, max 12 checks / 1h) to verify CI completion (`gh run list` / `gh run view`) and cancel the timer once CI passes or fails.
 <!-- END GARDEN GUIDE -->
@@ -474,6 +478,7 @@ Agents and human engineers operating in this repository must consult the dedicat
 | **Dialectical Pump Protocol** | [`docs/dialectical_pump_protocol.md`](docs/dialectical_pump_protocol.md) | Grounded multi-perspective debate, Stage 1-3 deliverables, and the Addendum Protocol. |
 | **CLI Reference Manual** | [`docs/cli_reference.md`](docs/cli_reference.md) | Complete catalog of Garden commands (`init`, `prompts`, `launch`, `status`, `teardown`). |
 | **Configuration Architecture** | [`docs/configuration.md`](docs/configuration.md) | Project-level configuration, strand options, and test runner configurations. |
+
 
 
 

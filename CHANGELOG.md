@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Auditor Merge-Clerk Decoupling, Single-Strand Audit Isolation & Evidence-Bound Approval (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `README.md`, `AGENTS.md`)**:
+  - Decoupled the Adversarial Auditor from merge, release, conflict resolution, and roadmap clerical duties. The Auditor exclusively inspects (`vine audit inspect`) and ratifies/rejects Key 3 (`vine audit approve/reject`). Trunk weaving (`vine weave`) is performed exclusively by the Lead Orchestrator.
+  - Removed `--weave` from all Auditor command examples across Garden skills, documentation, and prompt cards.
+  - Enforced **Single-Strand Audit Isolation (Anti-Batching Invariant)**: Orchestrators MUST dispatch at most ONE strand per Key 3 audit request; batching multiple strands into a single audit message is strictly forbidden to prevent attention collapse and rubber-stamping.
+  - Inverted the approval vs rejection effort gradient: Rejection (`vine audit reject --reason "..."`) is the low-friction fast path whenever any doubt, green mirage, or defect exists; approval (`vine audit approve --evidence "..."`) is evidence-bound and strictly requires citing specific changed file basenames, provider->consumer call-sites, and negative control assertions from the diff.
 - **Pre-Plan Contract Skeleton Ceremony & Contract Immutability (`src/guide.nim`, `skills/`, `SKILL.md`, `AGENTS.md`)**:
   - Implemented the Option B flow (`RFD -> RFC -> Contract Skeleton Strand on epic/<slug> -> Implementation Plan -> Parallel Strands`).
   - **Stage 1 (RFD / `understanding.md`)**: Mandated the `Existing Codebase Idioms, Type Conventions & Test Patterns` section to extract the target codebase's exact naming conventions, error-handling styles, header/type layout, and test harness patterns.

@@ -202,7 +202,7 @@ Garden authors `implementation_plan.md`:
 - Sets up dynamic progress checkboxes and harness To-Do tracking.
 
 ### 6. Live Orchestration & Trunk Weaving (`orchestrate-swarm`)
-The main chat orchestrator dispatches work over Redis. Workers code in isolated strands (where Vine tracks identity in `.git/config` and state in Redis with zero on-disk manifests), run unit tests, and verify Keys 1 & 2 via `vine submit` (which generates a cryptographic delivery ticket). An independent adversarial auditor reviews and ratifies Key 3 (`vine audit approve <task_id> --auditor <name> --ticket <hex> --weave --listen`). When ratified, `vine weave` fast-forwards verified code into `main` with zero merge conflicts, automatically calls `rhizo task complete`, and promotes downstream DAG child tasks!
+The main chat orchestrator dispatches work over Redis. Workers code in isolated strands (where Vine tracks identity in `.git/config` and state in Redis with zero on-disk manifests), run unit tests, and verify Keys 1 & 2 via `vine submit` (which generates a cryptographic delivery ticket). An independent adversarial auditor reviews and ratifies Key 3 (`vine audit approve <task_id> --auditor <name> --ticket <hex> --evidence "<files, call-sites, negative controls>" --listen`). When ratified, the Lead Orchestrator runs `vine weave` to fast-forward verified code into `main` with zero merge conflicts, automatically calling `rhizo task complete` and promoting downstream DAG child tasks!
 
 ---
 
@@ -281,8 +281,8 @@ The main chat orchestrator dispatches work over Redis. Workers code in isolated 
    The main chat session coordinates, reviews, and integrates. Intensive multi-file edits are executed by the worker fleet in isolated strands.
 2. **Empirical Grounding Protocol (Zero Theatrical Dialogue)**:
    Dialectical deliberations must cite hard evidence from real tool calls (line citations, test outputs, compiler errors). Theatrical roleplay is strictly banned.
-3. **Three-Key Gate Verification**:
-   No code is merged into the trunk without passing Key 1 (in-memory `git merge-tree` mechanical check), Key 2 (live semantic compiler and test suite run), and Key 3 (independent adversarial audit ratification via `vine audit approve <task_id> --auditor <name> --ticket <hex> --weave --listen`). Workers submit strands with `vine submit` (which generates a delivery ticket) and CANNOT audit their own work. `vine weave` automatically invokes `rhizo task complete` and unblocks downstream DAG child tasks.
+3. **Three-Key Gate Verification & Auditor Decoupling**:
+   No code is merged into the trunk without passing Key 1 (in-memory `git merge-tree` mechanical check), Key 2 (live semantic compiler and test suite run), and Key 3 (independent adversarial audit ratification via `vine audit approve <task_id> --auditor <name> --ticket <hex> --evidence "..." --listen`). Workers submit strands with `vine submit` (which generates a delivery ticket) and CANNOT audit their own work. The Adversarial Auditor ONLY inspects and ratifies Key 3; the Lead Orchestrator executes `vine weave`, which automatically invokes `rhizo task complete` and unblocks downstream DAG child tasks.
 4. **Zero Dirty Commits**:
    All agent identity files, session state, and temporary lockfiles are strictly ignored in `.gitignore`.
 

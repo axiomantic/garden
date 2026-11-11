@@ -145,8 +145,8 @@ sequenceDiagram
     Note over S: Commit red contract test suites (asserting contract compliance)
     S->>V: vine submit --skeleton (evaluates Keys 1 & 2)
     Note over V: vine audit inspect task-<slug>-skeleton
-    V->>S: vine audit approve --ticket <hex> --weave
-    Note over S: Weaves skeleton into epic/<slug>
+    V->>S: vine audit approve --ticket <hex> --evidence "<files, types, red tests>"
+    Note over S: Lead Orchestrator runs vine weave into epic/<slug>
     S->>P: Stage 4 anchors implementation_plan.md to committed skeleton files & lines
 ```
 
@@ -165,11 +165,14 @@ Inside the strand, the Architect implements:
 ### Step 3.5.3: Submit and Audit the Skeleton Strand
 - The worker executes `vine submit --skeleton` (evaluating Key 1 merge-tree and Key 2 compilation/contract tests).
 - The Adversarial Auditor runs `vine audit inspect task-<slug>-skeleton` to forensic-check type signatures and error semantics against `design.md`.
-- Upon verification, the auditor ratifies:
+- Upon verification, the auditor ratifies Key 3 (evidence-bound approval without weaving):
   ```bash
-  vine audit approve task-<slug>-skeleton --auditor <auditor_name> --ticket <hex> --weave --listen
+  vine audit approve task-<slug>-skeleton --auditor <auditor_name> --ticket <hex> --evidence "Committed idiomatic types in src/types.nim, stubs in src/api.nim, and red contract tests in tests/test_contract.nim" --listen
   ```
-- The skeleton is fast-forward woven directly into `epic/<slug>`.
+- The Lead Orchestrator then weaves the verified skeleton into `epic/<slug>`:
+  ```bash
+  vine weave
+  ```
 
 Proceed to [`plan-implementation`](../plan-implementation/SKILL.md) to author `implementation_plan.md` anchored to the committed skeleton symbols, and spawn parallel worker strands branching off `--parent epic/<slug>`.
 
@@ -304,7 +307,28 @@ sequenceDiagram
 > [!CRITICAL]
 > **THE WORKER IS NOT THE AUDITOR**: Workers cannot audit or approve their own strands (`vine audit approve` strictly enforces `auditor != author`). The audit MUST be performed by an independent Adversarial Auditor session.
 
-#### Key 3 Auditor Discipline & Forensic Standards
+#### Key 3 Auditor Discipline, Single-Strand Isolation & Forensic Standards
+
+<CRITICAL>
+Auditor Merge-Clerk Decoupling Invariant:
+The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (`vine audit inspect` + `vine audit approve/reject`). The Lead Orchestrator is solely responsible for running `vine weave` after Key 3 ratification. The Orchestrator is strictly forbidden from delegating weaving (`--weave`), merge conflict resolution, `ROADMAP.md` updates, or release chores to the Adversarial Auditor. Turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist.
+</CRITICAL>
+
+<CRITICAL>
+Single-Strand Audit Isolation (Anti-Batching Invariant):
+Orchestrators MUST dispatch at most ONE strand per Key 3 audit request. Batching multiple strands into a single audit message (e.g. "Audit tasks 3.1, 3.2, 3.3, 3.5") collapses LLM attention, blinds the auditor to edge cases, and causes rubber-stamping. Every strand must be audited independently in its own focused turn.
+</CRITICAL>
+
+<CRITICAL>
+Inverted Approval vs Rejection Effort Gradient (`--evidence` Mandate):
+Rejection is the low-friction fast path whenever ANY doubt, defect, green mirage, or missing negative control exists:
+`vine audit reject <task_id> --auditor <name> --ticket <hex> --reason "<findings>" --listen`
+
+Approval is intentionally high-friction and evidence-bound. Running `vine audit approve` strictly requires `--evidence "..."` citing specific changed file basenames, provider->consumer call-sites, and negative control assertions from the diff:
+`vine audit approve <task_id> --auditor <name> --ticket <hex> --evidence "<changed files, provider->consumer call-sites, negative controls>" --listen`
+Passing vague praise or empty justifications without empirical diff citations is mechanically and procedurally rejected.
+</CRITICAL>
+
 1. **Mandatory Inspection (`vine audit inspect <task_id>`)**: Before issuing any audit decision (`approve` or `reject`), the Auditor MUST execute `vine audit inspect <task_id>` to inspect the deliverable claim bundle, delivery ticket, strand git diff, and test evidence. Approving an audit blindly without inspection is strictly prohibited.
 2. **Strict Prohibition on `--force` on Approvals**: Auditors MUST NEVER pass `--force` to bypass failing tests, uncommitted dirty files, or mismatched delivery tickets. If verification fails, the auditor MUST reject (`vine audit reject`) back to the worker.
 3. **Auditors Are NOT Release or Merge Clerks**: Auditors are adversarial verifiers of code correctness, NOT administrative clerks.
@@ -318,14 +342,22 @@ sequenceDiagram
 
 ### Step 4.4: Gate Clearance & Cryptographic Token
 
-When all findings reach 0, the independent auditor ratifies Key 3:
+When all findings reach 0, the independent auditor ratifies Key 3 (evidence-bound approval, with `--weave` removed):
 ```bash
+# 1. Mandatory inspection
 vine audit inspect <task_id>
-vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --weave --listen
-```
-This mechanically verifies Keys 1 & 2 against the delivery ticket, checks that the strand has zero uncommitted changes, ensures `auditor != author`, and stamps a cryptographic `audit_token`. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk state files).
 
-Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token are permitted to weave into trunk (`vine weave`, which automatically invokes `rhizo task complete` and promotes downstream DAG child tasks from `BLOCKED` to `QUEUED`).
+# 2. Ratify Key 3 with empirical evidence citations (Auditor NEVER runs --weave):
+vine audit approve <task_id> --auditor <auditor_name> --ticket <hex> --evidence "Provider in src/provider.nim, Consumer in src/consumer.nim:42, negative control in tests/test_cases.nim:88" --listen
+```
+This mechanically verifies Keys 1 & 2 against the delivery ticket, checks that the strand has zero uncommitted changes, ensures `auditor != author`, verifies that `--evidence` is provided, and stamps a cryptographic `audit_token`. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero on-disk state files).
+
+Only strands in `AUDIT_RATIFIED` state with a valid cryptographic audit token are permitted to weave into trunk. **The Lead Orchestrator then executes trunk weaving**:
+```bash
+# Executed by Lead Orchestrator upon receiving Key 3 ratification:
+vine weave
+```
+*(This automatically invokes `rhizo task complete` and promotes downstream DAG child tasks from `BLOCKED` to `QUEUED`).*
 
 ---
 

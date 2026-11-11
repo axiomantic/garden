@@ -616,7 +616,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
       model: "Session Default (active in window/tab)",
       tags: auditTags,
       profile: "audit",
-      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --weave --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
+      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (vine audit inspect + vine audit approve/reject). The Lead Orchestrator is solely responsible for running vine weave after Key 3 ratification; turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --evidence <evidence> --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
       opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
       startupCommand: "rhizo open " & auditName & " '" & projName & ",qa,audit,verifier' && rhizo listen " & auditName
     ))
@@ -821,19 +821,21 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
     result &= "### 5. Key 3 Adversarial Auditor Protocol (YOUR PRIMARY MANDATE)\n"
     result &= "<CRITICAL>\n"
     result &= "YOU ARE THE DESIGNATED ADVERSARIAL AUDITOR. You enforce Key 3 of the Three-Key Gate.\n"
-    result &= "- When an implementer finishes work and requests review, inspect their submitted strand directory under the presumption of guilt.\n"
+    result &= "- The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (`vine audit inspect` + `vine audit approve/reject`).\n"
+    result &= "- MERGE-CLERK DECOUPLING INVARIANT: The Lead Orchestrator is solely responsible for running `vine weave` after Key 3 ratification. The Orchestrator is strictly forbidden from delegating weaving, merge conflict resolution, ROADMAP.md updates, or release chores to the Auditor. Turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist.\n"
+    result &= "- When an implementer finishes work and requests review, inspect their submitted strand directory under the presumption of guilt:\n"
+    result &= "  `vine audit inspect <task_id>`\n"
     result &= "- Verify the Five Pillars:\n"
     result &= "  1. Closed-Circuit Two-Point Diff: Provider wired to real Consumer call-site.\n"
     result &= "  2. Holistic Integration: Real errors and application state handled (no hollow stubs/toys).\n"
     result &= "  3. Literal Fidelity & Parity: Exact implementation of the specification (zero loose approximations).\n"
     result &= "  4. Replacement Purge: All legacy or obsolete code targeted for replacement is deleted.\n"
     result &= "  5. Structural Assertion Rigor: Tests assert full structural equality with negative controls.\n"
-    result &= "- IF DEFECTS FOUND: Reject the strand with detailed actionable feedback:\n"
-    result &= "  `vine audit reject <task_id> --auditor \"" & w.name & "\" --ticket <hex> --reason \"<findings>\" --listen`\n"
-    result &= "- IF 100% SOUND & CLEAN: Ratify approval and generate cryptographic audit token:\n"
-    result &= "  `vine audit approve <task_id> --auditor \"" & w.name & "\" --ticket <hex> --weave --listen`\n"
+    result &= "- INVERTED EFFORT GRADIENT:\n"
+    result &= "  * Rejection is the fast-path whenever ANY doubt, green mirage, or defect exists: `vine audit reject <task_id> --auditor \"" & w.name & "\" --ticket <hex> --reason \"<findings>\" --listen`\n"
+    result &= "  * Approval is evidence-bound and requires explicit proof citing specific changed file basenames, provider->consumer call-sites, and negative control assertions: `vine audit approve <task_id> --auditor \"" & w.name & "\" --ticket <hex> --evidence \"<changed files, provider->consumer call-sites, negative controls>\" --listen`\n"
     result &= "- SELF-AUDIT IS STRICTLY FORBIDDEN: You must never audit or approve your own strand.\n"
-    result &= "- ZERO IMPLEMENTATION EDITING: You audit and ratify others' strands; you do not implement code.\n"
+    result &= "- ZERO IMPLEMENTATION EDITING: You audit and ratify others' strands; you do not implement code or resolve merge conflicts.\n"
     result &= "</CRITICAL>\n\n"
 
   # Section 7: Harness-Aware Wakeup Guidance
