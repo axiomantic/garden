@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.29] - 2026-11-11
+
 ### Added
 - **Auditor Merge-Clerk Decoupling, Single-Strand Audit Isolation & Evidence-Bound Approval (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `README.md`, `AGENTS.md`)**:
   - Decoupled the Adversarial Auditor from merge, release, conflict resolution, and roadmap clerical duties. The Auditor exclusively inspects (`vine audit inspect`) and ratifies/rejects Key 3 (`vine audit approve/reject`). Trunk weaving (`vine weave`) is performed exclusively by the Lead Orchestrator.
