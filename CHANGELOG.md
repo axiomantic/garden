@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.30] - 2026-11-11
+
 ### Added
 - **Decouple Triad Roles from Unique Listener IDs (`src/garden.nim`, `src/seed.nim`, `src/germinate.nim`, `skills/`, `SKILL.md`, `docs/`, `tests/test_garden.nim`)**:
   - Decoupled Triad roles (`architect`, `auditor`, `implementer`) from unique session listener IDs (`agent_id` / `name`).
