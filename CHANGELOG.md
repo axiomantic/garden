@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Role Tags and File Paths in Prompts Summary (`src/garden.nim`, `garden.nimble`, `tests/test_garden.nim`)**:
+  - Emitted `(@<roleSlug>)` and role prompt card file paths (`Role File: .../<roleSlug>-<name>.md`) in `garden prompts` and `garden launch` summary output, restoring role visibility and fixing CI prompt filter assertions across all OSes.
+  - Added `tests/test_roadmap.nim` execution to `nimble test` in `garden.nimble` for full test suite parity with `npm test`.
+
 ## [0.2.30] - 2026-11-11
 
 ### Added

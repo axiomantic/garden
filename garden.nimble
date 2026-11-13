@@ -14,6 +14,7 @@ task test, "Run the Garden test suite":
   exec "nim r tests/test_garden.nim"
   exec "nim r tests/test_seed.nim"
   exec "nim r tests/test_germinate.nim"
+  exec "nim r tests/test_roadmap.nim"
   exec "nim r tests/test_update.nim"
 
 after build:

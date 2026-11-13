@@ -182,6 +182,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
     check pCode == 0
     check pOut.contains("auditor")
+    check pOut.toLowerAscii.contains("auditor")
     check pOut.contains("Verification & Adversarial Auditor")
     check not pOut.contains("Staff Systems Architect")
     check not pOut.contains("DevEx & Implementation Lead")
@@ -189,6 +190,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (rOut, rCode) = execCmdEx(exePath & " prompts --role architect")
     check rCode == 0
     check rOut.contains("architect")
+    check rOut.toLowerAscii.contains("architect")
     check rOut.contains("Staff Systems Architect")
     check not rOut.contains("DevEx & Implementation Lead")
 

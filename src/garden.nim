@@ -1303,9 +1303,12 @@ proc doPrompts*(
     echo ""
     for idx, card in generatedCards:
       let w = card.worker
-      echo "  " & $(idx + 1) & ". @" & w.name & " (" & w.persona & " - " & w.role & ")"
+      let roleSlugPart = if w.roleSlug.len > 0: " (@" & w.roleSlug & ")" else: ""
+      echo "  " & $(idx + 1) & ". @" & w.name & roleSlugPart & " (" & w.persona & " - " & w.role & ")"
       echo "     Harness:      " & w.harness & " | Model: " & w.model
       echo "     Prompt File:  " & card.filePath
+      if w.roleSlug.len > 0 and w.roleSlug != w.name:
+        echo "     Role File:    " & (tempBaseDir / (w.roleSlug & "-" & w.name & ".md"))
       echo ""
     echo "  All Cards Combined:"
     echo "     File: " & allWorkersFilePath
