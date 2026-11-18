@@ -431,17 +431,40 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check sJson["action"].getStr() == "repurpose"
     check sJson["repurposed_workers"][0]["mode"].getStr() == "self_tag"
 
+  proc setupMockRhizo(name, whoJsonStr: string): string =
+    let mockDir = getTempDir() / ("garden_mock_rhizo_" & name & "_" & $getCurrentProcessId())
+    removeDir(mockDir)
+    createDir(mockDir)
+    writeFile(mockDir / "who.json", whoJsonStr)
+    when defined(windows):
+      let script = "@echo off\r\nif \"%~1\"==\"who\" (\r\n  type \"%~dp0who.json\"\r\n  exit /b 0\r\n)\r\nexit /b 0\r\n"
+      writeFile(mockDir / "rhizo.cmd", script)
+      writeFile(mockDir / "rhizo.bat", script)
+    else:
+      let script = "#!/bin/sh\nif [ \"$1\" = \"who\" ]; then\n  cat \"$(dirname \"$0\")/who.json\"\n  exit 0\nfi\nexit 0\n"
+      let exe = mockDir / "rhizo"
+      writeFile(exe, script)
+      setFilePermissions(exe, {fpUserRead, fpUserWrite, fpUserExec})
+    result = mockDir
+
   test "Garden repurpose negative control: busy worker rejected without --force, overrides with --force":
     let pidStr = $getCurrentProcessId()
     let busyAgent = "garden-test-busy-" & pidStr
     let targetProj = "garden-test-proj-" & pidStr
-
-    let (_, openCode) = execCmdEx("rhizo --project " & quoteShell(targetProj) & " open " & quoteShell(busyAgent))
-    check openCode == 0
-    defer: discard execCmdEx("rhizo close " & quoteShell(busyAgent))
-
-    let (_, stCode) = execCmdEx("rhizo --project " & quoteShell(targetProj) & " status busy \"Hermetic busy test\" " & quoteShell(busyAgent))
-    check stCode == 0
+    let whoPayload = $(%*[ %*{
+      "agent": busyAgent,
+      "project": targetProj,
+      "status": "ACTIVE",
+      "listener": "LISTENING",
+      "state": "BUSY (Hermetic busy test)",
+      "tags": [targetProj, "worker"]
+    } ])
+    let mockDir = setupMockRhizo("busy", whoPayload)
+    let origPath = getEnv("PATH", "")
+    putEnv("PATH", mockDir & $PathSep & origPath)
+    defer:
+      putEnv("PATH", origPath)
+      removeDir(mockDir)
 
     # 1. Attempting without --force fails
     let (errOut, errCode) = runGardenInProcess(@["repurpose", busyAgent, "--project", targetProj, "--role", "Staff Systems Architect", "--json"])
@@ -461,10 +484,20 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let pidStr = $getCurrentProcessId()
     let foreignAgent = "garden-test-foreign-" & pidStr
     let originalProj = "garden-foreign-proj-" & pidStr
-
-    let (_, openCode) = execCmdEx("rhizo --project " & quoteShell(originalProj) & " open " & quoteShell(foreignAgent))
-    check openCode == 0
-    defer: discard execCmdEx("rhizo close " & quoteShell(foreignAgent))
+    let whoPayload = $(%*[ %*{
+      "agent": foreignAgent,
+      "project": originalProj,
+      "status": "ACTIVE",
+      "listener": "LISTENING",
+      "state": "IDLE",
+      "tags": [originalProj, "worker"]
+    } ])
+    let mockDir = setupMockRhizo("foreign", whoPayload)
+    let origPath = getEnv("PATH", "")
+    putEnv("PATH", mockDir & $PathSep & origPath)
+    defer:
+      putEnv("PATH", origPath)
+      removeDir(mockDir)
 
     # 1. Attempting without --allow-cross-project fails with cross-project rejection error
     let (errOut, errCode) = runGardenInProcess(@["repurpose", foreignAgent, "--project", "test-anti-poach-proj", "--role", "Staff Systems Architect", "--json"])
