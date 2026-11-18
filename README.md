@@ -176,17 +176,19 @@ Garden utilizes the **Active Swarm Fast-Path (First-Look Invariant)**:
   1. **Execution Mode & Swarm Shape in <Detected Harness>**: Multi-Agent Swarm (Balanced Triad or Focused Duo in the detected harness) vs Single-Agent Inline.
 
 > [!IMPORTANT]
-> **Universal Sovereign Sessions & Model Inheritance**:
-> - **Sovereign Sessions Only (Universal Subagent & Tmux Prohibition)**: Swarm workers are strictly independent sessions (separate terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks) and terminal multiplexers (`tmux`) are **strictly prohibited**.
+> **Capability-Aware Execution Modes & Model Inheritance**:
+> - **Adaptive Worker Modes (`execution_mode = "auto"`)**: First checks `rhizo who --all --json` to attach to existing project/pool workers. On cold starts, Antigravity IDE and OpenCode Desktop default to **persistent drillable subagents** (`subagents`, with clickable `conversation://<id>` / session-tree chat drill-down); Codex CLI defaults to automated **`tmux` panes** (`garden launch --tmux`); and Codex Desktop / non-`tmux` CLI defaults to **10-backtick Prompt Cards** (`prompts`). Opaque, non-interactive CLI subagents remain prohibited as swarm workers.
 > - **Session-Native Model Inheritance**: Swarm workers inherit whatever foundation model is active in that harness window (`Session Default (active in window/tab)`). Disconnected model pairing quizzes are eliminated.
 
-### 3. Prompt-Based Swarm Bootstrapping (`launch-workers`)
-Garden writes `garden-swarm.json` and runs `garden prompts` to write prompt cards directly to temporary files (`/tmp/garden-<project>/<worker>.md`) rather than flooding the chat window with thousands of lines of raw text:
-- The Orchestrator displays concise session assignments with clickable file links:
-  1. Open **Tab 1 / Window 1**: Reference Prompt 1 (`/tmp/garden-<project>/<project>-auditor.md`)
-  2. Open **Tab 2 / Window 2**: Reference Prompt 2 (`/tmp/garden-<project>/<project>-architect.md`)
-  3. Open **Tab 3 / Window 3**: Reference Prompt 3 (`/tmp/garden-<project>/<project>-implementer.md`)
-- Each session enters the project directory, exports `RHIZO_AGENT_NAME`, registers on the Redis bus (`rhizo open`), and arms its single-shot listener (`rhizo listen`).
+### 3. Capability-Aware Swarm Bootstrapping (`launch-workers`)
+Garden runs `garden prompts` (or `garden launch --tmux` / `garden prompts --subagent --json`) to write prompt cards (`/tmp/garden-<project>/<worker>.md`) and subagent briefs (`/tmp/garden-<project>/subagent-<worker>.md`) directly to temporary files rather than flooding the chat window with thousands of lines of raw text:
+- **In `subagents` mode (Antigravity IDE & OpenCode Desktop default)**: The orchestrator spawns persistent drillable subagents with each worker's brief and prints clickable session links (`conversation://<id>`) directly in chat.
+- **In `tmux` mode (Codex CLI default / CLI `--tmux`)**: `garden launch --tmux` opens one `tmux` window per worker pointing at `/tmp/garden-<project>/<worker>.md`.
+- **In `prompts` mode (Codex Desktop & non-`tmux` CLI default)**: The Orchestrator displays concise session assignments with clickable file links:
+  1. Open **Tab 1 / Window 1**: Reference Prompt 1 (`/tmp/garden-<project>/<worker-1>.md`)
+  2. Open **Tab 2 / Window 2**: Reference Prompt 2 (`/tmp/garden-<project>/<worker-2>.md`)
+  3. Open **Tab 3 / Window 3**: Reference Prompt 3 (`/tmp/garden-<project>/<worker-3>.md`)
+- Each worker registers on the Redis bus (`rhizo open`), claims its task (`rhizo task claim`), isolates work 1:1 in a Vine strand (`vine new`), submits for independent Key 3 audit (`vine submit`), and (in CLI harnesses) arms its single-shot listener (`rhizo listen`).
 - The Orchestrator confirms all workers are live via `rhizo who --json` before dispatching tasks!
 
 ### 4. The Dialectical Pump (`dialectical-pump`)

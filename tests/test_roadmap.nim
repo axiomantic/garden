@@ -108,7 +108,7 @@ suite "Garden Roadmap & Procedural Persona Suite":
 
     # 3. buildRoadmap must recover gracefully and still include valid seed with zero JSON caching
     let rm = buildRoadmap(testDir)
-    check rm.seasons.len >= 1
+    check rm.seasons.len == 1
     var foundValid = false
     for s in rm.seasons:
       for it in s.items:

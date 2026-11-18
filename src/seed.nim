@@ -64,9 +64,10 @@ proc canonicalizePath*(p: string): string =
   return p.normalizedPath
 
 proc findProjectRoot*(startDir: string = ""): string =
-  let envDir = getEnv("GARDEN_PROJECT_DIR", "")
-  if envDir.len > 0 and dirExists(envDir):
-    return canonicalizePath(envDir)
+  if startDir.len == 0:
+    let envDir = getEnv("GARDEN_PROJECT_DIR", "")
+    if envDir.len > 0 and dirExists(envDir):
+      return canonicalizePath(envDir)
   var dir = if startDir.len > 0: startDir else: getCurrentDir()
   while dir.len > 0:
     let envCfg = getEnv("GARDEN_CONFIG", "")
@@ -183,6 +184,8 @@ proc parseTomlSeed*(content: string, filePath: string = ""): Seed =
 
   if result.id.len == 0 and result.title.len > 0:
     result.id = slugify(result.title)
+  if result.id.len == 0:
+    raise newException(ValueError, "Seed must define a non-empty id or title")
 
 proc toJson*(s: Seed): JsonNode =
   result = newJObject()
@@ -222,6 +225,8 @@ proc saveSeed*(s: var Seed, projectRoot: string = ""): string =
   
   if s.id.len == 0:
     s.id = slugify(s.title)
+  if s.id.len == 0 or s.id in [".", ".."] or '/' in s.id or '\\' in s.id or ".." in s.id or '.' in s.id:
+    raise newException(ValueError, "Invalid seed id: " & s.id)
   if s.status.len == 0:
     s.status = "SOWN"
   if s.season.len == 0:

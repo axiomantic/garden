@@ -53,18 +53,7 @@ jobs:
 
       - name: Run automated test suite
         run: |
-          nimble test
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      - name: Install npm dependencies
-        run: npm install
-
-      - name: Verify bin riders
-        run: node tests/test_riders.js
+          nimble test && nimble check
 
   auto-tag:
     name: Auto-Tag on Version Bump

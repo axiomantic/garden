@@ -45,8 +45,12 @@ If and only if no active cluster workers exist, the session conducts a streamlin
   - *Option 4*: Custom Swarm (Operator specifies roles).
 
 > [!CRITICAL]
-> **Subagent & Tmux Prohibition**:
-> Swarm workers are ALWAYS sovereign, independent interactive sessions (dedicated terminal tabs or IDE windows) bootstrapped via 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks) are STRICTLY PROHIBITED as cluster workers. Internal subagents are ephemeral, cannot maintain persistent blocking listeners, and cause severe context poisoning.
+> **Capability-Aware Worker Modes & Opaque Subagent Prohibition**:
+> On cold starts (`execution_mode = "auto"`), Garden matches worker execution to harness visibility and chat steerability:
+> - **Antigravity IDE & OpenCode Desktop (`subagents` default)**: Persistent drillable child sessions (`invoke_subagent` + `send_message` with clickable `conversation://<id>` links, or OpenCode sidebar child sessions) following the full worker procedure (unique `rhizo name` + `rhizo open`, 1:1 Vine strand `vine new`, `vine submit`, independent Key 3 audit).
+> - **Codex CLI in `tmux` (`tmux` default) & opt-in CLI**: `garden launch --tmux` spawns one `tmux` window per worker pointing at `/tmp/garden-<project>/<worker>.md`.
+> - **Codex Desktop & non-`tmux` CLI (`prompts` default)**: Top-level interactive sessions bootstrapped via 10-backtick prompt cards.
+> Opaque, non-interactive CLI subagents (such as headless `Task` calls where the user cannot drill in and chat) remain STRICTLY PROHIBITED as cluster swarm workers.
 
 > [!CRITICAL]
 > **Session Default Models**:

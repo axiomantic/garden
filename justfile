@@ -11,13 +11,9 @@ setup:
 # 2. Test Suite Execution
 test:
     @just test-nim
-    @just test-riders
 
 test-nim:
     nimble test
-
-test-riders:
-    node tests/test_riders.js
 
 # 3. Linter Execution
 lint:

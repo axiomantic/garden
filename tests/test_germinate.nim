@@ -1,9 +1,9 @@
 # tests/test_germinate.nim
 # Full test coverage for Garden germinate subcommands (dispatch, prompt, inline, status), invalid seed rejection, and JSON output.
 
-import std/[os, osproc, strutils, json, unittest]
-import ../src/seed
-import ../src/germinate
+import std/[os, strutils, json, unittest]
+import ../src/[seed, germinate, garden]
+import ./test_helpers
 
 suite "Garden Germinate Core Engine Suite":
 
@@ -31,6 +31,9 @@ suite "Garden Germinate Core Engine Suite":
 
     let s = plantSeed("Gossip Bus", projectRoot = tmpDir, season = "autumn", sunlight = "blazing", tags = @["p2p", "bus"])
     let (ok, msg, jNode) = germinatePrompt(s.id, targetWorker = "architect", projectRoot = tmpDir)
+    defer:
+      if jNode.hasKey("temp_dir") and jNode["temp_dir"].getStr().len > 0:
+        removeDir(jNode["temp_dir"].getStr())
     check ok == true
     check msg.contains("GARDEN GERMINATION: Seed 'Gossip Bus'")
     check msg.contains("Gossip Bus")
@@ -118,17 +121,20 @@ suite "Garden CLI 'garden germinate' Integration Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    discard execCmdEx(exePath & " plant \"CLI Status Seed\" -p " & quoteShell(tmpDir))
+    discard captureRet(proc (): int = doPlant("CLI Status Seed", "", "", "", "", tmpDir, false, false))
 
     # Formatted status
-    let (sOut, sCode) = execCmdEx(exePath & " germinate status cli-status-seed -p " & quoteShell(tmpDir))
+    let (sOut, sCode) = captureRet(proc (): int =
+      doGerminate("status", "cli-status-seed", projectDir = tmpDir)
+    )
     check sCode == 0
     check sOut.contains("Seed Lifecycle: CLI Status Seed")
     check sOut.contains("Status:   SOWN")
 
     # JSON status
-    let (jOut, jCode) = execCmdEx(exePath & " germinate status cli-status-seed --json -p " & quoteShell(tmpDir))
+    let (jOut, jCode) = captureRet(proc (): int =
+      doGerminate("status", "cli-status-seed", projectDir = tmpDir, jsonOutput = true)
+    )
     check jCode == 0
     let j = parseJson(jOut.strip())
     check j["action"].getStr() == "status"
@@ -140,24 +146,32 @@ suite "Garden CLI 'garden germinate' Integration Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    discard execCmdEx(exePath & " plant \"CLI Prompt Seed\" --season summer --sunlight high -p " & quoteShell(tmpDir))
+    discard captureRet(proc (): int = doPlant("CLI Prompt Seed", "summer", "high", "", "", tmpDir, false, false))
 
-    let (pOut, pCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --worker auditor -p " & quoteShell(tmpDir))
+    let (pOut, pCode) = captureRet(proc (): int =
+      doGerminate("prompt", "cli-prompt-seed", targetWorker = "auditor", projectDir = tmpDir)
+    )
     check pCode == 0
     check pOut.contains("CLI Prompt Seed")
     check pOut.contains("Auditor")
     check pOut.contains(".md")
 
     # Verify --inline flag
-    let (iOut, iCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --worker auditor --inline -p " & quoteShell(tmpDir))
+    let (iOut, iCode) = captureRet(proc (): int =
+      doGerminate("prompt", "cli-prompt-seed", targetWorker = "auditor", projectDir = tmpDir, inlineOutput = true)
+    )
     check iCode == 0
     check iOut.contains("``````````markdown")
     check iOut.contains("CLI Prompt Seed")
 
-    let (jOut, jCode) = execCmdEx(exePath & " germinate prompt cli-prompt-seed --json -p " & quoteShell(tmpDir))
+    let (jOut, jCode) = captureRet(proc (): int =
+      doGerminate("prompt", "cli-prompt-seed", projectDir = tmpDir, jsonOutput = true)
+    )
     check jCode == 0
     let j = parseJson(jOut.strip())
+    defer:
+      if j.hasKey("temp_dir") and j["temp_dir"].getStr().len > 0:
+        removeDir(j["temp_dir"].getStr())
     check j["action"].getStr() == "prompt"
     check j["prompts"].len > 0
     check j["prompts"][0].hasKey("file_path")
@@ -168,18 +182,21 @@ suite "Garden CLI 'garden germinate' Integration Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    discard execCmdEx(exePath & " plant \"Execution Target\" -p " & quoteShell(tmpDir))
+    discard captureRet(proc (): int = doPlant("Execution Target", "", "", "", "", tmpDir, false, false))
 
     # Dispatch
-    let (dOut, dCode) = execCmdEx(exePath & " germinate dispatch execution-target --json -p " & quoteShell(tmpDir))
+    let (dOut, dCode) = captureRet(proc (): int =
+      doGerminate("dispatch", "execution-target", projectDir = tmpDir, jsonOutput = true)
+    )
     check dCode == 0
     let dJson = parseJson(dOut.strip())
     check dJson["action"].getStr() == "dispatch"
     check dJson["seed"]["status"].getStr() == "DISPATCHED"
 
     # Inline
-    let (iOut, iCode) = execCmdEx(exePath & " germinate inline execution-target --json -p " & quoteShell(tmpDir))
+    let (iOut, iCode) = captureRet(proc (): int =
+      doGerminate("inline", "execution-target", projectDir = tmpDir, jsonOutput = true)
+    )
     check iCode == 0
     let iJson = parseJson(iOut.strip())
     check iJson["action"].getStr() == "inline"
@@ -191,30 +208,34 @@ suite "Garden CLI 'garden germinate' Integration Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-
     # Missing arguments
-    let (mOut, mCode) = execCmdEx(exePath & " germinate")
+    let (mOut, mCode) = runGardenInProcess(@["germinate"])
     check mCode != 0
     check mOut.contains("Usage: garden germinate")
 
     # Missing seed id
-    let (sOut, sCode) = execCmdEx(exePath & " germinate dispatch")
+    let (sOut, sCode) = runGardenInProcess(@["germinate", "dispatch"])
     check sCode != 0
     check sOut.contains("Usage: garden germinate dispatch")
 
     # Unknown action
-    let (uOut, uCode) = execCmdEx(exePath & " germinate dance some-seed -p " & quoteShell(tmpDir))
+    let (uOut, uCode) = captureRet(proc (): int =
+      doGerminate("dance", "some-seed", projectDir = tmpDir)
+    )
     check uCode != 0
     check uOut.contains("Unknown germinate action")
 
     # Non-existent seed rejection
-    let (nOut, nCode) = execCmdEx(exePath & " germinate status non-existent-seed -p " & quoteShell(tmpDir))
+    let (nOut, nCode) = captureRet(proc (): int =
+      doGerminate("status", "non-existent-seed", projectDir = tmpDir)
+    )
     check nCode != 0
     check nOut.contains("Seed not found")
 
     # Non-existent seed rejection with --json
-    let (njOut, njCode) = execCmdEx(exePath & " germinate status non-existent-seed --json -p " & quoteShell(tmpDir))
+    let (njOut, njCode) = captureRet(proc (): int =
+      doGerminate("status", "non-existent-seed", projectDir = tmpDir, jsonOutput = true)
+    )
     check njCode != 0
     let nj = parseJson(njOut.strip())
     check nj["status"].getStr() == "error"

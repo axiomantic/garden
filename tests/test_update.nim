@@ -75,11 +75,30 @@ suite "Garden Triad Update Subsystem Suite":
     check rider.len == 0
 
   test "CLI doUpdateCommand settings flags":
+    let origCfgDir = getEnv("AXIOMANTIC_CONFIG_DIR", "")
+    let testConfigDir = getTempDir() / ("garden_update_cli_test_" & $getCurrentProcessId())
+    createDir(testConfigDir)
+    putEnv("AXIOMANTIC_CONFIG_DIR", testConfigDir)
+    defer:
+      if origCfgDir.len > 0: putEnv("AXIOMANTIC_CONFIG_DIR", origCfgDir)
+      else: delEnv("AXIOMANTIC_CONFIG_DIR")
+      removeDir(testConfigDir)
+
     # Test --skip flag
     let skipCode = doUpdateCommand(@["--skip", "vine@99.9.9"], "0.2.17")
     check skipCode == 0
     let cfgAfterSkip = loadUpdatesConfig()
     check cfgAfterSkip["settings"]["ignored_versions"]["vine"].getStr() == "99.9.9"
+
+    # Test --skip scoped package flag (@axiomantic/vine@1.2.3)
+    let scopedSkipCode = doUpdateCommand(@["--skip", "@axiomantic/vine@1.2.3"], "0.2.17")
+    check scopedSkipCode == 0
+    let cfgAfterScopedSkip = loadUpdatesConfig()
+    check cfgAfterScopedSkip["settings"]["ignored_versions"]["vine"].getStr() == "1.2.3"
+
+    # Test --skip with missing value returns error
+    let missingSkipCode = doUpdateCommand(@["--skip"], "0.2.17")
+    check missingSkipCode != 0
 
     # Test --disable flag
     let disableCode = doUpdateCommand(@["--disable"], "0.2.17")

@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Capability-Aware Harness Execution Defaults (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `docs/`, `tests/test_garden.nim`)**:
+  - Replaced the blanket subagent and tmux prohibition with capability-aware harness execution resolution (`execution_mode = "auto"`, `"subagents"`, `"tmux"`, `"prompts"`):
+    - **Antigravity IDE & OpenCode Desktop**: Default to persistent drillable subagents (`subagents`) via `garden prompts --subagent --task <id> --json` and `/tmp/garden-<project>/subagent-<worker>.md` briefs, preserving unique Rhizo identity, explicit `--agent <name>`, 1:1 Vine strand isolation (`vine new`), `vine submit`, and independent Key 3 adversarial audit.
+    - **Codex CLI (`tmux`) & opt-in CLI harnesses**: Support automated `tmux` window spawning via `garden launch --tmux` (with `--dry-run` inspection) pointing each pane at `/tmp/garden-<project>/<worker>.md`.
+    - **Codex Desktop & non-`tmux` CLI**: Default to 10-backtick Prompt Cards (`prompts`) in `/tmp/garden-<project>/`.
+  - Added `--mode`, `--subagent`/`--subagents`, `--tmux`, `--task`, and `--dry-run` flags to `garden prompts` and `garden launch`, `execution_mode = "auto"` scaffolding in `garden init` (`garden.toml`), and unit/integration tests in `tests/test_garden.nim`.
+
+### Changed
+- **100% In-Process Nim Test Migration (`tests/config.nims`, `tests/test_helpers.nim`, `tests/*.nim`, `src/garden.nim`, `src/update.nim`, `justfile`)**:
+  - Parameterized `main*(customParams, useCustomParams)` and introduced `-d:inProcessTest` `CliExitError`/`testQuit` with split stdout/stderr capture (`captureIo*`, `captureRet*`, `runGardenInProcess*`), migrating all CLI and npm bin rider checks (`tests/test_riders.js` removed) into native Nim suites executed via `nimble test`.
+
 ### Fixed
+- **Deep Code-Review Hardening (`src/garden.nim`, `src/seed.nim`, `src/roadmap.nim`, `src/germinate.nim`)**:
+  - Updated `garden repurpose` to require exact agent/role matching, tightened `seed` ID sanitization against path traversal, and hardened `roadmap` season ordering and corrupted TOML/JSON resilience.
 - **Role Tags and File Paths in Prompts Summary (`src/garden.nim`, `garden.nimble`, `tests/test_garden.nim`)**:
   - Emitted `(@<roleSlug>)` and role prompt card file paths (`Role File: .../<roleSlug>-<name>.md`) in `garden prompts` and `garden launch` summary output, restoring role visibility and fixing CI prompt filter assertions across all OSes.
   - Added `tests/test_roadmap.nim` execution to `nimble test` in `garden.nimble` for full test suite parity with `npm test`.

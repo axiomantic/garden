@@ -8,6 +8,9 @@ import germinate
 import update
 import roadmap
 
+when defined(inProcessTest):
+  template quit(code: int = 0) = testQuit(code)
+
 const
   GardenVersion = "0.2.30"
   DefaultConfigFileName = "garden.toml"
@@ -19,6 +22,9 @@ type
 
   HarnessType* = enum
     htAntigravity, htClaudeCode, htCodex, htOpenCode, htPi, htGeneric
+
+  WorkerExecutionMode* = enum
+    wemAuto, wemSubagents, wemTmux, wemPrompts
 
   WorkerSpec* = object
     name*: string             # Unique listener codename ID (agent_id)
@@ -38,9 +44,10 @@ type
     targetRepo*: string
     orchestrator*: string
     orchestratorAgent*: string
+    executionMode*: string
     workers*: seq[WorkerSpec]
 
-proc printHelp() =
+proc printHelp*() =
   echo """
 Garden: Multi-Agent Swarm Orchestration, Empirical Dialectics & Ceremonies
 Version: """ & GardenVersion & """
@@ -120,9 +127,14 @@ Options for 'germinate':
 Options for 'prompts' and 'launch':
   --worker, -w <name>      Filter prompt output to a specific worker (agent_id or role slug)
   --role, -r <role>        Filter prompt output to a specific role (architect, auditor, implementer)
+  --mode <mode>            Execution mode override (auto, subagents, tmux, prompts)
+  --subagent, --subagents  Generate drillable subagent briefs (sets execution_mode=subagents)
+  --tmux                   Spawn/prepare tmux worker panes for CLI harnesses (sets execution_mode=tmux)
+  --task <task_id>         Bind a specific task ID in generated subagent briefs
+  --dry-run                Prepare commands and metadata without spawning tmux windows
   --write, -o [file]       Write generated prompts to markdown file (default: garden-prompts.md)
   --inline, -i             Print raw 10-backtick prompt cards directly to stdout
-  --force-prompts, --cards Force prompt card generation (skips fast-path)
+  --force-prompts, --cards Force prompt card generation (skips fast-path and subagent/tmux defaults)
   --json                   Output prompts as JSON
   --project-dir, -p <dir>  Target project directory (default: current root)
 
@@ -142,41 +154,17 @@ Options for 'teardown':
   Tears down all active project workers registered in Redis
 """
 
-proc canonicalizePath*(p: string): string =
-  if p.len == 0: return ""
-  try:
-    if dirExists(p) or fileExists(p):
-      return expandFilename(p).normalizedPath
-  except CatchableError:
-    discard
-  return p.normalizedPath
-
-proc findProjectRoot*(startDir: string = ""): string =
-  let envDir = getEnv("GARDEN_PROJECT_DIR", "")
-  if envDir.len > 0 and dirExists(envDir):
-    return canonicalizePath(envDir)
-  var dir = if startDir.len > 0: startDir else: getCurrentDir()
-  while dir.len > 0:
-    let envCfg = getEnv("GARDEN_CONFIG", "")
-    if (envCfg.len > 0 and fileExists(envCfg)) or
-       fileExists(dir / "garden.toml") or 
-       dirExists(dir / ".garden") or 
-       dirExists(dir / ".git") or
-       fileExists(dir / ".git"):
-      return canonicalizePath(dir)
-    let parent = dir.parentDir()
-    if parent == dir:
-      break
-    dir = parent
-  return canonicalizePath(startDir)
-
 proc detectCurrentHarness*(): string =
   if getEnv("ANTIGRAVITY_APP_DIR", "").len > 0:
     "Antigravity IDE"
   elif getEnv("CLAUDE_CODE", "").len > 0:
     "Claude Code CLI"
+  elif getEnv("OPENCODE_DESKTOP", "").len > 0:
+    "OpenCode Desktop"
   elif getEnv("OPENCODE_SESSION_ID", "").len > 0:
     "OpenCode"
+  elif getEnv("CODEX_CLI", "").len > 0:
+    "Codex CLI"
   elif getEnv("CODEX_SESSION_ID", "").len > 0:
     "ChatGPT Desktop / Codex"
   elif getEnv("PI_SESSION_ID", "").len > 0:
@@ -198,6 +186,48 @@ proc normalizeHarness*(h: string): HarnessType =
     return htPi
   else:
     return htGeneric
+
+proc supportsDrillableSubagents*(harness: string): bool =
+  normalizeHarness(harness) in [htAntigravity, htOpenCode]
+
+proc supportsTmuxFactory*(harness: string): bool =
+  let hl = harness.toLowerAscii().strip()
+  if hl.contains("cli"):
+    return true
+  if hl.contains("antigravity") or hl.contains("desktop"):
+    return false
+  return normalizeHarness(harness) in [htClaudeCode, htOpenCode, htPi, htCodex, htGeneric]
+
+proc resolveExecutionMode*(
+  harness: string,
+  configuredMode: string = "",
+  forcePrompts: bool = false,
+  optSubagent: bool = false,
+  optTmux: bool = false,
+  inTmux: bool = (getEnv("TMUX", "").len > 0)
+): string =
+  if forcePrompts:
+    return "prompts"
+  if optSubagent:
+    return "subagents"
+  if optTmux:
+    return "tmux"
+
+  let cm = configuredMode.toLowerAscii().strip()
+  if cm in ["subagent", "subagents"]:
+    return "subagents"
+  elif cm == "tmux":
+    return "tmux"
+  elif cm in ["prompt", "prompts", "cards"]:
+    return "prompts"
+
+  let hl = harness.toLowerAscii()
+  let ht = normalizeHarness(harness)
+  if supportsDrillableSubagents(harness):
+    return "subagents"
+  if (hl.contains("codex cli") or (ht in [htCodex, htClaudeCode, htPi] and not hl.contains("desktop"))) and inTmux:
+    return "tmux"
+  return "prompts"
 
 proc resolveWorkerProfile*(w: WorkerSpec): WorkerProfile =
   let p = w.profile.toLowerAscii.strip()
@@ -311,7 +341,7 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
     return envAgent
 
   try:
-    let cmd = "rhizo leader status orchestrator:" & project & " --json"
+    let cmd = "rhizo leader status " & quoteShell("orchestrator:" & project) & " --json"
     let (outp, code) = execCmdEx(cmd)
     if code == 0 and outp.strip().len > 0:
       let j = parseJson(outp.strip())
@@ -400,12 +430,19 @@ proc parseTomlSwarmConfig*(content: string): JsonNode =
     if line.len == 0 or line.startsWith("#") or line.startsWith(";"):
       continue
 
-    var inQuotes = false
+    var quoteChar = '\0'
+    var escaped = false
     var cleanLine = ""
-    for i, c in line:
-      if c == '"' or c == '\'':
-        inQuotes = not inQuotes
-      elif c == '#' and not inQuotes:
+    for c in line:
+      if escaped:
+        escaped = false
+      elif c == '\\' and quoteChar == '"':
+        escaped = true
+      elif quoteChar == '\0' and (c == '"' or c == '\''):
+        quoteChar = c
+      elif c == quoteChar:
+        quoteChar = '\0'
+      elif c == '#' and quoteChar == '\0':
         break
       cleanLine.add(c)
     cleanLine = cleanLine.strip()
@@ -459,6 +496,14 @@ proc parseTomlSwarmConfig*(content: string): JsonNode =
           result["target_repo"] = %rawVal.unquoteToml()
         elif key in ["orchestrator", "orchestrator_agent"]:
           result[key] = %rawVal.unquoteToml()
+        elif key in ["execution_mode", "mode"]:
+          result["execution_mode"] = %rawVal.unquoteToml()
+        elif key == "default_triad":
+          if rawVal.startsWith("[") and rawVal.endsWith("]"):
+            let arr = parseTomlArray(rawVal)
+            var jArr = newJArray()
+            for item in arr: jArr.add(%item.toLowerAscii().strip())
+            result["default_triad"] = jArr
       else:
         discard
 
@@ -478,6 +523,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
   result.targetRepo = root
   result.orchestrator = effectiveOrch
   result.orchestratorAgent = effectiveOrch
+  result.executionMode = "auto"
 
   # Migration / legacy reading: read legacy garden-swarm.json if present, then purge
   let legacySwarm = root / "garden-swarm.json"
@@ -510,14 +556,18 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
   elif fileExists(root / DefaultConfigFileName):
     try:
       let tomlContent = readFile(root / DefaultConfigFileName)
-      if tomlContent.contains("[[workers]]") or tomlContent.contains("[[worker]]") or tomlContent.contains("[workers."):
+      if tomlContent.contains("[[workers]]") or tomlContent.contains("[[worker]]") or tomlContent.contains("[workers.") or tomlContent.contains("execution_mode") or tomlContent.contains("[project]") or tomlContent.contains("[swarm]"):
         sJson = parseTomlSwarmConfig(tomlContent)
     except CatchableError: discard
 
   if not sJson.isNil:
     try:
-      result.project = if sJson.hasKey("project"): sJson["project"].getStr(projName) else: projName
+      result.project = if optProject.len > 0: projName
+                       elif sJson.hasKey("project") and sJson["project"].getStr().strip().len > 0: sJson["project"].getStr().strip()
+                       else: projName
       result.targetRepo = if sJson.hasKey("target_repo"): sJson["target_repo"].getStr(root) else: root
+      if sJson.hasKey("execution_mode"):
+        result.executionMode = sJson["execution_mode"].getStr("auto")
       
       if sJson.hasKey("orchestrator"):
         if sJson["orchestrator"].kind == JObject:
@@ -585,10 +635,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
 
   if result.workers.len == 0:
     # Synthesize default balanced triad dynamically on the fly from project/seed requirements
-    result.project = projName
-    result.targetRepo = root
-    result.orchestrator = effectiveOrch
-    result.orchestratorAgent = effectiveOrch
+    let synthProj = if result.project.len > 0: result.project else: projName
 
     # Read active botanical seeds to enrich synthesized requirements
     var seedContext = ""
@@ -600,7 +647,7 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
         if s.status != "HARVESTED" and s.status != "WOVEN":
           activeSeedTitles.add(s.title & " (" & s.id & ")")
           for t in s.tags:
-            if t notin seedTags and t != projName: seedTags.add(t)
+            if t notin seedTags and t != synthProj: seedTags.add(t)
       if activeSeedTitles.len > 0:
         seedContext = " Sown project seed(s): " & activeSeedTitles.join("; ") & "."
     except CatchableError:
@@ -612,19 +659,19 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     if result.orchestratorAgent.len > 0:
       triadUsedNames.add(result.orchestratorAgent)
 
-    let archName = allocateUniqueCodename(projName, "architect", triadUsedNames)
-    let auditName = allocateUniqueCodename(projName, "auditor", triadUsedNames)
-    let implName = allocateUniqueCodename(projName, "implementer", triadUsedNames)
+    let archName = allocateUniqueCodename(synthProj, "architect", triadUsedNames)
+    let auditName = allocateUniqueCodename(synthProj, "auditor", triadUsedNames)
+    let implName = allocateUniqueCodename(synthProj, "implementer", triadUsedNames)
     let curHarness = detectCurrentHarness()
     let curHarnessType = normalizeHarness(curHarness)
 
-    let archPersona = pickWhimsicalPersona("architect", projName)
-    let auditPersona = pickWhimsicalPersona("auditor", projName)
-    let implPersona = pickWhimsicalPersona("implementer", projName)
+    let archPersona = pickWhimsicalPersona("architect", synthProj)
+    let auditPersona = pickWhimsicalPersona("auditor", synthProj)
+    let implPersona = pickWhimsicalPersona("implementer", synthProj)
 
-    var archTags = @[projName, "architect", "systems", "architecture", "invariants"]
-    var auditTags = @[projName, "auditor", "qa", "audit", "verifier", "purist"]
-    var implTags = @[projName, "implementer", "dev", "devex", "build", "implementation"]
+    var archTags = @[synthProj, "architect", "systems", "architecture", "invariants"]
+    var auditTags = @[synthProj, "auditor", "qa", "audit", "verifier", "purist"]
+    var implTags = @[synthProj, "implementer", "dev", "devex", "build", "implementation"]
     for st in seedTags:
       if st notin implTags: implTags.add(st)
 
@@ -640,47 +687,60 @@ proc loadSwarmConfig*(projectDir: string = "", swarmFilePath: string = "", optOr
     let implCmd = if isTier1: "rhizo open " & implName & " '" & implTagsStr & "'"
                   else: "rhizo open " & implName & " '" & implTagsStr & "' && rhizo listen " & implName
 
-    result.workers.add(WorkerSpec(
-      name: archName,
-      roleSlug: "architect",
-      persona: archPersona,
-      role: "Staff Systems Architect",
-      harness: curHarness,
-      model: "Session Default (active in window/tab)",
-      tags: archTags,
-      profile: "investigation",
-      systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & projName & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Operate as an investigator and architectural reviewer.",
-      opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
-      startupCommand: archCmd
-    ))
+    var activeTriadRoles = @["architect", "auditor", "implementer"]
+    if not sJson.isNil and sJson.hasKey("default_triad") and sJson["default_triad"].kind == JArray and sJson["default_triad"].len > 0:
+      var customTriad: seq[string] = @[]
+      for rItem in sJson["default_triad"]:
+        if rItem.kind == JString:
+          let rs = rItem.getStr().toLowerAscii().strip()
+          if rs.len > 0 and rs notin customTriad: customTriad.add(rs)
+      if customTriad.len > 0:
+        activeTriadRoles = customTriad
 
-    result.workers.add(WorkerSpec(
-      name: auditName,
-      roleSlug: "auditor",
-      persona: auditPersona,
-      role: "Verification & Adversarial Auditor",
-      harness: curHarness,
-      model: "Session Default (active in window/tab)",
-      tags: auditTags,
-      profile: "audit",
-      systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & projName & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (vine audit inspect + vine audit approve/reject). The Lead Orchestrator is solely responsible for running vine weave after Key 3 ratification; turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --evidence <evidence> --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
-      opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
-      startupCommand: auditCmd
-    ))
+    if "architect" in activeTriadRoles:
+      result.workers.add(WorkerSpec(
+        name: archName,
+        roleSlug: "architect",
+        persona: archPersona,
+        role: "Staff Systems Architect",
+        harness: curHarness,
+        model: "Session Default (active in window/tab)",
+        tags: archTags,
+        profile: "investigation",
+        systemPrompt: "You are " & archPersona & ", Staff Systems Architect for the " & synthProj & " project. Your mandate is macro-architecture correctness, invariant preservation, API contracts, cross-module boundaries, and eliminating architectural drift." & seedContext & " Ground all assertions in empirical code analysis. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & "). Operate as an investigator and architectural reviewer.",
+        opposingPriority: "Structural purity, invariant guarantees, and long-term maintainability over hasty quick fixes.",
+        startupCommand: archCmd
+      ))
 
-    result.workers.add(WorkerSpec(
-      name: implName,
-      roleSlug: "implementer",
-      persona: implPersona,
-      role: "DevEx & Implementation Lead",
-      harness: curHarness,
-      model: "Session Default (active in window/tab)",
-      tags: implTags,
-      profile: "implementation",
-      systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & projName & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands." & seedContext & " You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
-      opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
-      startupCommand: implCmd
-    ))
+    if "auditor" in activeTriadRoles:
+      result.workers.add(WorkerSpec(
+        name: auditName,
+        roleSlug: "auditor",
+        persona: auditPersona,
+        role: "Verification & Adversarial Auditor",
+        harness: curHarness,
+        model: "Session Default (active in window/tab)",
+        tags: auditTags,
+        profile: "audit",
+        systemPrompt: "You are " & auditPersona & ", Verification & Adversarial Auditor for the " & synthProj & " project. Your mandate is zero-tolerance for green mirages, unverified assertions, dead code, shelfware, or untested branches. You are the INDEPENDENT AUDITOR responsible for Key 3 of the Three-Key Gate. The Adversarial Auditor ONLY inspects and ratifies/rejects Key 3 (vine audit inspect + vine audit approve/reject). The Lead Orchestrator is solely responsible for running vine weave after Key 3 ratification; turning the Auditor into a merge clerk biases the LLM toward rubber-stamping audits just to finish its administrative checklist. Workers submit their strands to you via 'vine submit'. You audit their strands under the presumption of guilt using the Five Pillars: 1) Closed-Circuit Two-Point Diff, 2) Holistic Integration, 3) Literal Fidelity & Parity, 4) Replacement Purge, 5) Structural Assertion Rigor. If defects are found, reject with 'vine audit reject <task_id> --auditor " & auditName & " --ticket <hex> --reason <reason> --listen'. When 0 defects remain and tests pass, ratify approval with 'vine audit approve <task_id> --auditor " & auditName & " --ticket <hex> --evidence <evidence> --listen'. YOU NEVER AUDIT YOUR OWN WORK. Assume all code is broken until proven sound by empirical test runs. Coordinate exclusively over Rhizo with the Orchestrator (@" & result.orchestrator & ").",
+        opposingPriority: "Adversarial skepticism, rigorous negative controls, and proof over convenience.",
+        startupCommand: auditCmd
+      ))
+
+    if "implementer" in activeTriadRoles:
+      result.workers.add(WorkerSpec(
+        name: implName,
+        roleSlug: "implementer",
+        persona: implPersona,
+        role: "DevEx & Implementation Lead",
+        harness: curHarness,
+        model: "Session Default (active in window/tab)",
+        tags: implTags,
+        profile: "implementation",
+        systemPrompt: "You are " & implPersona & ", DevEx & Implementation Lead for the " & synthProj & " project. Your mandate is pragmatic, clean, high-velocity implementation in isolated Vine strands." & seedContext & " You execute tasks assigned by @" & result.orchestrator & ", maintain ergonomic developer workflows, verify Keys 1 & 2 with 'vine gate', submit for independent audit with 'vine submit', and report completed deliverables back over Rhizo. Remember: THE WORKER IS NOT THE AUDITOR; never attempt to self-audit.",
+        opposingPriority: "High-velocity implementation, pragmatic delivery, and developer ergonomics.",
+        startupCommand: implCmd
+      ))
 
   # Override / sanitize orchestrator if explicit or fake
   if optOrchestratorAgent.len > 0:
@@ -704,7 +764,7 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result = "# Swarm Worker Bootstrap: " & w.persona & " (@" & w.name & ")\n\n"
   result &= "You are **" & w.persona & "**, serving as **" & w.role & "** for project **" & cfg.project & "**.\n"
   result &= "> [!IMPORTANT]\n"
-  result &= "> You are operating in a DEDICATED, SOVEREIGN CODING SESSION. You are an autonomous peer worker, NOT an ephemeral subagent.\n\n"
+  result &= "> You are operating in an INTERACTIVE WORKER SESSION (top-level tab/window or tmux pane). You are an autonomous peer worker, NOT an opaque single-turn tool call.\n\n"
   
   result &= "### 1. Identity & Mandate\n"
   result &= "- **Unique Listener ID (agent_id)**: `" & w.name & "`\n"
@@ -929,6 +989,106 @@ proc generateWorkerPrompt*(cfg: SwarmConfig, w: WorkerSpec): string =
   result &= "- TARGET_REPO: " & cfg.targetRepo & "\n"
   result &= "<!-- END_SWARM_RUNTIME_STATE -->\n"
 
+proc generateSubagentBrief*(cfg: SwarmConfig, w: WorkerSpec, taskId: string = ""): string =
+  ## Generates a persistent, drillable subagent brief that follows the full worker procedure
+  ## (unique Rhizo identity, explicit --agent usage, isolated 1:1 Vine strand, and independent Key 3 audit).
+  let tagsStr = w.tags.join(",")
+  let profile = resolveWorkerProfile(w)
+  let effectiveTask = if taskId.strip().len > 0: taskId.strip() else: "<task_id>"
+  let profileTitle = case profile
+    of wpImplementation: "Implementation & Feature Engineering"
+    of wpInvestigation: "Investigation & Review (Non-Modifying / Read-Only)"
+    of wpVerification: "Verification & Quality Assurance"
+    of wpAudit: "Adversarial Audit (Key 3 Gate)"
+
+  result = "# Subagent Worker Brief: " & w.persona & " (@" & w.name & " - " & w.role & ")\n\n"
+  result &= "You are **" & w.persona & "**, operating as a persistent, drillable subagent worker (**" & w.role & "**) for project **" & cfg.project & "**.\n"
+  result &= "The operator can click directly into this session to inspect progress or steer you interactively.\n\n"
+
+  result &= "### 1. Identity & Registration (Explicit `--agent` Mandate)\n"
+  result &= "- **Agent Name**: `" & w.name & "`"
+  if w.roleSlug.len > 0:
+    result &= " (routable via `@" & w.roleSlug & "` tag)"
+  result &= "\n"
+  result &= "- **Profile / Capability**: " & profileTitle & "\n"
+  if w.opposingPriority.len > 0:
+    result &= "- **Opposing Priority**: " & w.opposingPriority & "\n"
+  result &= "- **Orchestrator**: `@" & cfg.orchestrator & "`\n"
+  result &= "- **Target Repo**: `" & cfg.targetRepo & "`\n"
+  if w.systemPrompt.len > 0:
+    result &= "\n<MANDATE>\n" & w.systemPrompt & "\n</MANDATE>\n"
+
+  result &= "\nBecause subagent shells do not persist environment variables across commands, pass `--agent \"" & w.name & "\"` (or explicit agent name `" & w.name & "`) in subsequent commands:\n"
+  result &= "```bash\n"
+  result &= "cd \"" & cfg.targetRepo & "\"\n"
+  result &= "rhizo open \"" & w.name & "\" \"" & tagsStr & "\"\n"
+  result &= "```\n\n"
+
+  result &= "### 2. Task Claiming & Locking\n"
+  if profile in [wpInvestigation, wpVerification]:
+    result &= "- Claim task (read-only): `rhizo task claim \"" & effectiveTask & "\" --no-vine --agent \"" & w.name & "\" --lease 900`\n"
+  elif profile == wpAudit:
+    result &= "- Drain audit notification / ticket: `rhizo drain 10 \"" & w.name & "\" --format json`\n"
+  else:
+    result &= "- Claim task & lease: `rhizo task claim \"" & effectiveTask & "\" --agent \"" & w.name & "\" --lease 900`\n"
+    result &= "- Lock shared resources before editing: `rhizo lock <resource> --fencing --agent \"" & w.name & "\"`\n"
+  result &= "\n"
+
+  case profile
+  of wpImplementation:
+    result &= "### 3. Implementation & Three-Key Submission Protocol\n"
+    result &= "1. **Provision Isolated Vine Strand (1:1)**:\n"
+    result &= "   `vine new \"" & effectiveTask & "\" --worker \"" & w.name & "\"`\n"
+    result &= "2. **Two-Point Diff & Holistic Integration**:\n"
+    result &= "   Implement both Provider and live Consumer call-sites inside the strand. Delete any obsolete code replaced by the change.\n"
+    result &= "3. **Changelog & Gates (Keys 1 & 2)**:\n"
+    result &= "   - Update changelog if present: `vine changelog \"<description>\"`\n"
+    result &= "   - Run mechanical & semantic verification: `vine gate`\n"
+    result &= "4. **Submit for Independent Audit**:\n"
+    result &= "   - `vine submit --author \"" & w.name & "\"`\n"
+    result &= "   - Notify orchestrator: `rhizo send --from \"" & w.name & "\" --to \"" & cfg.orchestrator & "\" --subject \"STRAND_SUBMITTED: " & effectiveTask & "\" --body \"Ready for independent Key 3 audit.\"`\n"
+    result &= "5. **YOU ARE NOT THE AUDITOR**: Never run `vine audit approve` on your own strand. Wait for follow-up via `send_message` if Key 3 remediation is requested.\n\n"
+  of wpAudit:
+    result &= "### 3. Independent Key 3 Adversarial Audit Protocol\n"
+    result &= "1. Drain the submitted delivery ticket: `rhizo drain 10 \"" & w.name & "\" --format json`\n"
+    result &= "2. Inspect the strand under the presumption of guilt: `vine audit inspect \"" & effectiveTask & "\"`\n"
+    result &= "3. Verify the Five Pillars: (1) Two-Point Diff, (2) Holistic Integration, (3) Literal Fidelity, (4) Replacement Purge, (5) Structural Assertion Rigor.\n"
+    result &= "4. **Ratify or Reject**:\n"
+    result &= "   - Reject if ANY defect exists: `vine audit reject \"" & effectiveTask & "\" --auditor \"" & w.name & "\" --ticket <hex> --reason \"<findings>\"`\n"
+    result &= "   - Approve only with empirical proof: `vine audit approve \"" & effectiveTask & "\" --auditor \"" & w.name & "\" --ticket <hex> --evidence \"<files, call-sites, negative controls>\"`\n"
+    result &= "5. Never audit your own work and never run `vine weave` (weaving belongs exclusively to the Orchestrator).\n\n"
+  of wpInvestigation:
+    result &= "### 3. Read-Only Empirical Investigation Protocol\n"
+    result &= "1. Do NOT modify application source files, tests, or create code strands.\n"
+    result &= "2. Ground every architectural conclusion in exact file paths, line numbers, AST/symbol names, and test outputs.\n"
+    result &= "3. Report findings to `@" & cfg.orchestrator & "` (`rhizo send --from \"" & w.name & "\" --to \"" & cfg.orchestrator & "\" ...`) and in the return envelope.\n\n"
+  of wpVerification:
+    result &= "### 3. Verification & QA Protocol (Checks Only)\n"
+    result &= "1. Execute test suites, linters, and reproduction scripts without mutating application source or relaxing assertions.\n"
+    result &= "2. Report pass/fail matrices and negative controls to `@" & cfg.orchestrator & "` and in the return envelope.\n\n"
+
+  result &= "### 4. Return Envelope\n"
+  result &= "End your response with this structured summary (no blocking `rhizo listen` loop needed; parent resumes via `send_message`):\n"
+  result &= "```text\n"
+  result &= "STATUS: <READY_FOR_AUDIT | AUDIT_RATIFIED | AUDIT_REJECTED | COMPLETED | BLOCKED>\n"
+  result &= "AGENT: " & w.name & "\n"
+  result &= "STRAND: <strand_path_or_none>\n"
+  result &= "GATE_TICKET: <hex_or_none>\n"
+  result &= "CHANGED_FILES: <comma_separated_list_or_none>\n"
+  result &= "VERIFICATION_EVIDENCE: <exact_commands_and_assertions_observed>\n"
+  result &= "```\n"
+
+proc buildTmuxSpawnCommand*(cfg: SwarmConfig, w: WorkerSpec, promptFilePath: string): string =
+  let ht = normalizeHarness(w.harness)
+  let cliBin = case ht
+    of htCodex: "codex"
+    of htOpenCode: "opencode"
+    of htClaudeCode: "claude"
+    of htPi: "pi"
+    else: "codex"
+  let innerCmd = cliBin & " " & quoteShell("Read and execute the bootstrap instructions in " & promptFilePath)
+  result = "tmux new-window -n " & quoteShell(w.name) & " -c " & quoteShell(cfg.targetRepo) & " " & quoteShell(innerCmd)
+
 proc getGardenTempDir*(projectName: string): string =
   let base = if dirExists("/tmp"): "/tmp" else: getTempDir()
   result = base / ("garden-" & projectName)
@@ -1025,16 +1185,29 @@ proc doPrompts*(
   forcePrompts: bool = false,
   optProject: string = "",
   workerCount: int = 0,
-  optHarness: string = ""
+  optHarness: string = "",
+  optMode: string = "",
+  optSubagent: bool = false,
+  optTmux: bool = false,
+  optTaskId: string = "",
+  dryRun: bool = false,
+  explicitForcePrompts: bool = false,
+  executeLaunch: bool = false
 ): int =
+  let normOptMode = optMode.toLowerAscii().strip()
+  if normOptMode.len > 0 and normOptMode notin ["auto", "subagent", "subagents", "tmux", "prompt", "prompts", "cards"]:
+    stderr.writeLine("[garden] Error: Invalid execution mode '" & optMode & "'. Valid modes: auto, subagents, tmux, prompts.")
+    return 1
+
   var cfg = loadSwarmConfig(projectDir, swarmFile, optOrchAgent, optProject)
 
   if optHarness.len > 0:
     for i in 0 ..< cfg.workers.len:
       cfg.workers[i].harness = optHarness
       let isTier1 = normalizeHarness(optHarness) in [htAntigravity, htOpenCode, htPi]
-      cfg.workers[i].startupCommand = if isTier1: "rhizo open " & cfg.workers[i].name & " '" & cfg.project & "'"
-                                      else: "rhizo open " & cfg.workers[i].name & " '" & cfg.project & "' && rhizo listen " & cfg.workers[i].name
+      let tagsStr = if cfg.workers[i].tags.len > 0: cfg.workers[i].tags.join(",") else: cfg.project
+      cfg.workers[i].startupCommand = if isTier1: "rhizo open " & cfg.workers[i].name & " '" & tagsStr & "'"
+                                      else: "rhizo open " & cfg.workers[i].name & " '" & tagsStr & "' && rhizo listen " & cfg.workers[i].name
 
   if workerCount > 0 and cfg.workers.len > workerCount:
     cfg.workers = cfg.workers[0 ..< workerCount]
@@ -1057,6 +1230,14 @@ proc doPrompts*(
   else:
     selectedWorkers = cfg.workers
 
+  let effectiveHarness = if optHarness.len > 0: optHarness
+                         elif selectedWorkers.len > 0: selectedWorkers[0].harness
+                         else: detectCurrentHarness()
+  let forcePromptMode = explicitForcePrompts or (forcePrompts and not optSubagent and not optTmux and optMode.strip().len == 0)
+  let effectiveConfigMode = if optMode.strip().len > 0: optMode.strip() else: cfg.executionMode
+  let defaultMode = resolveExecutionMode(effectiveHarness, cfg.executionMode, forcePrompts = false, optSubagent = false, optTmux = false)
+  let resolvedMode = resolveExecutionMode(effectiveHarness, effectiveConfigMode, forcePrompts = forcePromptMode, optSubagent = optSubagent, optTmux = optTmux)
+
   let categorization = queryClusterAgents(cfg.project, selectedWorkers)
   let projectActive = categorization.projectActive
   let availableIdlePeers = categorization.availableIdlePeers
@@ -1066,11 +1247,32 @@ proc doPrompts*(
   var allTargetWorkersListening = false
   if selectedWorkers.len > 0:
     var matchedCount = 0
+    var usedAgents: seq[string] = @[]
     for w in selectedWorkers:
+      var found = false
       for ca in projectActive:
+        if ca.agent in usedAgents: continue
+        if ca.state.toUpperAscii().contains("BUSY"): continue
         if ca.agent.toLowerAscii() == w.name.toLowerAscii():
-          inc matchedCount
+          usedAgents.add(ca.agent)
+          found = true
           break
+      if not found and w.roleSlug.len > 0:
+        for ca in projectActive:
+          if ca.agent in usedAgents: continue
+          if ca.state.toUpperAscii().contains("BUSY"): continue
+          let slugLower = w.roleSlug.toLowerAscii()
+          var tagMatch = false
+          for t in ca.tags:
+            if t.toLowerAscii() == slugLower:
+              tagMatch = true
+              break
+          if tagMatch or ca.agent.toLowerAscii().contains(slugLower):
+            usedAgents.add(ca.agent)
+            found = true
+            break
+      if found:
+        inc matchedCount
     allTargetWorkersListening = (matchedCount >= selectedWorkers.len)
 
   if not forcePrompts and allTargetWorkersListening and selectedWorkers.len > 0:
@@ -1078,6 +1280,8 @@ proc doPrompts*(
       var jObj = newJObject()
       jObj["fast_path"] = %true
       jObj["project"] = %cfg.project
+      jObj["execution_mode"] = %resolvedMode
+      jObj["recommended_execution_mode"] = %defaultMode
       jObj["target_workers_count"] = %selectedWorkers.len
       jObj["active_workers_count"] = %projectActive.len
       var jActive = newJArray()
@@ -1113,6 +1317,10 @@ proc doPrompts*(
   type GeneratedCard = object
     worker: WorkerSpec
     filePath: string
+    subagentFilePath: string
+    subagentBrief: string
+    tmuxCommand: string
+    execMode: string
     promptText: string
     promptBlock: string
     header: string
@@ -1125,6 +1333,7 @@ proc doPrompts*(
 
   for idx, w in selectedWorkers:
     let promptText = generateWorkerPrompt(cfg, w)
+    let subagentBriefText = generateSubagentBrief(cfg, w, optTaskId)
     let roleSlugPart = if w.roleSlug.len > 0: " (@" & w.roleSlug & ")" else: ""
     let header = "--- WORKER " & $(idx + 1) & " of " & $selectedWorkers.len & ": @" & w.name & roleSlugPart & " (" & w.persona & " - " & w.role & ") ---"
     let subheader = "Recommended Harness: " & w.harness & " | Model: " & w.model
@@ -1136,6 +1345,12 @@ proc doPrompts*(
       let roleWorkerFilePath = tempBaseDir / (w.roleSlug & "-" & w.name & ".md")
       writeFile(roleWorkerFilePath, promptText)
 
+    let subagentFilePath = tempBaseDir / ("subagent-" & w.name & ".md")
+    writeFile(subagentFilePath, subagentBriefText)
+
+    let tmuxCmd = buildTmuxSpawnCommand(cfg, w, workerFilePath)
+    let wExecMode = resolveExecutionMode(w.harness, effectiveConfigMode, forcePrompts = forcePromptMode, optSubagent = optSubagent, optTmux = optTmux)
+
     allWorkersBuf &= "## " & header & "\n\n"
     allWorkersBuf &= "**" & subheader & "**\n\n"
     allWorkersBuf &= promptBlock & "\n\n"
@@ -1143,6 +1358,10 @@ proc doPrompts*(
     generatedCards.add(GeneratedCard(
       worker: w,
       filePath: workerFilePath,
+      subagentFilePath: subagentFilePath,
+      subagentBrief: subagentBriefText,
+      tmuxCommand: tmuxCmd,
+      execMode: wExecMode,
       promptText: promptText,
       promptBlock: promptBlock,
       header: header,
@@ -1177,6 +1396,10 @@ proc doPrompts*(
     jObj["orchestrator"] = %cfg.orchestrator
     if cfg.orchestratorAgent.len > 0:
       jObj["orchestrator_agent"] = %cfg.orchestratorAgent
+    jObj["execution_mode"] = %resolvedMode
+    jObj["recommended_execution_mode"] = %defaultMode
+    jObj["supports_drillable_subagents"] = %supportsDrillableSubagents(effectiveHarness)
+    jObj["supports_tmux"] = %supportsTmuxFactory(effectiveHarness)
     jObj["count"] = %selectedWorkers.len
     jObj["temp_dir"] = %tempBaseDir
     jObj["all_file_path"] = %allWorkersFilePath
@@ -1216,9 +1439,14 @@ proc doPrompts*(
       jw["harness"] = %card.worker.harness
       jw["model"] = %card.worker.model
       jw["tags"] = %card.worker.tags
+      jw["execution_mode"] = %card.execMode
       jw["file_path"] = %card.filePath
       if card.worker.roleSlug.len > 0 and card.worker.roleSlug != card.worker.name:
         jw["role_file_path"] = %(tempBaseDir / (card.worker.roleSlug & "-" & card.worker.name & ".md"))
+      jw["subagent_role"] = %(card.worker.persona & " - " & card.worker.role & " (@" & card.worker.name & ")")
+      jw["subagent_file_path"] = %card.subagentFilePath
+      jw["subagent_brief"] = %card.subagentBrief
+      jw["tmux_command"] = %card.tmuxCommand
       jw["prompt"] = %card.promptText
       jPrompts.add(jw)
     jObj["workers"] = jPrompts
@@ -1229,6 +1457,7 @@ proc doPrompts*(
     echo "================================================================================"
     echo "  GARDEN SWARM BOOTSTRAP: " & cfg.project
     echo "================================================================================"
+    echo "Execution Mode: " & resolvedMode & " (harness default: " & defaultMode & ")"
     echo "Generated " & $selectedWorkers.len & " worker bootstrap prompt(s)."
     echo "Copy and paste each prompt block below into a separate session"
     echo "(Claude Code CLI, OpenCode, Antigravity, Pi, etc.)."
@@ -1268,12 +1497,16 @@ proc doPrompts*(
       echo card.subheader
       echo "--------------------------------------------------------------------------------"
       echo card.promptBlock
+      if optSubagent:
+        echo "--- SUBAGENT BRIEF: @" & card.worker.name & " ---"
+        echo PromptFence10 & "markdown\n" & card.subagentBrief & "\n" & PromptFence10 & "\n"
       echo "================================================================================\n"
   else:
     echo "================================================================================"
     echo "  GARDEN SWARM BOOTSTRAP: " & cfg.project
     echo "================================================================================"
     echo "Adaptive Swarm On-Ramp Telemetry:"
+    echo "Execution Mode: " & resolvedMode & " (harness default: " & defaultMode & ")"
     echo "Target Workers: " & $selectedWorkers.len & " | Currently Active in Project: " & $projectActive.len
     echo ""
     if availableIdlePeers.len > 0:
@@ -1305,10 +1538,13 @@ proc doPrompts*(
       let w = card.worker
       let roleSlugPart = if w.roleSlug.len > 0: " (@" & w.roleSlug & ")" else: ""
       echo "  " & $(idx + 1) & ". @" & w.name & roleSlugPart & " (" & w.persona & " - " & w.role & ")"
-      echo "     Harness:      " & w.harness & " | Model: " & w.model
-      echo "     Prompt File:  " & card.filePath
+      echo "     Harness:        " & w.harness & " | Model: " & w.model
+      echo "     Prompt File:    " & card.filePath
       if w.roleSlug.len > 0 and w.roleSlug != w.name:
-        echo "     Role File:    " & (tempBaseDir / (w.roleSlug & "-" & w.name & ".md"))
+        echo "     Role File:      " & (tempBaseDir / (w.roleSlug & "-" & w.name & ".md"))
+      echo "     Subagent Brief: " & card.subagentFilePath
+      if supportsTmuxFactory(w.harness) or resolvedMode == "tmux":
+        echo "     Tmux Command:   " & card.tmuxCommand
       echo ""
     echo "  All Cards Combined:"
     echo "     File: " & allWorkersFilePath
@@ -1318,11 +1554,35 @@ proc doPrompts*(
       for pa in projectActive:
         echo "    - @" & pa.agent & " (ALREADY LISTENING)"
       echo ""
-    echo "Instructions for operator:"
-    echo "  1. Open a new terminal tab / session for each worker in your detected harness."
-    echo "  2. Pass each worker's prompt file into its session (e.g. paste the file path)."
-    echo "  3. Verify cluster registration: rhizo who"
-    echo ""
+
+    if executeLaunch and resolvedMode == "tmux" and not dryRun:
+      if getEnv("TMUX", "").len > 0 and findExe("tmux").len > 0:
+        echo "Launching tmux worker windows:"
+        for card in generatedCards:
+          let (tOut, tCode) = execCmdEx(card.tmuxCommand)
+          if tCode == 0:
+            echo "  [SPAWNED] tmux window '" & card.worker.name & "'"
+          else:
+            stderr.writeLine("  [WARN] Failed to spawn tmux window '" & card.worker.name & "': " & tOut.strip())
+        echo ""
+      else:
+        echo "Tmux commands ready to run (set $TMUX or run inside a tmux session to auto-spawn):"
+        for card in generatedCards:
+          echo "  " & card.tmuxCommand
+        echo ""
+    elif resolvedMode == "subagents":
+      echo "Instructions for operator / orchestrator (Drillable Subagent Mode):"
+      echo "  1. Spawn persistent drillable subagent sessions (Antigravity invoke_subagent / OpenCode child sessions)"
+      echo "     using each worker's Subagent Brief above."
+      echo "  2. Surface clickable session links (e.g. [Worker](conversation://<id>)) in chat for live inspection."
+      echo "  3. Enforce 1:1 Vine strand isolation (vine new) and independent Key 3 audit before vine weave."
+      echo ""
+    else:
+      echo "Instructions for operator:"
+      echo "  1. Open a new terminal tab / session for each worker in your detected harness."
+      echo "  2. Pass each worker's prompt file into its session (e.g. paste the file path)."
+      echo "  3. Verify cluster registration: rhizo who"
+      echo ""
     echo "CRITICAL ORCHESTRATOR MANDATE:"
     echo "  - In Multiplexed Router Harnesses (Google Antigravity, OpenCode, Pi): Your session registers via `rhizo open " & cfg.orchestrator & "` / `rhizo session register`. The host Multiplexed Router Service (`rhizo router`) handles listening and routing automatically; blocking per-turn `rhizo listen` subprocesses are not required."
     echo "  - In CLI Subprocess Harnesses (Claude Code, Codex): You MUST arm your background listener NOW in this very turn before yielding:"
@@ -1343,9 +1603,20 @@ proc doLaunch*(
   forcePrompts: bool = false,
   optProject: string = "",
   workerCount: int = 0,
-  optHarness: string = ""
+  optHarness: string = "",
+  optMode: string = "",
+  optSubagent: bool = false,
+  optTmux: bool = false,
+  optTaskId: string = "",
+  dryRun: bool = false,
+  explicitForcePrompts: bool = false
 ): int =
-  return doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness)
+  return doPrompts(
+    projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput,
+    optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount,
+    optHarness, optMode, optSubagent, optTmux, optTaskId, dryRun,
+    explicitForcePrompts, executeLaunch = true
+  )
 
 proc doRepurpose*(
   workers: seq[string],
@@ -1439,18 +1710,18 @@ proc doRepurpose*(
   else:
     candidateRolesJson.add(%*{
       "role": "Staff Systems Architect",
-      "persona": "Bramblestitch",
-      "tags": @[targetProj, "systems", "architecture", "invariants"]
+      "persona": pickWhimsicalPersona("architect", targetProj),
+      "tags": @[targetProj, "architect", "systems", "architecture", "invariants"]
     })
     candidateRolesJson.add(%*{
       "role": "Verification & Adversarial Auditor",
-      "persona": "Prickle-Thistle",
-      "tags": @[targetProj, "qa", "audit", "verifier", "purist"]
+      "persona": pickWhimsicalPersona("auditor", targetProj),
+      "tags": @[targetProj, "auditor", "qa", "audit", "verifier", "purist"]
     })
     candidateRolesJson.add(%*{
       "role": "DevEx & Implementation Lead",
-      "persona": "Moss-Weaver",
-      "tags": @[targetProj, "dev", "devex", "build", "implementation"]
+      "persona": pickWhimsicalPersona("implementer", targetProj),
+      "tags": @[targetProj, "implementer", "dev", "devex", "build", "implementation"]
     })
 
   var expectedTagsSeq: seq[string] = @[]
@@ -1558,7 +1829,7 @@ proc doRepurpose*(
   echo "================================================================================"
   return 0
 
-proc doInit(targetDir: string, force: bool, optOrchAgent: string = ""): int =
+proc doInit*(targetDir: string, force: bool, optOrchAgent: string = ""): int =
   let root = if targetDir.len > 0: targetDir else: getCurrentDir()
   createDir(root)
   let projName = root.lastPathPart.toLowerAscii().replace(" ", "-")
@@ -1573,6 +1844,7 @@ preferred_terminal = "auto" # Ghostty, Terminal, iTerm, none
 
 [swarm]
 session_prefix = "garden"
+execution_mode = "auto" # auto, subagents, tmux, prompts
 default_triad = ["architect", "auditor", "implementer"]
 """
     writeFile(configFile, configContent)
@@ -1700,7 +1972,7 @@ proc doStatus*(jsonOutput: bool): int =
     stderr.writeLine("[garden] Error in doStatus: " & e.msg)
     return 1
 
-proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
+proc validateRosterSender*(cfg: SwarmConfig, sender: string, whoList: JsonNode = nil): bool =
   let normSender = sender.toLowerAscii.strip()
   if normSender.len == 0: return false
   if normSender == cfg.orchestrator.toLowerAscii.strip(): return true
@@ -1712,35 +1984,49 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string): bool =
         return true
 
   # Dynamic Redis discovery fallback (when sender is not in static config)
+  const roleKeywords = ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]
   try:
-    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
-    if whoCode == 0 and whoOut.strip().len > 0:
-      let wJson = parseJson(whoOut.strip())
-      if wJson.kind == JArray:
-        for item in wJson:
-          let itemProj = if item.hasKey("project"): item["project"].getStr().toLowerAscii() else: ""
-          let itemAgent = if item.hasKey("agent"): item["agent"].getStr().strip() else: ""
-          if itemAgent.toLowerAscii == normSender:
-            if cfg.project.len > 0 and itemProj.len > 0 and itemProj != cfg.project.toLowerAscii():
-              return false
-            # For dynamic Redis discovery, verify role or tags
-            let normLower = normSender.toLowerAscii()
-            var roleOrTagOk = false
-            for r in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
-              if normLower.contains(r):
+    var wJson = whoList
+    if wJson.isNil:
+      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+      if whoCode == 0 and whoOut.strip().len > 0:
+        let trimmed = whoOut.strip()
+        if trimmed.startsWith("["):
+          wJson = parseJson(trimmed)
+        elif trimmed.startsWith("{"):
+          let obj = parseJson(trimmed)
+          if obj.hasKey("agents") and obj["agents"].kind == JArray:
+            wJson = obj["agents"]
+    if not wJson.isNil and wJson.kind == JArray:
+      for item in wJson:
+        let itemProj = if item.hasKey("project"): item["project"].getStr().toLowerAscii() else: ""
+        let itemAgent = if item.hasKey("agent"): item["agent"].getStr().strip() elif item.hasKey("name"): item["name"].getStr().strip() else: ""
+        if itemAgent.toLowerAscii == normSender:
+          if cfg.project.len > 0 and itemProj.len > 0 and itemProj != cfg.project.toLowerAscii():
+            return false
+          var roleOrTagOk = false
+          for r in roleKeywords:
+            if normSender.contains(r):
+              roleOrTagOk = true
+              break
+          if not roleOrTagOk and item.hasKey("tags") and item["tags"].kind == JArray:
+            for t in item["tags"]:
+              let lowTag = t.getStr().toLowerAscii()
+              if (cfg.project.len > 0 and lowTag == cfg.project.toLowerAscii()) or lowTag in roleKeywords:
                 roleOrTagOk = true
                 break
-            if not roleOrTagOk and item.hasKey("tags") and item["tags"].kind == JArray:
-              for t in item["tags"]:
-                let lowTag = t.getStr().toLowerAscii()
-                if lowTag in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
+              for r in roleKeywords:
+                if lowTag.contains(r):
                   roleOrTagOk = true
                   break
-            if not roleOrTagOk and item.hasKey("role"):
-              let lowRole = item["role"].getStr().toLowerAscii()
-              if lowRole in ["orchestrator", "lead", "worker", "implementer", "architect", "auditor", "reviewer", "dev", "engineer", "botanist", "keeper"]:
+              if roleOrTagOk: break
+          if not roleOrTagOk and item.hasKey("role"):
+            let lowRole = item["role"].getStr().toLowerAscii()
+            for r in roleKeywords:
+              if lowRole.contains(r):
                 roleOrTagOk = true
-            return roleOrTagOk
+                break
+          return roleOrTagOk
   except CatchableError:
     discard
 
@@ -1787,7 +2073,7 @@ proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string 
           for item in parsedList:
             let ag = if item.hasKey("agent"): item["agent"].getStr() elif item.hasKey("name"): item["name"].getStr() else: ""
             if ag.len == 0: continue
-            if validateRosterSender(cfg, ag):
+            if validateRosterSender(cfg, ag, parsedList):
               verified.add(ag)
             else:
               aliens.add(ag)
@@ -1833,7 +2119,7 @@ proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string 
   return 0
 
 proc doSession*(action: string, agentName: string = "", role: string = "", orchestrator: string = "", projectDir: string = "", jsonOutput: bool = false): int =
-  let root = if projectDir.len > 0: findProjectRoot(projectDir) else: findProjectRoot()
+  let root = if projectDir.len > 0: canonicalizePath(projectDir) else: findProjectRoot()
   let gardenDir = root / ".garden"
   let sessionFile = gardenDir / "session.json"
   if fileExists(sessionFile):
@@ -1893,9 +2179,10 @@ proc doSession*(action: string, agentName: string = "", role: string = "", orche
     stderr.writeLine("[garden session] Unknown action: " & action & " (valid: save, load, clear)")
     return 1
 
-proc doTeardown*(swarmFileParam: string = ""): int =
-  let root = findProjectRoot()
-  let proj = root.lastPathPart.toLowerAscii().replace(" ", "-")
+proc doTeardown*(swarmFileParam: string = "", projectDir: string = "", optProject: string = ""): int =
+  let root = if projectDir.len > 0: canonicalizePath(projectDir) else: findProjectRoot()
+  let cfg = loadSwarmConfig(root, swarmFileParam, optProject = optProject)
+  let proj = cfg.project
 
   # 1. Purge legacy garden-swarm.json if present
   let legacySwarm = root / "garden-swarm.json"
@@ -1903,7 +2190,7 @@ proc doTeardown*(swarmFileParam: string = ""): int =
     try: removeFile(legacySwarm) except CatchableError: discard
 
   # 2. Redis-native dynamic discovery of active project workers
-  let cluster = queryClusterAgents(proj)
+  let cluster = queryClusterAgents(proj, cfg.workers)
   var closed: seq[string] = @[]
   if cluster.projectActive.len > 0:
     for ca in cluster.projectActive:
@@ -1911,13 +2198,23 @@ proc doTeardown*(swarmFileParam: string = ""): int =
       discard execCmdEx("rhizo close " & quoteShell(ca.agent))
       closed.add(ca.agent)
 
-  # Default triad close with project prefix if not already closed
+  # Close configured swarm workers and default triad fallbacks if not already closed
+  for w in cfg.workers:
+    if w.name.len > 0 and w.name notin closed:
+      echo "[garden] Closing agent @" & w.name & " in Redis..."
+      try:
+        discard execCmdEx("rhizo close " & quoteShell(w.name))
+        closed.add(w.name)
+      except CatchableError:
+        discard
+
   for role in ["architect", "auditor", "implementer"]:
     let wname = proj & "-" & role
     if wname notin closed:
       echo "[garden] Closing agent @" & wname & " in Redis..."
       try:
         discard execCmdEx("rhizo close " & quoteShell(wname))
+        closed.add(wname)
       except CatchableError:
         discard
 
@@ -2101,11 +2398,16 @@ proc printSubcommandHelp*(subcmd: string, args: seq[string] = @[]): bool =
     echo "  --json, -j               Output result as structured JSON"
     return true
   of "prompts", "launch":
-    echo "Usage: garden " & cmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--force] [--write [file]] [--inline] [--json]"
+    echo "Usage: garden " & cmd & " [--workers <n>] [--harness <h>] [--mode <mode>] [--subagent] [--tmux] [--task <id>] [--dry-run] [--project <p>] [--worker <name>] [--force] [--write [file]] [--inline] [--json]"
     echo ""
     echo "Options:"
     echo "  --workers, --count <n>   Target worker count (defaults to full triad)"
     echo "  --harness <h>            Harness override for all workers (e.g. 'Claude Code CLI')"
+    echo "  --mode <mode>            Execution mode override (auto, subagents, tmux, prompts)"
+    echo "  --subagent, --subagents  Generate drillable subagent briefs (execution_mode=subagents)"
+    echo "  --tmux                   Spawn/prepare tmux worker windows for CLI harnesses"
+    echo "  --task <task_id>         Bind a specific task ID in generated subagent briefs"
+    echo "  --dry-run                Prepare commands and metadata without spawning tmux windows"
     echo "  --project, -p <proj>     Target project codename or project directory"
     echo "  --worker, -w <name>      Filter prompt output to a specific worker"
     echo "  --force, --force-prompts Force prompt card generation (skips fast-path)"
@@ -2138,8 +2440,8 @@ proc printSubcommandHelp*(subcmd: string, args: seq[string] = @[]): bool =
   else:
     return false
 
-proc main() =
-  let params = commandLineParams()
+proc main*(customParams: seq[string] = @[], useCustomParams: bool = false) =
+  let params = if useCustomParams: customParams else: commandLineParams()
   if params.len == 0 or params[0] in ["help", "-h", "--help"]:
     if params.len > 1 and printSubcommandHelp(params[1], params[2..^1]):
       quit(0)
@@ -2495,13 +2797,19 @@ proc main() =
     var jsonOutput = false
     var inlineOutput = false
     var forcePrompts = false
+    var explicitForcePrompts = false
     var projectDir = getEnv("GARDEN_PROJECT_DIR", "")
     var optOrchAgent = ""
     var optProject = ""
     var workerCount = 0
     var optHarness = ""
-    const pValidOpts = "--workers, --count, --harness, --project, --force, --force-prompts, --cards, --worker, -w, --role, -r, --write, -o, --inline, -i, --project-dir, -p, --swarm-file, -f, --orchestrator, -a, --orchestrator-agent, --json"
-    let pUsage = "garden " & subcmd & " [--workers <n>] [--harness <h>] [--project <p>] [--worker <name>] [--role <role>] [--force] [--write [file]] [--inline] [--json]"
+    var optMode = ""
+    var optSubagent = false
+    var optTmux = false
+    var optTaskId = ""
+    var dryRun = false
+    const pValidOpts = "--workers, --count, --harness, --mode, --subagent, --subagents, --tmux, --task, --dry-run, --project, --force, --force-prompts, --cards, --worker, -w, --role, -r, --write, -o, --inline, -i, --project-dir, -p, --swarm-file, -f, --orchestrator, -a, --orchestrator-agent, --json"
+    let pUsage = "garden " & subcmd & " [--workers <n>] [--harness <h>] [--mode <mode>] [--subagent] [--tmux] [--task <id>] [--dry-run] [--project <p>] [--worker <name>] [--role <role>] [--force] [--write [file]] [--inline] [--json]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2524,8 +2832,25 @@ proc main() =
         optOrchAgent = a[15..^1]
       elif a.startsWith("--orchestrator-agent="):
         optOrchAgent = a[21..^1]
-      elif a in ["--force", "--force-prompts", "--cards"]:
+      elif a == "--force":
         forcePrompts = true
+      elif a in ["--force-prompts", "--cards"]:
+        forcePrompts = true
+        explicitForcePrompts = true
+      elif a in ["--subagent", "--subagents"]:
+        optSubagent = true
+      elif a == "--tmux":
+        optTmux = true
+      elif a == "--dry-run":
+        dryRun = true
+      elif a == "--mode" and i + 1 < params.len:
+        inc i; optMode = params[i]
+      elif a.startsWith("--mode="):
+        optMode = a[7..^1]
+      elif a == "--task" and i + 1 < params.len:
+        inc i; optTaskId = params[i]
+      elif a.startsWith("--task="):
+        optTaskId = a[7..^1]
       elif a in ["--write", "-o"]:
         if i + 1 < params.len and not params[i+1].startsWith("-"):
           inc i; writeFileParam = params[i]
@@ -2552,19 +2877,24 @@ proc main() =
         inc i; optProject = params[i]
       elif a.startsWith("--project="):
         optProject = a[10..^1]
-      elif (a in ["--project-dir", "-p"]) and i + 1 < params.len:
+      elif a == "--project-dir" and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a == "-p" and i + 1 < params.len:
         inc i
         let val = params[i]
-        if dirExists(val): projectDir = val else: optProject = val
+        if dirExists(val) or '/' in val or '\\' in val: projectDir = val else: optProject = val
       elif a.startsWith("--project-dir="):
         projectDir = a[14..^1]
+      elif a in ["--mode", "--task", "--harness", "--project"] and i + 1 >= params.len:
+        stderr.writeLine("[garden " & subcmd & "] Error: Missing required value for " & a & "\nUsage: " & pUsage)
+        quit(1)
       elif a.startsWith("-"):
         unknownOptionError(subcmd, a, pValidOpts, pUsage)
       inc i
     if subcmd == "launch":
-      quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness))
+      quit(doLaunch(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness, optMode, optSubagent, optTmux, optTaskId, dryRun, explicitForcePrompts))
     else:
-      quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness))
+      quit(doPrompts(projectDir, swarmFile, targetWorker, writeFileParam, jsonOutput, optOrchAgent, inlineOutput, forcePrompts, optProject, workerCount, optHarness, optMode, optSubagent, optTmux, optTaskId, dryRun, explicitForcePrompts))
   of "status":
     var jsonOutput = false
     const statValidOpts = "--json, -j"
@@ -2591,8 +2921,10 @@ proc main() =
     quit(code)
   of "teardown":
     var swarmFile = getEnv("GARDEN_SWARM_FILE", "")
-    const tdValidOpts = "--swarm-file, -f"
-    const tdUsage = "garden teardown [--swarm-file <file>]"
+    var projectDir = ""
+    var optProject = ""
+    const tdValidOpts = "--swarm-file, -f, --project-dir, -p, --project"
+    const tdUsage = "garden teardown [--swarm-file <file>] [--project-dir <dir>] [--project <name>]"
     var i = 1
     while i < params.len:
       let a = params[i]
@@ -2603,10 +2935,22 @@ proc main() =
         inc i; swarmFile = params[i]
       elif a.startsWith("--swarm-file="):
         swarmFile = a[13..^1]
+      elif a == "--project-dir" and i + 1 < params.len:
+        inc i; projectDir = params[i]
+      elif a == "-p" and i + 1 < params.len:
+        inc i
+        let val = params[i]
+        if dirExists(val) or '/' in val or '\\' in val: projectDir = val else: optProject = val
+      elif a.startsWith("--project-dir="):
+        projectDir = a[14..^1]
+      elif a == "--project" and i + 1 < params.len:
+        inc i; optProject = params[i]
+      elif a.startsWith("--project="):
+        optProject = a[10..^1]
       elif a.startsWith("-"):
         unknownOptionError("teardown", a, tdValidOpts, tdUsage)
       inc i
-    quit(doTeardown(swarmFile))
+    quit(doTeardown(swarmFile, projectDir, optProject))
   of "roster-guard", "validate-sender", "ingest-guard":
     var sender = ""
     var jsonOutput = false
@@ -2702,7 +3046,12 @@ proc main() =
     of "check", "status":
       let st = checkGuide(target)
       case st
-      of gsInstalled: echo "[INSTALLED] Garden Guide is installed in: " & target
+      of gsInstalled:
+        if readFile(target).contains(CanonicalGuideContent.strip()):
+          echo "[INSTALLED] Garden Guide is installed in: " & target
+        else:
+          stderr.writeLine("[OUTDATED] Garden Guide in " & target & " does not match canonical " & GuideVersion & " content (run 'garden guide install').")
+          quit(1)
       of gsNotFound: echo "[NOT FOUND] Garden Guide not found in: " & target
       of gsMalformed: (stderr.writeLine("[MALFORMED] Unbalanced markers in: " & target); quit(1))
       of gsFileMissing: echo "[MISSING] Target file does not exist: " & target

@@ -32,10 +32,16 @@ proc generateGerminatePrompt*(seed: Seed, workerName: string, role: string, role
   if role.toLowerAscii.contains("audit") or roleSlug == "auditor" or workerName.toLowerAscii.contains("audit"):
     result &= "### 4. Adversarial Auditor Mandate (Key 3 Gatekeeper)\n"
     result &= "1. Receive submitted strands from workers (`vine submit`).\n"
-    result &= "2. Perform adversarial audit across the Five Pillars (Two-Point Diff, Holistic Integration, Literal Fidelity, Replacement Purge, Structural Rigor).\n"
-    result &= "3. If defects: `vine audit reject <strand> --auditor " & workerName & " --reason <findings>`.\n"
-    result &= "4. If sound: `vine audit approve <strand> --auditor " & workerName & " --notes <notes>`.\n"
-    result &= "5. Report completion to Orchestrator and return to listening: `rhizo listen " & workerName & "`\n"
+    result &= "2. Inspect the submitted strand diff and evidence: `vine audit inspect <strand>`.\n"
+    result &= "3. Perform adversarial audit across the Five Pillars (Two-Point Diff, Holistic Integration, Literal Fidelity, Replacement Purge, Structural Rigor).\n"
+    result &= "4. If defects: `vine audit reject <strand> --auditor " & workerName & " --reason <findings>`.\n"
+    result &= "5. If sound: `vine audit approve <strand> --auditor " & workerName & " --ticket <hex> --evidence <evidence> --notes <notes>`.\n"
+    result &= "6. Report completion to Orchestrator and return to listening: `rhizo listen " & workerName & "`\n"
+  elif roleSlug == "architect" or role.toLowerAscii.contains("architect") or workerName.toLowerAscii.contains("architect"):
+    result &= "### 4. Architect Advisory Mandate (Read-Only)\n"
+    result &= "1. Analyze system architecture, contracts, and edge cases without mutating implementation files.\n"
+    result &= "2. Deliver concrete design specs, invariant checks, and interface guidance to the Orchestrator.\n"
+    result &= "3. Return to listening when done: `rhizo listen " & workerName & "`\n"
   else:
     result &= "### 4. Germination Mandate\n"
     result &= "1. Provision an isolated Vine strand: `vine new seed-" & seed.id & "`\n"

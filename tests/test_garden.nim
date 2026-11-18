@@ -3,7 +3,9 @@
 
 import std/[os, osproc, strutils, json, unittest]
 import ../src/guide
+import ../src/seed
 import ../src/garden
+import ./test_helpers
 
 suite "Garden Guide Management & Marker Suite":
 
@@ -85,24 +87,23 @@ suite "Garden Guide Management & Marker Suite":
     check CanonicalGuideContent.contains("Orchestrator Non-Implementation Invariant")
     check CanonicalGuideContent.contains("Dumping numbered multiple-choice lists (1, 2, 3) or raw option text directly into the chat stream is STRICTLY PROHIBITED")
     check CanonicalGuideContent.contains("Cross-project worker poaching is strictly prohibited")
+    check CanonicalGuideContent.contains("* **Capability-Aware Harness Execution & Worker Modes**:")
+    check CanonicalGuideContent.contains("Drillable Persistent Subagents (`subagents`")
+    check CanonicalGuideContent.contains("Automated `tmux` Pane Factory (`tmux`")
+    check not CanonicalGuideContent.contains("Sovereign Sessions & Subagent Prohibition")
+    check readFile(getCurrentDir() / "AGENTS.md").contains(CanonicalGuideContent.strip())
 
 suite "Garden CLI Compilation & Telemetry Suite":
 
   test "Garden binary compiles and outputs clean --help and --version":
-    let root = getCurrentDir()
-    let (cOut, cCode) = execCmdEx("nim c -d:release --threads:on --mm:orc -o:bin/garden src/garden.nim")
-    check cCode == 0
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    check fileExists(exePath)
-
-    let (hOut, hCode) = execCmdEx(exePath & " --help")
+    let (hOut, hCode) = runGardenInProcess(@["--help"])
     check hCode == 0
     check hOut.contains("Usage:")
     check hOut.contains("subcommand")
     check hOut.contains("launch")
     check hOut.contains("status")
 
-    let (vOut, vCode) = execCmdEx(exePath & " --version")
+    let (vOut, vCode) = runGardenInProcess(@["--version"])
     check vCode == 0
     check vOut.contains("garden v")
     check vOut.contains("0.2.30")
@@ -112,8 +113,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (initOut, initCode) = execCmdEx(exePath & " init " & quoteShell(tmpDir))
+    let (_, initCode) = captureRet(proc (): int = doInit(tmpDir, false))
     check initCode == 0
     check fileExists(tmpDir / "garden.toml")
     check fileExists(tmpDir / "AGENTS.md")
@@ -122,8 +122,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check readFile(tmpDir / "AGENTS.md").contains(BeginMarker)
 
   test "Garden status outputs valid JSON with --json":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (sOut, sCode) = execCmdEx(exePath & " status --json")
+    let (sOut, sCode) = captureRet(proc (): int = doStatus(true))
     if sCode != 0:
       checkpoint("status failed with code " & $sCode & ": " & sOut)
     check sCode == 0
@@ -140,8 +139,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
           check first.hasKey("agent") or first.hasKey("name")
 
   test "Garden prompts generates prompt cards in tmp directory and supports --inline":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (pOut, pCode) = execCmdEx(exePath & " prompts")
+    let (pOut, pCode) = captureRet(proc (): int = doPrompts("", "", "", "", false))
     check pCode == 0
     check pOut.contains("GARDEN SWARM BOOTSTRAP")
     check pOut.toLowerAscii.contains("architect")
@@ -154,7 +152,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check dirExists(tmpGarden)
     check fileExists(tmpGarden / "all-workers.md")
 
-    let (jOut, _) = execCmdEx(exePath & " prompts --json")
+    let (jOut, _) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     let j = parseJson(jOut.strip())
     check j["workers"].len == 3
     for w in j["workers"]:
@@ -172,14 +170,13 @@ suite "Garden CLI Compilation & Telemetry Suite":
       check content.contains("agentapi send-message")
 
     # Verify --inline flag produces raw 10-backtick fence blocks in stdout
-    let (iOut, iCode) = execCmdEx(exePath & " prompts --inline")
+    let (iOut, iCode) = captureRet(proc (): int = doPrompts("", "", "", "", false, inlineOutput = true))
     check iCode == 0
     check iOut.contains("``````````markdown")
     check iOut.contains("SWARM_RUNTIME_STATE")
 
   test "Garden prompts --worker and --role filter output to target worker":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (pOut, pCode) = execCmdEx(exePath & " prompts --worker auditor")
+    let (pOut, pCode) = captureRet(proc (): int = doPrompts("", "", "auditor", "", false))
     check pCode == 0
     check pOut.contains("auditor")
     check pOut.toLowerAscii.contains("auditor")
@@ -187,7 +184,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not pOut.contains("Staff Systems Architect")
     check not pOut.contains("DevEx & Implementation Lead")
 
-    let (rOut, rCode) = execCmdEx(exePath & " prompts --role architect")
+    let (rOut, rCode) = captureRet(proc (): int = doPrompts("", "", "architect", "", false))
     check rCode == 0
     check rOut.contains("architect")
     check rOut.toLowerAscii.contains("architect")
@@ -195,8 +192,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not rOut.contains("DevEx & Implementation Lead")
 
   test "Garden prompts --json outputs structured json telemetry with decoupled roles and unique UIDs":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (jOut, jCode) = execCmdEx(exePath & " prompts --json")
+    let (jOut, jCode) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check jCode == 0
     let j = parseJson(jOut.strip())
     check j["count"].getInt() == 3
@@ -219,9 +215,8 @@ suite "Garden CLI Compilation & Telemetry Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let outFile = tmpDir / "swarm-cards.md"
-    let (pOut, pCode) = execCmdEx(exePath & " prompts --write " & quoteShell(outFile))
+    let (_, pCode) = captureRet(proc (): int = doPrompts("", "", "", outFile, false))
     check pCode == 0
     check fileExists(outFile)
     let content = readFile(outFile)
@@ -233,15 +228,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check content.contains("rhizo send --to")
 
   test "Garden launch defaults to prompt generation without requiring tmux":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (lOut, lCode) = execCmdEx(exePath & " launch --worker implementer")
+    let (lOut, lCode) = captureRet(proc (): int = doLaunch("", "", "implementer", "", false))
     check lCode == 0
     check lOut.contains("DevEx & Implementation Lead")
     check lOut.contains(".md")
     check lOut.contains("CRITICAL ORCHESTRATOR MANDATE")
     check lOut.contains("rhizo listen")
 
-    let (iOut, iCode) = execCmdEx(exePath & " launch --role implementer --inline")
+    let (iOut, iCode) = captureRet(proc (): int = doLaunch("", "", "implementer", "", false, inlineOutput = true))
     check iCode == 0
     check iOut.contains("DevEx & Implementation Lead")
     check iOut.contains("``````````markdown")
@@ -270,14 +264,13 @@ suite "Garden CLI Compilation & Telemetry Suite":
     }"""
     writeFile(customSwarm, customJson)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     putEnv("GARDEN_SWARM_FILE", customSwarm)
     putEnv("GARDEN_PROJECT_DIR", tmpDir)
     defer:
       delEnv("GARDEN_SWARM_FILE")
       delEnv("GARDEN_PROJECT_DIR")
 
-    let (pOut, pCode) = execCmdEx(exePath & " prompts --json")
+    let (pOut, pCode) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode == 0
     let j = parseJson(pOut.strip())
     check j["count"].getInt() == 1
@@ -285,12 +278,19 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j["workers"][0]["prompt"].getStr().contains("Custom Env Persona")
 
   test "Garden auto-detects current harness from environment variables":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    
+    let harnessEnvVars = ["ANTIGRAVITY_APP_DIR", "CLAUDE_CODE", "OPENCODE_DESKTOP", "OPENCODE_SESSION_ID", "CODEX_CLI", "CODEX_SESSION_ID", "PI_SESSION_ID"]
+    var savedEnv: seq[tuple[k, v: string, present: bool]] = @[]
+    for k in harnessEnvVars:
+      savedEnv.add((k, getEnv(k, ""), existsEnv(k)))
+      delEnv(k)
+    defer:
+      for item in savedEnv:
+        if item.present: putEnv(item.k, item.v)
+        else: delEnv(item.k)
+
     # 1. Antigravity IDE
     putEnv("ANTIGRAVITY_APP_DIR", "/Applications/Antigravity.app")
-    defer: delEnv("ANTIGRAVITY_APP_DIR")
-    let (pOut1, pCode1) = execCmdEx(exePath & " prompts --json")
+    let (pOut1, pCode1) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode1 == 0
     let j1 = parseJson(pOut1.strip())
     check j1["workers"][0]["harness"].getStr() == "Antigravity IDE"
@@ -298,8 +298,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     # 2. Claude Code CLI
     putEnv("CLAUDE_CODE", "1")
-    defer: delEnv("CLAUDE_CODE")
-    let (pOut2, pCode2) = execCmdEx(exePath & " prompts --json")
+    let (pOut2, pCode2) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode2 == 0
     let j2 = parseJson(pOut2.strip())
     check j2["workers"][0]["harness"].getStr() == "Claude Code CLI"
@@ -307,8 +306,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     # 3. OpenCode
     putEnv("OPENCODE_SESSION_ID", "sess_12345")
-    defer: delEnv("OPENCODE_SESSION_ID")
-    let (pOut3, pCode3) = execCmdEx(exePath & " prompts --json")
+    let (pOut3, pCode3) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode3 == 0
     let j3 = parseJson(pOut3.strip())
     check j3["workers"][0]["harness"].getStr() == "OpenCode"
@@ -316,8 +314,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     # 4. ChatGPT Desktop / Codex
     putEnv("CODEX_SESSION_ID", "codex_67890")
-    defer: delEnv("CODEX_SESSION_ID")
-    let (pOut4, pCode4) = execCmdEx(exePath & " prompts --json")
+    let (pOut4, pCode4) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode4 == 0
     let j4 = parseJson(pOut4.strip())
     check j4["workers"][0]["harness"].getStr() == "ChatGPT Desktop / Codex"
@@ -325,16 +322,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
 
     # 5. Pi
     putEnv("PI_SESSION_ID", "pi_abcde")
-    defer: delEnv("PI_SESSION_ID")
-    let (pOut5, pCode5) = execCmdEx(exePath & " prompts --json")
+    let (pOut5, pCode5) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check pCode5 == 0
     let j5 = parseJson(pOut5.strip())
     check j5["workers"][0]["harness"].getStr() == "Pi"
     delEnv("PI_SESSION_ID")
 
   test "Garden prompts references actual orchestrator without touching Redis aliases":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (pOut, pCode) = execCmdEx(exePath & " prompts --json -a custom-orch-lead")
+    let (pOut, pCode) = captureRet(proc (): int = doPrompts("", "", "", "", true, optOrchAgent = "custom-orch-lead"))
     check pCode == 0
     let j = parseJson(pOut.strip())
     check j.hasKey("orchestrator")
@@ -349,21 +344,20 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not prompt0.contains("-orchestrator")
 
   test "Garden roster-guard validates swarm members and quarantines alien agents":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (vOut, vCode) = execCmdEx(exePath & " roster-guard garden-architect --json")
+    let (vOut, vCode) = captureRet(proc (): int = doRosterGuard("garden-architect", jsonOutput = true))
     check vCode == 0
     let vJson = parseJson(vOut.strip())
     check vJson["valid"].getBool() == true
     check vJson["status"].getStr() == "ROSTER_VERIFIED"
 
-    let (aOut, aCode) = execCmdEx(exePath & " roster-guard totally-alien-agent --json")
+    let (aOut, aCode) = captureRet(proc (): int = doRosterGuard("totally-alien-agent", jsonOutput = true))
     check aCode != 0
     let aJson = parseJson(aOut.strip())
     check aJson["valid"].getBool() == false
     check aJson["status"].getStr() == "ALIEN_QUARANTINED"
 
     # Cluster audit mode
-    let (auditOut, _) = execCmdEx(exePath & " roster-guard --json")
+    let (auditOut, _) = captureRet(proc (): int = doRosterGuard("", jsonOutput = true))
     let auditJson = parseJson(auditOut.strip())
     check auditJson.hasKey("audit")
     check auditJson["audit"].getStr() == "ROSTER_AUDIT"
@@ -371,21 +365,20 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check auditJson.hasKey("alien_count")
 
   test "Garden session save, load, and clear lifecycle (zero on-disk JSON)":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let tmpDir = getTempDir() / ("garden_session_test_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let (sOut, sCode) = execCmdEx(exePath & " session save --agent test-gardener --role architect --project-dir " & quoteShell(tmpDir))
+    let (_, sCode) = captureRet(proc (): int = doSession("save", agentName = "test-gardener", role = "architect", projectDir = tmpDir))
     check sCode == 0
     check not fileExists(tmpDir / ".garden" / "session.json")
 
-    let (lOut, lCode) = execCmdEx(exePath & " session load --json --project-dir " & quoteShell(tmpDir))
+    let (lOut, lCode) = captureRet(proc (): int = doSession("load", projectDir = tmpDir, jsonOutput = true))
     check lCode == 0
     let lJson = parseJson(lOut.strip())
     check lJson["on_disk_json"].getBool() == false
 
-    let (cOut, cCode) = execCmdEx(exePath & " session clear --project-dir " & quoteShell(tmpDir))
+    let (_, cCode) = captureRet(proc (): int = doSession("clear", projectDir = tmpDir))
     check cCode == 0
     check not fileExists(tmpDir / ".garden" / "session.json")
 
@@ -404,8 +397,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check unique.len >= 6
 
   test "Adaptive on-ramp surfaces available idle cluster peers and suggested repurpose commands":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (jOut, jCode) = execCmdEx(exePath & " prompts --json")
+    let (jOut, jCode) = captureRet(proc (): int = doPrompts("", "", "", "", true))
     check jCode == 0
     let j = parseJson(jOut.strip())
     check j.hasKey("fast_path")
@@ -416,8 +408,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check j.hasKey("suggested_repurpose_commands")
 
   test "Garden repurpose CLI reassigns workers and emits structured JSON":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (rOut, rCode) = execCmdEx(exePath & " repurpose test-idle-agent --project test-garden-proj --role \"Staff Systems Architect\" --tags \"test,systems\" --json")
+    let (rOut, rCode) = captureRet(proc (): int =
+      doRepurpose(@["test-idle-agent"], projectParam = "test-garden-proj", roleParam = "Staff Systems Architect", tagsParam = "test,systems", jsonOutput = true)
+    )
     check rCode == 0
     let rJson = parseJson(rOut.strip())
     check rJson["status"].getStr() == "ok"
@@ -429,8 +422,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check rJson["repurposed_workers"][0]["mode"].getStr() == "direct"
 
   test "Garden repurpose supports --self-tag capability handshake":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let (sOut, sCode) = execCmdEx(exePath & " repurpose test-handshake-agent --project test-garden-proj --self-tag --expected-tags \"nim,qa,audit\" --json")
+    let (sOut, sCode) = captureRet(proc (): int =
+      doRepurpose(@["test-handshake-agent"], projectParam = "test-garden-proj", selfTag = true, expectedTagsParam = "nim,qa,audit", jsonOutput = true)
+    )
     check sCode == 0
     let sJson = parseJson(sOut.strip())
     check sJson["status"].getStr() == "ok"
@@ -438,89 +432,58 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check sJson["repurposed_workers"][0]["mode"].getStr() == "self_tag"
 
   test "Garden repurpose negative control: busy worker rejected without --force, overrides with --force":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    
-    # Query cluster to find an actual busy worker
-    var busyAgent = ""
-    var busyAgentProj = ""
-    try:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
-      if whoCode == 0 and whoOut.strip().len > 0:
-        let parsed = parseJson(whoOut.strip())
-        let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
-        for item in list:
-          let state = item.getOrDefault("state").getStr("")
-          if state.toUpperAscii().startsWith("BUSY"):
-            busyAgent = item.getOrDefault("agent").getStr("")
-            busyAgentProj = item.getOrDefault("project").getStr("")
-            if busyAgent.len > 0: break
-    except CatchableError: discard
+    let pidStr = $getCurrentProcessId()
+    let busyAgent = "garden-test-busy-" & pidStr
+    let targetProj = "garden-test-proj-" & pidStr
 
-    if busyAgent.len > 0:
-      let targetProj = if busyAgentProj.len > 0: busyAgentProj else: "test-proj"
-      # 1. Attempting without --force fails
-      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --role \"Staff Systems Architect\" --json")
-      check errCode != 0
-      let errJson = parseJson(errOut.strip())
-      check errJson["status"].getStr() == "error"
-      check errJson["error"].getStr().contains("BUSY")
+    let (_, openCode) = execCmdEx("rhizo --project " & quoteShell(targetProj) & " open " & quoteShell(busyAgent))
+    check openCode == 0
+    defer: discard execCmdEx("rhizo close " & quoteShell(busyAgent))
 
-      # 2. Overriding with --force succeeds
-      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & busyAgent & " --project " & targetProj & " --role \"Staff Systems Architect\" --force --json")
-      check fCode == 0
-      let fJson = parseJson(fOut.strip())
-      check fJson["status"].getStr() == "ok"
-      check fJson["repurposed_workers"][0]["agent"].getStr() == busyAgent
+    let (_, stCode) = execCmdEx("rhizo --project " & quoteShell(targetProj) & " status busy \"Hermetic busy test\" " & quoteShell(busyAgent))
+    check stCode == 0
+
+    # 1. Attempting without --force fails
+    let (errOut, errCode) = runGardenInProcess(@["repurpose", busyAgent, "--project", targetProj, "--role", "Staff Systems Architect", "--json"])
+    check errCode != 0
+    let errJson = parseJson(errOut.strip())
+    check errJson["status"].getStr() == "error"
+    check errJson["error"].getStr().contains("BUSY")
+
+    # 2. Overriding with --force succeeds
+    let (fOut, fCode) = runGardenInProcess(@["repurpose", busyAgent, "--project", targetProj, "--role", "Staff Systems Architect", "--force", "--json"])
+    check fCode == 0
+    let fJson = parseJson(fOut.strip())
+    check fJson["status"].getStr() == "ok"
+    check fJson["repurposed_workers"][0]["agent"].getStr() == busyAgent
 
   test "Garden repurpose negative control: foreign project worker rejected without --allow-cross-project, overrides with flag":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    
-    # Query cluster to find an actual foreign worker on a different project
-    var foreignAgent = ""
-    var originalProj = ""
-    var originalTags: seq[string] = @[]
-    try:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
-      if whoCode == 0 and whoOut.strip().len > 0:
-        let parsed = parseJson(whoOut.strip())
-        let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()
-        for item in list:
-          let proj = item.getOrDefault("project").getStr("")
-          let ag = item.getOrDefault("agent").getStr("")
-          let st = item.getOrDefault("state").getStr("")
-          if proj.len > 0 and proj != "test-anti-poach-proj" and not st.toUpperAscii().startsWith("BUSY"):
-            foreignAgent = ag
-            originalProj = proj
-            if item.hasKey("tags") and item["tags"].kind == JArray:
-              for t in item["tags"]: originalTags.add(t.getStr())
-            break
-    except CatchableError: discard
+    let pidStr = $getCurrentProcessId()
+    let foreignAgent = "garden-test-foreign-" & pidStr
+    let originalProj = "garden-foreign-proj-" & pidStr
 
-    if foreignAgent.len > 0:
-      # 1. Attempting without --allow-cross-project fails with cross-project rejection error
-      let (errOut, errCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --role \"Staff Systems Architect\" --json")
-      check errCode != 0
-      let errJson = parseJson(errOut.strip())
-      check errJson["status"].getStr() == "error"
-      check errJson["error"].getStr().contains("Cross-project")
+    let (_, openCode) = execCmdEx("rhizo --project " & quoteShell(originalProj) & " open " & quoteShell(foreignAgent))
+    check openCode == 0
+    defer: discard execCmdEx("rhizo close " & quoteShell(foreignAgent))
 
-      # 2. Overriding with --allow-cross-project succeeds
-      let (fOut, fCode) = execCmdEx(exePath & " repurpose " & foreignAgent & " --project test-anti-poach-proj --role \"Staff Systems Architect\" --allow-cross-project --json")
-      check fCode == 0
-      let fJson = parseJson(fOut.strip())
-      check fJson["status"].getStr() == "ok"
-      check fJson["repurposed_workers"][0]["agent"].getStr() == foreignAgent
+    # 1. Attempting without --allow-cross-project fails with cross-project rejection error
+    let (errOut, errCode) = runGardenInProcess(@["repurpose", foreignAgent, "--project", "test-anti-poach-proj", "--role", "Staff Systems Architect", "--json"])
+    check errCode != 0
+    let errJson = parseJson(errOut.strip())
+    check errJson["status"].getStr() == "error"
+    check errJson["error"].getStr().contains("Cross-project")
 
-      # Restore worker back to original project and tags
-      let restoreCmd = "rhizo reassign " & quoteShell(foreignAgent) & " --project " & quoteShell(originalProj) & " --tags " & quoteShell(originalTags.join(","))
-      discard execCmdEx(restoreCmd)
+    # 2. Overriding with --allow-cross-project succeeds
+    let (fOut, fCode) = runGardenInProcess(@["repurpose", foreignAgent, "--project", "test-anti-poach-proj", "--role", "Staff Systems Architect", "--allow-cross-project", "--json"])
+    check fCode == 0
+    let fJson = parseJson(fOut.strip())
+    check fJson["status"].getStr() == "ok"
+    check fJson["repurposed_workers"][0]["agent"].getStr() == foreignAgent
 
   test "Garden prompts fast-path skips card generation when project active workers >= target":
     let tmpDir = getTempDir() / ("garden_fast_path_test_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
-
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     
     # Create single-worker swarm matching current active worker (garden-botanist)
     let swarmFile = tmpDir / "test-fast-swarm.json"
@@ -553,14 +516,14 @@ suite "Garden CLI Compilation & Telemetry Suite":
       hasActiveGardenWorker = false
 
     if hasActiveGardenWorker:
-      let (fpOut, fpCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --json")
+      let (fpOut, fpCode) = runGardenInProcess(@["prompts", "-f", swarmFile, "--json"])
       check fpCode == 0
       let fpJson = parseJson(fpOut.strip())
       check fpJson["fast_path"].getBool() == true
       check fpJson["active_workers_count"].getInt() >= 1
 
     # 2. Force Prompts Flag overrides fast-path
-    let (forceOut, forceCode) = execCmdEx(exePath & " prompts -f " & quoteShell(swarmFile) & " --force-prompts --json")
+    let (forceOut, forceCode) = runGardenInProcess(@["prompts", "-f", swarmFile, "--force-prompts", "--json"])
     check forceCode == 0
     let forceJson = parseJson(forceOut.strip())
     check forceJson["fast_path"].getBool() == false
@@ -568,22 +531,21 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check forceJson["workers"].len == 1
 
   test "Negative control: Zero on-disk JSON verification across init, prompts, status, roadmap":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let tmpDir = getTempDir() / ("garden_zero_json_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
     # 1. Garden init
-    let (iOut, iCode) = execCmdEx(exePath & " init " & quoteShell(tmpDir))
+    let (_, iCode) = captureRet(proc(): int = doInit(tmpDir, false))
     check iCode == 0
     check not fileExists(tmpDir / "garden-swarm.json")
     check not fileExists(tmpDir / ".garden" / "roadmap.json")
     check not fileExists(tmpDir / ".garden" / "session.json")
 
     # 2. Plant seed and run roadmap
-    let (plOut, plCode) = execCmdEx(exePath & " plant \"Zero JSON Seed\" --season v1.0 --project-dir " & quoteShell(tmpDir))
+    let (_, plCode) = captureRet(proc(): int = doPlant("Zero JSON Seed", "v1.0", "", "", "", tmpDir, false, false))
     check plCode == 0
-    let (rOut, rCode) = execCmdEx(exePath & " roadmap --write --project-dir " & quoteShell(tmpDir))
+    let (_, rCode) = captureRet(proc(): int = doRoadmap("", tmpDir, false, true))
     check rCode == 0
     check fileExists(tmpDir / "ROADMAP.md")
     check not fileExists(tmpDir / ".garden" / "roadmap.json")
@@ -591,7 +553,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     check not fileExists(tmpDir / ".garden" / "session.json")
 
     # 3. Prompts generation
-    let (pOut, pCode) = execCmdEx(exePath & " prompts --project-dir " & quoteShell(tmpDir) & " --json")
+    let (_, pCode) = runGardenInProcess(@["prompts", "--project-dir", tmpDir, "--json"])
     check pCode == 0
     check not fileExists(tmpDir / "garden-swarm.json")
     check not fileExists(tmpDir / ".garden" / "roadmap.json")
@@ -847,15 +809,14 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     check not hasHelpFlag(@["some", "--other"])
 
   test "garden binary handles --help on subcommands without executing them":
-    let binPath = getCurrentDir() / "bin" / "garden"
     let subcmds = @["init", "plant", "roadmap", "germinate", "repurpose", "prompts", "launch", "status", "guide", "update"]
     for s in subcmds:
-      let (outp, code) = execCmdEx(binPath & " " & s & " --help")
+      let (outp, code) = runGardenInProcess(@[s, "--help"])
       check code == 0
       check outp.contains("Usage: garden " & s)
 
     # Test help <subcmd> syntax
-    let (outp2, code2) = execCmdEx(binPath & " help init")
+    let (outp2, code2) = runGardenInProcess(@["help", "init"])
     check code2 == 0
     check outp2.contains("Usage: garden init")
 
@@ -948,58 +909,54 @@ profile = "audit"
 suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
 
   test "Strict Unknown Flag Rejection (exit code 2) across all subcommands":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let subcmds = @[
       "plant", "roadmap", "germinate", "repurpose", "prompts",
       "launch", "init", "status", "teardown", "roster-guard",
       "session", "guide", "update"
     ]
     for subcmd in subcmds:
-      let (outp, code) = execCmdEx(exePath & " " & subcmd & " --bogus")
+      let (outp, code) = runGardenInProcess(@[subcmd, "--bogus"])
       check code == 2
       check outp.contains("Error: Unknown option --bogus for garden " & subcmd)
 
   test "Fail-Fast Required Arguments (exit code 1) on plant, germinate, and repurpose":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-
     # 1. plant without title and without --list
-    let (pOut, pCode) = execCmdEx(exePath & " plant")
+    let (pOut, pCode) = runGardenInProcess(@["plant"])
     check pCode == 1
     check pOut.contains("Missing required description for garden plant")
 
     # 2. germinate without seed_id
-    let (gOut, gCode) = execCmdEx(exePath & " germinate dispatch")
+    let (gOut, gCode) = runGardenInProcess(@["germinate", "dispatch"])
     check gCode == 1
     check gOut.contains("Missing required <seed_id> for garden germinate dispatch")
 
     # 3. germinate with nonexistent seed_id
-    let (gOut2, gCode2) = execCmdEx(exePath & " germinate dispatch nonexistent-seed-12345")
+    let (gOut2, gCode2) = runGardenInProcess(@["germinate", "dispatch", "nonexistent-seed-12345"])
     check gCode2 == 1
     check gOut2.contains("Seed not found")
 
     # 4. repurpose without worker
-    let (rOut1, rCode1) = execCmdEx(exePath & " repurpose")
+    let (rOut1, rCode1) = runGardenInProcess(@["repurpose"])
     check rCode1 == 1
     check rOut1.contains("Missing required worker(s)")
 
     # 5. repurpose without project (when no garden.toml exists)
-    let (rOut2, rCode2) = execCmdEx(exePath & " repurpose test-worker-1")
+    let (rOut2, rCode2) = runGardenInProcess(@["repurpose", "test-worker-1"])
     check rCode2 == 1
     check rOut2.contains("Missing required --project")
 
     # 6. repurpose without role or self-tag
-    let (rOut3, rCode3) = execCmdEx(exePath & " repurpose test-worker-1 --project test-custom-proj")
+    let (rOut3, rCode3) = runGardenInProcess(@["repurpose", "test-worker-1", "--project", "test-custom-proj"])
     check rCode3 == 1
     check rOut3.contains("Missing required role assignment")
 
   test "Intuitive Flag Synonyms on garden plant (--title, --description, --prompt, -m, --priority, --milestone, --release)":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let tmpDir = getTempDir() / ("garden_plant_aliases_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: (try: removeDir(tmpDir) except CatchableError: discard)
 
     # --title and --priority
-    let (out1, code1) = execCmdEx(exePath & " plant --title \"Feature Alpha\" --priority blazing --milestone v1.0.0 --project-dir " & tmpDir & " --json")
+    let (out1, code1) = runGardenInProcess(@["plant", "--title", "Feature Alpha", "--priority", "blazing", "--milestone", "v1.0.0", "--project-dir", tmpDir, "--json"])
     check code1 == 0
     let j1 = parseJson(out1.strip())
     check j1["title"].getStr() == "Feature Alpha"
@@ -1007,57 +964,54 @@ suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
     check j1["season"].getStr() == "v1.0.0"
 
     # --description and --release
-    let (out2, code2) = execCmdEx(exePath & " plant --description \"Feature Beta\" --release v1.1.0 --project-dir " & tmpDir & " --json")
+    let (out2, code2) = runGardenInProcess(@["plant", "--description", "Feature Beta", "--release", "v1.1.0", "--project-dir", tmpDir, "--json"])
     check code2 == 0
     let j2 = parseJson(out2.strip())
     check j2["title"].getStr() == "Feature Beta"
     check j2["season"].getStr() == "v1.1.0"
 
     # --prompt
-    let (out3, code3) = execCmdEx(exePath & " plant --prompt \"Feature Gamma\" --project-dir " & tmpDir & " --json")
+    let (out3, code3) = runGardenInProcess(@["plant", "--prompt", "Feature Gamma", "--project-dir", tmpDir, "--json"])
     check code3 == 0
     let j3 = parseJson(out3.strip())
     check j3["title"].getStr() == "Feature Gamma"
 
     # -m
-    let (out4, code4) = execCmdEx(exePath & " plant -m \"Feature Delta\" --project-dir " & tmpDir & " --json")
+    let (out4, code4) = runGardenInProcess(@["plant", "-m", "Feature Delta", "--project-dir", tmpDir, "--json"])
     check code4 == 0
     let j4 = parseJson(out4.strip())
     check j4["title"].getStr() == "Feature Delta"
 
   test "Intuitive Flag Synonyms on garden germinate (--seed, --id, -s)":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
     let tmpDir = getTempDir() / ("garden_germ_aliases_" & $getCurrentProcessId())
     createDir(tmpDir)
     defer: (try: removeDir(tmpDir) except CatchableError: discard)
 
     # Sow a seed to germinate
-    let (pOut, pCode) = execCmdEx(exePath & " plant \"Germinate Seed Target\" --id seed-target-01 --project-dir " & tmpDir)
+    let (_, pCode) = runGardenInProcess(@["plant", "Germinate Seed Target", "--id", "seed-target-01", "--project-dir", tmpDir])
     check pCode == 0
 
     # germinate status via --seed
-    let (gOut1, gCode1) = execCmdEx(exePath & " germinate status --seed seed-target-01 --project-dir " & tmpDir & " --json")
+    let (gOut1, gCode1) = runGardenInProcess(@["germinate", "status", "--seed", "seed-target-01", "--project-dir", tmpDir, "--json"])
     check gCode1 == 0
     let j1 = parseJson(gOut1.strip())
     check j1["seed_id"].getStr() == "seed-target-01"
 
     # germinate status via --id
-    let (gOut2, gCode2) = execCmdEx(exePath & " germinate status --id seed-target-01 --project-dir " & tmpDir & " --json")
+    let (gOut2, gCode2) = runGardenInProcess(@["germinate", "status", "--id", "seed-target-01", "--project-dir", tmpDir, "--json"])
     check gCode2 == 0
     let j2 = parseJson(gOut2.strip())
     check j2["seed_id"].getStr() == "seed-target-01"
 
     # germinate status via -s
-    let (gOut3, gCode3) = execCmdEx(exePath & " germinate status -s seed-target-01 --project-dir " & tmpDir & " --json")
+    let (gOut3, gCode3) = runGardenInProcess(@["germinate", "status", "-s", "seed-target-01", "--project-dir", tmpDir, "--json"])
     check gCode3 == 0
     let j3 = parseJson(gOut3.strip())
     check j3["seed_id"].getStr() == "seed-target-01"
 
   test "Intuitive Flag Synonyms on garden repurpose (--worker, --workers, --agent, --to)":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-
     # --workers and --project and --role
-    let (rOut1, rCode1) = execCmdEx(exePath & " repurpose --workers test-worker-a,test-worker-b --project test-synonym-proj --role \"Staff Systems Architect\" --json")
+    let (rOut1, rCode1) = runGardenInProcess(@["repurpose", "--workers", "test-worker-a,test-worker-b", "--project", "test-synonym-proj", "--role", "Staff Systems Architect", "--json"])
     check rCode1 == 0
     let j1 = parseJson(rOut1.strip())
     check j1["repurposed_count"].getInt() == 2
@@ -1065,7 +1019,7 @@ suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
     check j1["repurposed_workers"][1]["agent"].getStr() == "test-worker-b"
 
     # --agent and --to
-    let (rOut2, rCode2) = execCmdEx(exePath & " repurpose --agent test-worker-c --to test-worker-d --project test-synonym-proj --self-tag --json")
+    let (rOut2, rCode2) = runGardenInProcess(@["repurpose", "--agent", "test-worker-c", "--to", "test-worker-d", "--project", "test-synonym-proj", "--self-tag", "--json"])
     check rCode2 == 0
     let j2 = parseJson(rOut2.strip())
     check j2["repurposed_count"].getInt() == 2
@@ -1073,10 +1027,8 @@ suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
     check j2["repurposed_workers"][1]["agent"].getStr() == "test-worker-d"
 
   test "Intuitive Flag Synonyms on garden prompts and launch (--workers, --count, --harness, --project, --force)":
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-
     # --count 2 and --harness and --project
-    let (pOut1, pCode1) = execCmdEx(exePath & " prompts --count 2 --project test-p-proj --harness \"Custom Harness\" --force --json")
+    let (pOut1, pCode1) = runGardenInProcess(@["prompts", "--count", "2", "--project", "test-p-proj", "--harness", "Custom Harness", "--force", "--json"])
     check pCode1 == 0
     let j1 = parseJson(pOut1.strip())
     check j1["project"].getStr() == "test-p-proj"
@@ -1084,11 +1036,157 @@ suite "Strict Unknown Flag Rejection & Intuitive Synonyms Suite":
     check j1["workers"][0]["harness"].getStr() == "Custom Harness"
 
     # garden launch with --workers 1 and --force
-    let (lOut, lCode) = execCmdEx(exePath & " launch --workers 1 --project test-l-proj --force --json")
+    let (lOut, lCode) = runGardenInProcess(@["launch", "--workers", "1", "--project", "test-l-proj", "--force", "--json"])
     check lCode == 0
     let j2 = parseJson(lOut.strip())
     check j2["project"].getStr() == "test-l-proj"
     check j2["workers"].len == 1
+
+suite "Capability-Aware Execution Modes, Subagent Briefs & Tmux Suite":
+
+  test "resolveExecutionMode selects drillable subagents, tmux, and prompts by harness capability":
+    # 1. Antigravity IDE and OpenCode default to drillable subagents
+    check supportsDrillableSubagents("Antigravity IDE") == true
+    check supportsDrillableSubagents("OpenCode") == true
+    check supportsDrillableSubagents("OpenCode Desktop") == true
+    check supportsDrillableSubagents("ChatGPT Desktop / Codex") == false
+    check supportsDrillableSubagents("Codex CLI") == false
+    check supportsDrillableSubagents("Claude Code CLI") == false
+
+    check resolveExecutionMode("Antigravity IDE", inTmux = false) == "subagents"
+    check resolveExecutionMode("OpenCode", inTmux = false) == "subagents"
+    check resolveExecutionMode("OpenCode Desktop", inTmux = false) == "subagents"
+
+    # 2. Codex Desktop defaults to prompt cards
+    check supportsTmuxFactory("ChatGPT Desktop / Codex") == false
+    check supportsTmuxFactory("Antigravity IDE") == false
+    check supportsTmuxFactory("Codex CLI") == true
+    check supportsTmuxFactory("Claude Code CLI") == true
+    check resolveExecutionMode("ChatGPT Desktop / Codex", inTmux = false) == "prompts"
+
+    # 3. Codex CLI / Claude Code CLI select tmux only when inTmux or optTmux; forcePrompts overrides to prompts
+    check resolveExecutionMode("Codex CLI", inTmux = true) == "tmux"
+    check resolveExecutionMode("Codex CLI", inTmux = false) == "prompts"
+    check resolveExecutionMode("Codex CLI", optTmux = true, inTmux = false) == "tmux"
+    check resolveExecutionMode("Codex CLI", optSubagent = true, inTmux = false) == "subagents"
+    check resolveExecutionMode("Claude Code CLI", inTmux = true) == "tmux"
+    check resolveExecutionMode("Claude Code CLI", inTmux = false) == "prompts"
+    check resolveExecutionMode("Codex CLI", configuredMode = "subagents", inTmux = false) == "subagents"
+    check resolveExecutionMode("Antigravity IDE", configuredMode = "tmux", inTmux = false) == "tmux"
+    check resolveExecutionMode("Codex CLI", forcePrompts = true, optTmux = true, inTmux = true) == "prompts"
+    check resolveExecutionMode("Antigravity IDE", forcePrompts = true, optSubagent = true) == "prompts"
+
+  test "garden prompts --subagent --task generates structured briefs and subagent execution mode":
+    let tmpProj = "test-subagent-proj-" & $getCurrentProcessId()
+    defer: (try: removeDir(getGardenTempDir(tmpProj)) except CatchableError: discard)
+    let (sOut, sCode) = runGardenInProcess(@["prompts", "--project", tmpProj, "--harness", "Codex CLI", "--subagent", "--task", "task-123", "--force", "--json"])
+    check sCode == 0
+    let j = parseJson(sOut.strip())
+    check j["execution_mode"].getStr() == "subagents"
+    check j["supports_drillable_subagents"].getBool() == false
+    check j["workers"].len == 3
+
+    var foundArch = false
+    var foundImpl = false
+    var foundAudit = false
+    for w in j["workers"]:
+      let roleSlug = w["role_slug"].getStr()
+      let brief = w["subagent_brief"].getStr()
+      let subPath = w["subagent_file_path"].getStr()
+      check fileExists(subPath)
+      check readFile(subPath) == brief
+      check w["execution_mode"].getStr() == "subagents"
+      check brief.contains("--agent \"" & w["name"].getStr() & "\"")
+      if roleSlug == "architect":
+        foundArch = true
+        check brief.contains("rhizo task claim \"task-123\" --no-vine")
+      elif roleSlug == "implementer":
+        foundImpl = true
+        check brief.contains("vine new \"task-123\"")
+        check brief.contains("vine submit")
+        check brief.contains("YOU ARE NOT THE AUDITOR")
+      elif roleSlug == "auditor":
+        foundAudit = true
+        check brief.contains("vine audit inspect \"task-123\"")
+        check brief.contains("vine audit approve \"task-123\"")
+    check foundArch
+    check foundImpl
+    check foundAudit
+
+    # Negative control: --force-prompts overrides --subagent back to prompts even on Antigravity IDE
+    let (fpOut, fpCode) = runGardenInProcess(@["prompts", "--project", tmpProj, "--harness", "Antigravity IDE", "--subagent", "--force-prompts", "--json"])
+    check fpCode == 0
+    let fpJson = parseJson(fpOut.strip())
+    check fpJson["supports_drillable_subagents"].getBool() == true
+    check fpJson["execution_mode"].getStr() == "prompts"
+
+  test "garden launch --tmux --dry-run outputs tmux execution mode and worker spawn commands":
+    let tmpProj = "test-tmux-proj-" & $getCurrentProcessId()
+    defer: (try: removeDir(getGardenTempDir(tmpProj)) except CatchableError: discard)
+    let (tOut, tCode) = runGardenInProcess(@["launch", "--project", tmpProj, "--harness", "Codex CLI", "--tmux", "--dry-run", "--force", "--json"])
+    check tCode == 0
+    let j = parseJson(tOut.strip())
+    check j["execution_mode"].getStr() == "tmux"
+    check j["supports_tmux"].getBool() == true
+    check j["workers"].len == 3
+    for w in j["workers"]:
+      let tmuxCmd = w["tmux_command"].getStr()
+      let promptPath = w["file_path"].getStr()
+      let expectedInner = "codex " & quoteShell("Read and execute the bootstrap instructions in " & promptPath)
+      let expectedTmux = "tmux new-window -n " & quoteShell(w["name"].getStr()) & " -c " & quoteShell(j["target_repo"].getStr()) & " " & quoteShell(expectedInner)
+      check tmuxCmd == expectedTmux
+
+    # Negative controls: unknown option (exit 2), invalid --mode value (exit 1), missing --mode value (exit 1)
+    let (_, badCode) = runGardenInProcess(@["launch", "--tmux", "--bogus-mode-flag"])
+    check badCode == 2
+
+    let (badModeOut, badModeCode) = runGardenInProcess(@["launch", "--mode", "bogus"])
+    check badModeCode == 1
+    check badModeOut.contains("Invalid execution mode 'bogus'")
+
+    let (missingModeOut, missingModeCode) = runGardenInProcess(@["prompts", "--mode"])
+    check missingModeCode == 1
+    check missingModeOut.contains("Missing required value for --mode")
+
+  test "garden.toml execution_mode parsing and garden init default":
+    let tmpDir = getTempDir() / ("garden_exec_mode_test_" & $getCurrentProcessId())
+    createDir(tmpDir)
+    defer: (try: removeDir(tmpDir) except CatchableError: discard)
+
+    let (_, iCode) = captureRet(proc(): int = doInit(tmpDir, false))
+    check iCode == 0
+    check readFile(tmpDir / "garden.toml").contains("execution_mode = \"auto\"")
+
+    writeFile(tmpDir / "garden.toml", "[project]\nname = \"exec-mode-proj\"\n\n[swarm]\nexecution_mode = \"prompts\"\n")
+    let cfg = loadSwarmConfig(projectDir = tmpDir)
+    check cfg.project == "exec-mode-proj"
+    check cfg.workers.len == 3
+    check "exec-mode-proj" in cfg.workers[0].tags
+    check cfg.executionMode == "prompts"
+    check resolveExecutionMode("Antigravity IDE", cfg.executionMode) == "prompts"
+
+suite "Garden Bin Riders Verification Suite":
+
+  test "bin/*.js riders exist and target @axiomantic packages and rift-snapshot":
+    let runJs = getCurrentDir() / "bin" / "run.js"
+    check fileExists(runJs)
+    check readFile(runJs).contains("garden")
+
+    let expectedRiders = [
+      ("bin" / "rhizo.js", "@axiomantic/rhizo"),
+      ("bin" / "vine.js", "@axiomantic/vine"),
+      ("bin" / "rift.js", "rift-snapshot")
+    ]
+    for (relPath, pkgName) in expectedRiders:
+      let fullPath = getCurrentDir() / relPath
+      check fileExists(fullPath)
+      let content = readFile(fullPath)
+      check content.contains(pkgName)
+      check content.startsWith("#!/usr/bin/env node")
+
+    for staleFile in ["test_garden", "test_seed", "test_germinate", "test_roadmap", "test_update", "test_riders.js"]:
+      check not fileExists(getCurrentDir() / "tests" / staleFile)
+
 
 
 

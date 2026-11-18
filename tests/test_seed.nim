@@ -1,8 +1,9 @@
 # tests/test_seed.nim
 # Full test coverage for Garden seed data model, TOML storage, CLI plant consumer, and negative controls.
 
-import std/[os, osproc, strutils, json, unittest]
-import ../src/seed
+import std/[os, strutils, json, unittest]
+import ../src/[seed, garden]
+import ./test_helpers
 
 suite "Garden Botanical Seed Data Model & Persistence Suite":
 
@@ -156,9 +157,9 @@ suite "Garden CLI 'garden plant' Integration & Consumer Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let cmd = exePath & " plant \"Roadmap Telemetry\" --season summer --sunlight high --tags \"telemetry,metrics\" -p " & quoteShell(tmpDir)
-    let (pOut, pCode) = execCmdEx(cmd)
+    let (pOut, pCode) = captureRet(proc (): int =
+      doPlant("Roadmap Telemetry", "summer", "high", "telemetry,metrics", "", tmpDir, false, false)
+    )
     check pCode == 0
     check pOut.contains("Sowed seed 'Roadmap Telemetry'")
     check pOut.contains("Status:   SOWN")
@@ -174,9 +175,9 @@ suite "Garden CLI 'garden plant' Integration & Consumer Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    let cmd = exePath & " plant \"Kernel Dispatcher\" --season winter --sunlight blazing --tags \"kernel,core\" --json -p " & quoteShell(tmpDir)
-    let (jOut, jCode) = execCmdEx(cmd)
+    let (jOut, jCode) = captureRet(proc (): int =
+      doPlant("Kernel Dispatcher", "winter", "blazing", "kernel,core", "", tmpDir, false, true)
+    )
     check jCode == 0
 
     let j = parseJson(jOut.strip())
@@ -195,26 +196,30 @@ suite "Garden CLI 'garden plant' Integration & Consumer Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-    
     # 1. Empty list
-    let (eOut, eCode) = execCmdEx(exePath & " plant --list -p " & quoteShell(tmpDir))
+    let (eOut, eCode) = captureRet(proc (): int =
+      doPlant("", "", "", "", "", tmpDir, true, false)
+    )
     check eCode == 0
     check eOut.contains("No seeds sown yet")
 
     # 2. Plant two seeds
-    discard execCmdEx(exePath & " plant \"Seed One\" -p " & quoteShell(tmpDir))
-    discard execCmdEx(exePath & " plant \"Seed Two\" -p " & quoteShell(tmpDir))
+    discard captureRet(proc (): int = doPlant("Seed One", "", "", "", "", tmpDir, false, false))
+    discard captureRet(proc (): int = doPlant("Seed Two", "", "", "", "", tmpDir, false, false))
 
     # 3. Formatted list
-    let (lOut, lCode) = execCmdEx(exePath & " plant --list -p " & quoteShell(tmpDir))
+    let (lOut, lCode) = captureRet(proc (): int =
+      doPlant("", "", "", "", "", tmpDir, true, false)
+    )
     check lCode == 0
     check lOut.contains("Garden Sown Seeds (2)")
     check lOut.contains("Seed One")
     check lOut.contains("Seed Two")
 
     # 4. JSON list
-    let (jlOut, jlCode) = execCmdEx(exePath & " plant --list --json -p " & quoteShell(tmpDir))
+    let (jlOut, jlCode) = captureRet(proc (): int =
+      doPlant("", "", "", "", "", tmpDir, true, true)
+    )
     check jlCode == 0
     let jl = parseJson(jlOut.strip())
     check jl.kind == JArray
@@ -225,14 +230,16 @@ suite "Garden CLI 'garden plant' Integration & Consumer Suite":
     createDir(tmpDir)
     defer: removeDir(tmpDir)
 
-    let exePath = if defined(windows): "bin" / "garden.exe" else: "bin" / "garden"
-
     # Missing title
-    let (mOut, mCode) = execCmdEx(exePath & " plant")
+    let (mOut, mCode) = captureRet(proc (): int =
+      doPlant("", "", "", "", "", tmpDir, false, false)
+    )
     check mCode != 0
     check mOut.contains("Usage: garden plant")
 
     # Invalid sunlight
-    let (sOut, sCode) = execCmdEx(exePath & " plant \"Invalid Sun\" --sunlight radioactive -p " & quoteShell(tmpDir))
+    let (sOut, sCode) = captureRet(proc (): int =
+      doPlant("Invalid Sun", "", "radioactive", "", "", tmpDir, false, false)
+    )
     check sCode != 0
     check sOut.contains("Invalid sunlight level 'radioactive'")

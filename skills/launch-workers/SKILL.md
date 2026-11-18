@@ -12,14 +12,19 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
 
 ## 1. System Philosophy & Invariants
 
-1. **Human-in-the-Loop Sovereign Session Autonomy**:
-   - Terminal multiplexers (tmux) are unsupported. We do not blindly spawn tmux background processes or attempt to drive terminal multiplexers with fragile subshell scripting.
-   - Workers run in sovereign, independent interactive sessions (dedicated terminal tabs or IDE windows) in the operator's active coding harness.
-2. **Prompt Card Temp File Delivery (Zero Chat Flooding)**:
+1. **Capability-Aware Swarm Launch Pathways**:
+   Before launching new workers, always check `rhizo who --all --json` first to reuse active project workers or repurpose idle unassigned peers (`garden repurpose`). On cold starts (`execution_mode = "auto"`), choose the pathway matching the harness's visibility and direct chat interactivity:
+   - **Pathway 1 (Default on Antigravity IDE & OpenCode Desktop): Persistent Drillable Subagents (`subagents`)**:
+     Run `garden prompts --subagent --json` to generate per-worker briefs (`/tmp/garden-<project>/subagent-<worker>.md`), spawn persistent child sessions (`invoke_subagent` + `send_message` in Antigravity; child sessions in OpenCode Desktop), and surface clickable `[Persona (@name)](conversation://<id>)` links in chat so the operator can drill in and steer directly.
+   - **Pathway 2 (Default on Codex CLI in `tmux`; opt-in on OpenCode CLI / Claude Code CLI): Automated `tmux` Split-Pane / Window Factory (`tmux`)**:
+     Run `garden launch --tmux` to spawn one `tmux` window/pane per worker running `codex` / `opencode` / `claude` pointed at `/tmp/garden-<project>/<worker>.md`.
+   - **Pathway 3 (Default on Codex Desktop & Non-`tmux` CLI): 10-Backtick Prompt Cards (`prompts`)**:
+     Workers run in top-level interactive sessions bootstrapped from 10-backtick prompt cards in `/tmp/garden-<project>/<worker>.md`.
+2. **Prompt Card & Subagent Brief Temp File Delivery (Zero Chat Flooding)**:
    <CRITICAL>
-   `garden prompts` and `garden launch` automatically write worker prompt cards to `/tmp/garden-<project>/<worker-name>.md` and a combined roster to `/tmp/garden-<project>/all-workers.md`.
+   `garden prompts` and `garden launch` automatically write worker prompt cards to `/tmp/garden-<project>/<worker-name>.md`, subagent briefs to `/tmp/garden-<project>/subagent-<worker-name>.md`, and a combined roster to `/tmp/garden-<project>/all-workers.md`.
    Orchestrator agents MUST NEVER dump thousands of lines of prompt text inline into the chat conversation. Dumping cards inline exhausts token context budgets, causes scrolling fatigue, and triggers chat UI rendering bugs.
-   Instead, orchestrators MUST output concise session assignments with clickable file links (e.g. `/tmp/garden-<project>/<worker>.md`).
+   Instead, orchestrators MUST output concise session assignments with clickable file links (e.g. `/tmp/garden-<project>/<worker>.md` or `[Persona (@name)](conversation://<id>)`).
    Inside the generated files and when `--inline` is passed, blocks are wrapped in 10 backticks (``````````markdown) to protect nested markdown and shell code blocks.
    </CRITICAL>
 3. **Listener Discipline & Multiplexed Router**:
@@ -37,9 +42,11 @@ description: "Generates and formats X distinct copy-pasteable bootstrap prompts 
    </CRITICAL>
 5. **Zero Dirty Commits**:
    - Never stage coordination state (`.rhizo.*`, `*.lock`, `workspaces/`) into Git. Vine stores strand identity in `.git/config` (`vine.taskId`, `vine.project`) and authoritative state in Redis (zero state files in the working tree).
-6. **Sovereign Dedicated Session Invariant (Universal Subagent Prohibition)**:
+6. **Capability-Aware Subagent & Session Invariant**:
    <CRITICAL>
-   Swarm workers are ALWAYS sovereign, independent interactive sessions (separate terminal tabs or IDE windows) bootstrapped via Garden 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY FORBIDDEN from acting as swarm workers. Prompt cards are generated strictly for human operators to paste into separate sessions. The orchestrator must NEVER attempt to automate prompt cards by feeding them into internal subagents.
+   - **Drillable Persistent Subagents (Antigravity IDE & OpenCode Desktop)**: Allowed and recommended as first-class swarm workers when spawned from `garden prompts --subagent --json`, provided each subagent follows the full worker procedure: unique Rhizo identity (`rhizo open <name>`), explicit `--agent <name>`, 1:1 isolated Vine strand (`vine new <task_id>`), `vine submit`, and independent Key 3 audit by a separate `@auditor` subagent. Always display clickable session links (`conversation://<id>`) in chat.
+   - **Top-Level / `tmux` Interactive Sessions (Codex Desktop, Codex CLI, Claude Code CLI)**: Bootstrapped via `/tmp/garden-<project>/<worker>.md` (manually pasted or spawned via `garden launch --tmux`).
+   - **Opaque Ephemeral Subagents Prohibited**: Non-interactive CLI subagents (such as headless `Task` jobs that the user cannot click into and chat with) are STRICTLY FORBIDDEN from acting as swarm workers.
    </CRITICAL>
 7. **Closed-Circuit & Holistic Integration Invariant**:
    <CRITICAL>

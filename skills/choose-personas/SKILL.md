@@ -45,22 +45,27 @@ Workers who write code are strictly prohibited from auditing or ratifying their 
 
 ## 2. Harness & Model Alignment
 
-Every recommended worker represents an INDEPENDENT, DEDICATED CODING SESSION (separate terminal tab or dedicated IDE window) bootstrapped via Garden 10-backtick prompt cards.
+Every recommended worker represents either a **persistent drillable subagent** (default on Antigravity IDE and OpenCode Desktop, where you can click into the child session and chat directly), an **automated `tmux` pane** (default on Codex CLI in `tmux`, opt-in on OpenCode CLI / Claude Code CLI), or a **top-level interactive session** bootstrapped via Garden 10-backtick prompt cards (default on Codex Desktop and non-`tmux` terminals).
 
 Workers inherit whatever foundation model is native or configured in that session:
-- In **Antigravity IDE**: Workers run on Antigravity's active session models (Gemini).
-- In **Claude Code CLI**: Workers run on Claude CLI's active models (Claude 3.7 Sonnet).
-- In **OpenCode Desktop**: Workers run on models configured in `opencode.json`.
+- In **Antigravity IDE**: Workers run as persistent subagents (`invoke_subagent` + `send_message` with clickable `conversation://<id>` links) or dedicated windows on Antigravity's active session models.
+- In **Claude Code CLI**: Workers run in dedicated tabs or `tmux` panes on Claude CLI's active models.
+- In **OpenCode Desktop**: Workers run as drillable child sessions (sidebar tree) or dedicated sessions on models configured in `opencode.json`.
+- In **Codex Desktop / Codex CLI**: Codex Desktop threads use top-level Prompt Cards; Codex CLI defaults to `garden launch --tmux` (when `tmux` is available) or Prompt Cards.
 - In **Headless Terminal / Pi**: Workers run on provider CLI configuration.
 
 <CRITICAL>
-Sovereign Dedicated Sessions Only (Universal Subagent Prohibition):
-Swarm workers are ALWAYS sovereign, independent interactive sessions (separate terminal tabs or dedicated IDE windows) bootstrapped via Garden 10-backtick prompt cards. Harness-internal subagents (e.g. Antigravity's `invoke_subagent`, Claude Code's `Task`, OpenCode subtasks, Cursor sub-composers) are STRICTLY FORBIDDEN from acting as swarm workers. NEVER pair a persona with internal subagents.
+Capability-Aware Worker Execution & Opaque Subagent Prohibition:
+Match worker execution to what the harness makes inspectable and interactively steerable:
+- **Antigravity IDE & OpenCode Desktop**: Default to persistent drillable subagents (`subagents`) obeying the full worker procedure (unique Rhizo ID, explicit `--agent <name>`, 1:1 Vine strand, `vine submit`, independent Key 3 audit).
+- **Codex CLI (`tmux`) / OpenCode CLI (`--tmux`)**: Automated `tmux` windows/panes via `garden launch --tmux`.
+- **Codex Desktop & Non-`tmux` CLI**: Top-level sessions via 10-backtick prompt cards.
+- **Opaque CLI Subagents Prohibited**: Non-interactive, headless subagent tools (where the operator cannot drill in and chat mid-flight) are STRICTLY FORBIDDEN as swarm workers.
 </CRITICAL>
 
 <CRITICAL>
 Session Default Models (No Cross-Harness Model Quizzes):
-Swarm workers operate in sovereign interactive sessions and inherit whatever foundation model is active in that harness session. NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options that do not correspond to the chosen harness. In prompt cards and swarm specifications, models default to `"Session Default (active in window/tab)"`.
+Swarm workers operate in interactive sessions or inherited subagent sessions and inherit whatever foundation model is active in that harness session. NEVER present a separate question asking the operator to choose "Foundation Model Pairings", and NEVER present model options that do not correspond to the chosen harness. In prompt cards and swarm specifications, models default to `"Session Default (active in window/tab)"`.
 </CRITICAL>
 
 <CRITICAL>
@@ -69,12 +74,12 @@ Whimsical Non-Human Personas & Dynamic Invention Invariant (GVR-017):
 2. Dynamic Synthesis Mandate: When configuring or recommending swarm personas, NEVER draw from or reuse static, generic, or example lists. Dynamically synthesize completely original, inventive compound monikers ([Descriptor]-[Entity/Craft]) tailored specifically to the target project's domain.
 </CRITICAL>
 
-| Role Mandate | Recommended Harness | Model Alignment | Rationale |
+| Role Mandate | Recommended Mode / Harness | Model Alignment | Rationale |
 | :--- | :--- | :--- | :--- |
-| **Architectural Design & Systems Modeling** | **Antigravity (Dedicated Window)** or **OpenCode (Dedicated Session)** | Session Default (Native in window) | Fast token throughput, deep reasoning, superior multi-file architectural comprehension, and native background ear support. |
-| **Adversarial Audit & Code Quality Purism** | **Claude Code CLI (Dedicated Tab)** or **Antigravity (Dedicated Window)** | Session Default (Native in tab/window) | Uncompromising adherence to instructions, meticulous attention to negative controls, zero tolerance for superficial green tests. |
-| **DevEx, Rapid Prototyping & Implementation** | **Antigravity (Dedicated Window)** or **OpenCode (Dedicated Session)** | Session Default (Native in window) | Native reactive tool execution (`run_command`), rapid file modification, direct terminal feedback. |
-| **Hermetic / Local Security Analysis** | **Headless Terminal Worker (Dedicated Tab)** | Ollama / Local DeepSeek-R1 | Air-gapped execution for proprietary credentials, licensing checks, or sensitive security audits. |
+| **Architectural Design & Systems Modeling** | **Antigravity (`subagents` default / Window)** or **OpenCode Desktop (`subagents`)** | Session Default (Native in window) | Zero-setup drillable child sessions (`conversation://<id>`) or top-level sessions with fast architectural comprehension. |
+| **Adversarial Audit & Code Quality Purism** | **Separate `@auditor` Subagent (`subagents`)** or **Codex / Claude Code (`tmux` / Tab)** | Session Default (Native in tab/window) | Strict separation (`auditor != author`), uncompromising negative controls, zero tolerance for superficial green tests. |
+| **DevEx, Rapid Prototyping & Implementation** | **Antigravity (`subagents` default / Window)**, **OpenCode Desktop**, or **Codex CLI (`tmux`)** | Session Default (Native in window) | Isolated 1:1 Vine strand execution, rapid file modification, direct verification (`vine gate` / `vine submit`). |
+| **Hermetic / Local Security Analysis** | **Headless Terminal Worker (Dedicated Tab / `tmux`)** | Ollama / Local DeepSeek-R1 | Air-gapped execution for proprietary credentials, licensing checks, or sensitive security audits. |
 
 ---
 
@@ -116,11 +121,13 @@ Run `rhizo who --all --json` to triage cluster listener state:
 
 ### Step 2: Formulate Recommendation in Detected Harness
 Auto-detect the orchestrator's active harness from environment variables:
-- `ANTIGRAVITY_APP_DIR` $\to$ "Antigravity IDE"
-- `CLAUDE_CODE` $\to$ "Claude Code CLI"
-- `OPENCODE_SESSION_ID` $\to$ "OpenCode"
-- `CODEX_SESSION_ID` $\to$ "ChatGPT Desktop / Codex"
-- `PI_SESSION_ID` $\to$ "Pi"
+- `ANTIGRAVITY_APP_DIR` $\to$ "Antigravity IDE" (`subagents` default)
+- `CLAUDE_CODE` $\to$ "Claude Code CLI" (`tmux` in `$TMUX` / `prompts` default)
+- `OPENCODE_DESKTOP` $\to$ "OpenCode Desktop" (`subagents` default)
+- `OPENCODE_SESSION_ID` $\to$ "OpenCode" (`subagents` default)
+- `CODEX_CLI` $\to$ "Codex CLI" (`tmux` default when available, else `prompts`)
+- `CODEX_SESSION_ID` $\to$ "ChatGPT Desktop / Codex" (`prompts` default)
+- `PI_SESSION_ID` $\to$ "Pi" (`tmux` in `$TMUX` / `prompts` default)
 - Default fallback $\to$ "Antigravity / Claude Code"
 
 Synthesize the primary triad targeting the detected harness with session-default models:
@@ -131,10 +138,10 @@ Synthesize the primary triad targeting the detected harness with session-default
 
 ### Step 3: Interactive Operator Ratification (`ask_question`)
 Invoke `ask_question` with a SINGLE concise question combining execution mode and swarm shape in the detected harness:
-- Option 1 (Recommended): Multi-Agent Swarm: Balanced Triad in <Detected Harness> (Architect, Auditor, Implementer with session-native models)
+- Option 1 (Recommended): Multi-Agent Swarm: Balanced Triad in <Detected Harness> using harness default (`subagents` on Antigravity IDE / OpenCode Desktop, `tmux` on Codex CLI, `prompts` on Codex Desktop)
 - Option 2: Multi-Agent Swarm: Focused Duo in <Detected Harness> (Implementation Lead + Adversarial Auditor)
 - Option 3 (Deprioritized): Single-Agent Inline (Execute sequentially within current chat session; strongly discouraged for code edits to preserve orchestrator context for governance)
-- Option 4: Custom configuration (allows user write-in).
+- Option 4: Custom configuration or mode override (`--mode prompts`, `--tmux`, `--subagent`).
 
 ### Step 4: Synthesize Swarm Specification
 Once ratified, Garden synthesizes the swarm configuration dynamically in memory (zero on-disk JSON).
