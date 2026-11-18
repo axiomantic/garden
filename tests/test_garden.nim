@@ -91,7 +91,7 @@ suite "Garden Guide Management & Marker Suite":
     check CanonicalGuideContent.contains("Drillable Persistent Subagents (`subagents`")
     check CanonicalGuideContent.contains("Automated `tmux` Pane Factory (`tmux`")
     check not CanonicalGuideContent.contains("Sovereign Sessions & Subagent Prohibition")
-    check readFile(getCurrentDir() / "AGENTS.md").contains(CanonicalGuideContent.strip())
+    check readFile(getCurrentDir() / "AGENTS.md").replace("\r\n", "\n").contains(CanonicalGuideContent.strip().replace("\r\n", "\n"))
 
 suite "Garden CLI Compilation & Telemetry Suite":
 
@@ -828,8 +828,8 @@ suite "Role-Aware Bootstrap & Harness Wakeup Suite":
     check pCodex.contains("RHIZO_WAKE")
 
   test "SKILL.md is reconciled with skills/garden/SKILL.md":
-    let rootSkill = readFile(getCurrentDir() / "SKILL.md")
-    let pkgSkill = readFile(getCurrentDir() / "skills" / "garden" / "SKILL.md")
+    let rootSkill = readFile(getCurrentDir() / "SKILL.md").replace("\r\n", "\n")
+    let pkgSkill = readFile(getCurrentDir() / "skills" / "garden" / "SKILL.md").replace("\r\n", "\n")
     check rootSkill == pkgSkill
 
   test "hasHelpFlag detects --help, -h, help and respects -- barrier":
