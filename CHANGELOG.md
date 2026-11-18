@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.31] - 2026-11-18
+
 ### Added
 - **Capability-Aware Harness Execution Defaults (`src/garden.nim`, `src/guide.nim`, `skills/`, `SKILL.md`, `docs/`, `tests/test_garden.nim`)**:
   - Replaced the blanket subagent and tmux prohibition with capability-aware harness execution resolution (`execution_mode = "auto"`, `"subagents"`, `"tmux"`, `"prompts"`):

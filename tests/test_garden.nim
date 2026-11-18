@@ -107,7 +107,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     let (vOut, vCode) = runGardenInProcess(@["--version"])
     check vCode == 0
     check vOut.contains("garden v")
-    check vOut.contains("0.2.30")
+    check vOut.contains("0.2.31")
 
   test "Garden init generates garden.toml and installs guide":
     let tmpDir = getTempDir() / ("garden_test_init_" & $getCurrentProcessId())

@@ -12,7 +12,7 @@ when defined(inProcessTest):
   template quit(code: int = 0) = testQuit(code)
 
 const
-  GardenVersion = "0.2.30"
+  GardenVersion = "0.2.31"
   DefaultConfigFileName = "garden.toml"
   PromptFence10 = "``````````"
 
