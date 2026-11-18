@@ -5,6 +5,7 @@ import std/[os, osproc, strutils, json, unittest]
 import ../src/guide
 import ../src/seed
 import ../src/garden
+import ../src/update
 import ./test_helpers
 
 suite "Garden Guide Management & Marker Suite":
@@ -535,7 +536,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
     # 1. Fast-Path Activated (without --force-prompts) if active garden workers exist on cluster
     var hasActiveGardenWorker = false
     try:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --project garden --json")
+      let (whoOut, whoCode) = execShellCmdEx("rhizo who --project garden --json")
       if whoCode == 0 and whoOut.strip().len > 0:
         let parsed = parseJson(whoOut.strip())
         let list = if parsed.kind == JArray: parsed elif parsed.hasKey("agents"): parsed["agents"] else: newJArray()

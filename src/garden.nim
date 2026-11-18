@@ -342,7 +342,7 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
 
   try:
     let cmd = "rhizo leader status " & quoteShell("orchestrator:" & project) & " --json"
-    let (outp, code) = execCmdEx(cmd)
+    let (outp, code) = execShellCmdEx(cmd)
     if code == 0 and outp.strip().len > 0:
       let j = parseJson(outp.strip())
       if j.hasKey("status") and j["status"].getStr() == "active" and j.hasKey("leader"):
@@ -358,7 +358,7 @@ proc discoverOrchestrator*(project: string, optOrchestratorAgent: string = ""): 
     try: removeFile(legacySess) except CatchableError: discard
 
   try:
-    let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+    let (whoOut, whoCode) = execShellCmdEx("rhizo who --all --json")
     if whoCode == 0 and whoOut.strip().len > 0:
       let wJson = parseJson(whoOut.strip())
       if wJson.kind == JArray:
@@ -1114,7 +1114,7 @@ proc queryClusterAgents*(currentProject: string = "", targetWorkers: seq[WorkerS
   var allList: seq[ClusterWorkerInfo] = @[]
   if findExe("rhizo").len > 0:
     try:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+      let (whoOut, whoCode) = execShellCmdEx("rhizo who --all --json")
       if whoCode == 0 and whoOut.strip().len > 0:
         let trimmed = whoOut.strip()
         var parsedList: JsonNode = nil
@@ -1765,7 +1765,7 @@ proc doRepurpose*(
 
     var reassignCmd = "rhizo reassign " & quoteShell(tw) & " --project " & quoteShell(targetProj) & " --role " & quoteShell(assignedRole) & " --tags " & quoteShell(tagsCsv)
     try:
-      discard execCmdEx(reassignCmd)
+      discard execShellCmdEx(reassignCmd)
     except CatchableError:
       discard
 
@@ -1784,7 +1784,7 @@ proc doRepurpose*(
 
       let sendCmd = "rhizo send --to " & quoteShell(tw) & " --subject " & quoteShell("SWARM_REPURPOSE_OFFER") & " --body " & quoteShell($offerObj)
       try:
-        discard execCmdEx(sendCmd)
+        discard execShellCmdEx(sendCmd)
       except CatchableError:
         discard
 
@@ -1894,7 +1894,7 @@ proc doStatus*(jsonOutput: bool): int =
 
     # 1. Query Rhizo heartbeats via 'rhizo who --json'
     try:
-      let (rhizoOut, rhizoCode) = execCmdEx("rhizo who --json")
+      let (rhizoOut, rhizoCode) = execShellCmdEx("rhizo who --json")
       let trimmed = rhizoOut.strip()
       if rhizoCode == 0 and (trimmed.startsWith("{") or trimmed.startsWith("[")):
         statusObj["rhizo"] = parseJson(trimmed)
@@ -1905,7 +1905,7 @@ proc doStatus*(jsonOutput: bool): int =
 
     # 2. Query Vine active strands via 'vine list'
     try:
-      let (vineOut, vineCode) = execCmdEx("vine list")
+      let (vineOut, vineCode) = execShellCmdEx("vine list")
       let trimmed = vineOut.strip()
       if vineCode == 0 and (trimmed.startsWith("{") or trimmed.startsWith("[")):
         statusObj["vine_strands"] = parseJson(trimmed)
@@ -1988,7 +1988,7 @@ proc validateRosterSender*(cfg: SwarmConfig, sender: string, whoList: JsonNode =
   try:
     var wJson = whoList
     if wJson.isNil:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --all --json")
+      let (whoOut, whoCode) = execShellCmdEx("rhizo who --all --json")
       if whoCode == 0 and whoOut.strip().len > 0:
         let trimmed = whoOut.strip()
         if trimmed.startsWith("["):
@@ -2058,7 +2058,7 @@ proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string 
 
   if findExe("rhizo").len > 0:
     try:
-      let (whoOut, whoCode) = execCmdEx("rhizo who --json")
+      let (whoOut, whoCode) = execShellCmdEx("rhizo who --json")
       if whoCode == 0 and whoOut.strip().len > 0:
         let trimmed = whoOut.strip()
         var parsedList: JsonNode = nil
@@ -2078,7 +2078,7 @@ proc doRosterGuard*(sender: string, jsonOutput: bool = false, swarmFile: string 
             else:
               aliens.add(ag)
               if fix:
-                let (_, cCode) = execCmdEx("rhizo close " & quoteShell(ag))
+                let (_, cCode) = execShellCmdEx("rhizo close " & quoteShell(ag))
                 if cCode == 0:
                   quarantined.add(ag)
     except CatchableError:
@@ -2195,7 +2195,7 @@ proc doTeardown*(swarmFileParam: string = "", projectDir: string = "", optProjec
   if cluster.projectActive.len > 0:
     for ca in cluster.projectActive:
       echo "[garden] Closing active project agent @" & ca.agent & " in Redis..."
-      discard execCmdEx("rhizo close " & quoteShell(ca.agent))
+      discard execShellCmdEx("rhizo close " & quoteShell(ca.agent))
       closed.add(ca.agent)
 
   # Close configured swarm workers and default triad fallbacks if not already closed
@@ -2203,7 +2203,7 @@ proc doTeardown*(swarmFileParam: string = "", projectDir: string = "", optProjec
     if w.name.len > 0 and w.name notin closed:
       echo "[garden] Closing agent @" & w.name & " in Redis..."
       try:
-        discard execCmdEx("rhizo close " & quoteShell(w.name))
+        discard execShellCmdEx("rhizo close " & quoteShell(w.name))
         closed.add(w.name)
       except CatchableError:
         discard
@@ -2213,7 +2213,7 @@ proc doTeardown*(swarmFileParam: string = "", projectDir: string = "", optProjec
     if wname notin closed:
       echo "[garden] Closing agent @" & wname & " in Redis..."
       try:
-        discard execCmdEx("rhizo close " & quoteShell(wname))
+        discard execShellCmdEx("rhizo close " & quoteShell(wname))
         closed.add(wname)
       except CatchableError:
         discard

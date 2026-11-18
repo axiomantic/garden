@@ -65,6 +65,12 @@ proc isNewerSemver*(remoteVer, localVer: string): bool =
   if r.minor < l.minor: return false
   return r.patch > l.patch
 
+proc execShellCmdEx*(cmd: string): tuple[output: string, exitCode: int] =
+  when defined(windows):
+    execCmdEx("cmd /c " & cmd)
+  else:
+    execCmdEx(cmd)
+
 proc detectInstallKind*(binName: string): tuple[kind: InstallKind, realPath: string, updateCommand: string] =
   var rawPath = findExe(binName)
   if rawPath.len == 0:
@@ -167,7 +173,7 @@ proc getInstalledVersion*(pkg: string, callerVer: string = "", callerPkg: string
     return callerVer
 
   let binCmd = pkg & " --version"
-  let (outp, code) = try: execCmdEx(binCmd) except CatchableError: ("", 1)
+  let (outp, code) = try: execShellCmdEx(binCmd) except CatchableError: ("", 1)
   if code == 0 and outp.len > 0:
     for token in outp.splitWhitespace():
       var t = token.strip()
@@ -194,7 +200,7 @@ proc fetchRemoteVersion*(pkg: string): string =
     except CatchableError: discard
 
   let (nOut, nCode) = try:
-    execCmdEx("npm view @axiomantic/" & pkg & " version")
+    execShellCmdEx("npm view @axiomantic/" & pkg & " version")
   except CatchableError: ("", 1)
   if nCode == 0 and nOut.len > 0:
     return nOut.strip()
