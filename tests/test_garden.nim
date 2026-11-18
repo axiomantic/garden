@@ -520,9 +520,9 @@ suite "Garden CLI Compilation & Telemetry Suite":
     
     # Create single-worker swarm matching current active worker (garden-botanist)
     let swarmFile = tmpDir / "test-fast-swarm.json"
-    writeFile(swarmFile, """{
+    writeFile(swarmFile, $(%*{
       "project": "garden",
-      "target_repo": """" & tmpDir & """",
+      "target_repo": tmpDir,
       "orchestrator": "test-orch",
       "workers": [
         {
@@ -530,7 +530,7 @@ suite "Garden CLI Compilation & Telemetry Suite":
           "role": "Ceremony & Swarm On-Ramp Lead"
         }
       ]
-    }""")
+    }))
 
     # 1. Fast-Path Activated (without --force-prompts) if active garden workers exist on cluster
     var hasActiveGardenWorker = false
